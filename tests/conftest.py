@@ -33,6 +33,20 @@ else:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+
+    # pysqlite rompe los SAVEPOINT con su manejo implícito de transacciones;
+    # sin esto, los commits de los services escapan al rollback por test.
+    # https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
+    from sqlalchemy import event as _sa_event
+
+    @_sa_event.listens_for(test_engine, "connect")
+    def _sqlite_no_implicit_begin(dbapi_connection, _record):
+        dbapi_connection.isolation_level = None
+
+    @_sa_event.listens_for(test_engine, "begin")
+    def _sqlite_explicit_begin(conn):
+        conn.exec_driver_sql("BEGIN")
+
     Base.metadata.create_all(bind=test_engine)
 
 
