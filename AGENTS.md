@@ -1,0 +1,71 @@
+# AGENTS.md — Reglas para agentes que trabajan en ARCA
+
+## Qué es ARCA
+
+Financial Operating System de Atlas Tech. Un emprendedor registra operaciones en su lenguaje ("vendí", "gasté", "me deben") y ARCA produce por debajo finanzas y contabilidad formales. **North Star:** que el usuario entienda su negocio sin saber contabilidad, con un ledger de partida doble correcto y auditable debajo de cada cifra.
+
+```text
+OPERACIÓN → EVENTO FINANCIERO → MOVIMIENTO → CONTABILIDAD → ESTADOS FINANCIEROS
+```
+
+Spec completa: `docs/TASK_PACK.md`. Decisiones: `docs/superpowers/specs/` y `docs/decisions/`.
+
+## Invariantes que NUNCA se rompen
+
+1. **Nunca romper double-entry accounting.** Todo asiento pasa por `app/services/accounting/engine.py::post_journal_entry()` que exige `SUM(debit) == SUM(credit)`. Prohibido crear `JournalEntry`/`JournalEntryLine` por otra vía.
+2. **Nunca crear entidades financieras sin `organization_id`** cuando pertenecen a un tenant. `TenantMixin` es NOT NULL a propósito.
+3. **Nunca usar `float` para dinero.** `Decimal` en Python, `Numeric(14,2)` en BD, strings en JSON de entrada.
+4. **Nunca permitir acceso cross-tenant.** Todo query de negocio filtra por `organization_id` obtenido de `get_current_org_id` (membresía validada), jamás del payload. Tests en `tests/test_tenant_isolation.py` lo vigilan.
+5. **Nunca poner lógica contable crítica solo en frontend.** El backend es la autoridad; la UI solo consume.
+6. **Nunca mutar `FinancialAccount.current_balance` directamente.** Solo `app/services/transactions.py::record_transaction()` (patrón lock → refresh → re-check).
+7. **Nunca borrar físicamente registros contables o financieros contabilizados.** Patrón `CANCELLED` + campos `cancelled_*`; los reversos serán pólizas de reversa.
+8. **Las reglas contables viven en `app/services/accounting/rules.py`.** Una función por evento de negocio. Nada de armar asientos en routers.
+9. **Reportes SIEMPRE derivados del ledger**, nunca almacenados a mano.
+
+## Arquitectura
+
+- Servicio único: FastAPI (`app/`) sirve `/api/*` + SPA React construida (`frontend/dist`) por catch-all (registrado al final).
+- Dominios en `app/domains/<x>/` (router delgado / service con transacciones / schemas Pydantic v2). Modelos compartidos en `app/models/`.
+- Eventos internos: `app/core/events.py` (bus síncrono; un suscriptor que falla no tumba la operación).
+- API: `/api/<dominio>` plural, sin slash final; paginación `{items, total, limit, offset}`; errores `{"detail": "mensaje humano en español"}`; nunca devolver ORM crudo (`Schema.model_validate()`).
+- Roles por organización: OWNER, ADMIN, ACCOUNTANT, MEMBER, VIEWER. Contabilidad visible solo para los tres primeros (`require_role`).
+- UI en español con lenguaje de empresario (§39 del task pack); los términos contables solo dentro de la sección Contabilidad.
+
+## Cómo ejecutar
+
+```bash
+source .venv/bin/activate
+alembic upgrade head && uvicorn app.main:app --reload   # API
+cd frontend && npm run dev                              # SPA (proxy /api → :8000)
+```
+
+## Cómo testear
+
+```bash
+pytest                 # SQLite en memoria, rápido
+TEST_DATABASE_URL=postgresql://... pytest   # PostgreSQL real (como CI)
+ruff check .
+cd frontend && npm run typecheck && npm run build
+```
+
+Tests obligatorios antes de cerrar cualquier feature financiera: tenant isolation, partida doble balanceada, efectos en saldos (cash ↑/↓), consistencia de reportes con el ledger.
+
+## Cómo desplegar
+
+Railway (proyecto ARCA, servicio `arca` + PostgreSQL). `railway up --service arca` desde la raíz. Railpack construye (config en `railpack.json`); el arranque ejecuta `alembic upgrade head`. Healthcheck `GET /api/health`. Variables obligatorias: `DATABASE_URL`, `SECRET_KEY`, `ENV=production`.
+
+## Migraciones
+
+- Solo Alembic. Nunca `create_all()` en producción, nunca DDL suelto en scripts.
+- Nombres `AAAAMMDD_NN_descripcion.py`, `revision = "AAAAMMDD_NN"`.
+- `alembic heads` debe imprimir exactamente UN head.
+- Registrar cada módulo de modelos nuevo en `app/models/__init__.py` (si no, create_all/autogenerate lo omiten en silencio).
+
+## Reglas para features nuevas
+
+- Vertical slices: DB → dominio → API → UI → contabilidad → tests, una operación a la vez.
+- Prioridad de calidad: 1) correctitud financiera, 2) seguridad, 3) integridad de datos, 4) UX, 5) performance, 6) extensibilidad.
+- Conceptos explícitos (Income, Expense, Receivable, Payable...) — no generalizar a una tabla universal.
+- Conservar `source_type`/`source_id` en entidades que puedan originarse fuera (futura integración Atlas ONE).
+- Commits: Conventional Commits en español (`feat(gastos): ...`).
+- Actualizar `docs/MVP_STATUS.md` al avanzar.
