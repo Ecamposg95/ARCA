@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "python",
+  "packages": {
+    "python": "3.11",
+    "node": "20"
+  },
+  "steps": {
+    "install": {
+      "commands": ["...", "cd frontend && npm ci --include=dev && npm run build"]
+    }
+  },
+  "deploy": {
+    "startCommand": "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'"
+  }
+}
