@@ -29,4 +29,4 @@ cd frontend && npm run typecheck && npm run build
 
 ## Deployment
 
-Railway proyecto ARCA (`c8c39843-…`), servicios Postgres + `arca`. **OJO:** `railway up` desde `/mnt/d` (drvfs) corrompe el upload — desplegar desde un clon nativo (`~/arca-deploy`) o vía GitHub. Config de build en `railpack.json` (el build de frontend va en el step `build`, no en `install`).
+Railway proyecto ARCA (`c8c39843-…`), servicios Postgres + `ARCA` (conectado a GitHub `Ecamposg95/ARCA`): **push a main = deploy**. Dominio: https://arca-production-d769.up.railway.app. Config de build en `railpack.json` (el build de frontend va en el step `build`, no en `install`). **OJO:** no usar `railway up` desde `/mnt/d` (drvfs corrompe el upload); si hiciera falta un deploy manual, hacerlo desde un clon nativo.

@@ -52,7 +52,7 @@ Tests obligatorios antes de cerrar cualquier feature financiera: tenant isolatio
 
 ## Cómo desplegar
 
-Railway (proyecto ARCA, servicio `arca` + PostgreSQL). `railway up --service arca` desde la raíz. Railpack construye (config en `railpack.json`); el arranque ejecuta `alembic upgrade head`. Healthcheck `GET /api/health`. Variables obligatorias: `DATABASE_URL`, `SECRET_KEY`, `ENV=production`.
+Railway (proyecto ARCA, servicio `ARCA` + PostgreSQL). El servicio está conectado al repo GitHub `Ecamposg95/ARCA`: **push a `main` = deploy automático** (no usar `railway up`; desde /mnt/d además corrompe el upload). Railpack construye (config en `railpack.json`); el arranque ejecuta `alembic upgrade head`. Healthcheck `GET /api/health`. Variables obligatorias: `DATABASE_URL`, `SECRET_KEY`, `ENV=production`.
 
 ## Migraciones
 

@@ -12,7 +12,7 @@ _Actualizado: 2026-08-24_
 - Frontend completo (React+TS+Vite+Tailwind+TanStack): onboarding, dashboard con gráficos, ingresos, gastos, movimientos, cuentas, contactos, contabilidad (diario/balanza/catálogo), reportes, configuración.
 - Tests: 39 (tenant isolation, partida doble, efectos en saldos, reportes vs ledger, RBAC, paginación, auth).
 - CI GitHub Actions (postgres:16 + ruff + pytest + typecheck/build frontend).
-- Railway: PostgreSQL + servicio `arca`, dominio https://arca-production-09fa.up.railway.app
+- Railway: PostgreSQL + servicio `ARCA` conectado al repo GitHub (`Ecamposg95/ARCA`, auto-deploy en push a main), dominio https://arca-production-d769.up.railway.app
 - Deployment productivo validado end-to-end (registro real → ingreso → gasto → dashboard/balance/balanza correctos vía HTTPS).
 
 ## In Progress
@@ -32,7 +32,7 @@ _Actualizado: 2026-08-24_
 
 ## Technical Debt
 
-- `railway up` desde /mnt/d (WSL drvfs) sube archivos corruptos (NUL bytes) → desplegar desde clon en filesystem nativo (~/arca-deploy) o conectar repo GitHub.
+- `railway up` desde /mnt/d (WSL drvfs) sube archivos corruptos (NUL bytes). Ya no afecta el flujo normal (deploy vía GitHub), pero no usar `railway up` desde /mnt/d.
 - Bundle frontend 713KB (recharts) — code-splitting pendiente.
 - Sin rate limiting en /auth (slowapi como cortex) ni lockout de cuentas.
 - Sin outbox durable para eventos (bus síncrono en proceso).

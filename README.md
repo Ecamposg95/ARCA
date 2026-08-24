@@ -87,7 +87,7 @@ ruff check .
 
 ## Deployment (Railway)
 
-Servicios: PostgreSQL + `arca` (API + SPA). Build con Nixpacks (`nixpacks.toml`); el arranque ejecuta `alembic upgrade head` antes de uvicorn. Healthcheck: `GET /api/health`. Deploy: `railway up --service arca`.
+Servicios: PostgreSQL + `ARCA` (API + SPA), conectado al repo GitHub: **cada push a `main` despliega automáticamente**. Build con Railpack (`railpack.json`); el arranque ejecuta `alembic upgrade head` antes de uvicorn. Healthcheck: `GET /api/health`. Producción: https://arca-production-d769.up.railway.app
 
 ## Estado del MVP
 
