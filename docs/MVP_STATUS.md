@@ -13,10 +13,11 @@ _Actualizado: 2026-08-24_
 - Tests: 39 (tenant isolation, partida doble, efectos en saldos, reportes vs ledger, RBAC, paginación, auth).
 - CI GitHub Actions (postgres:16 + ruff + pytest + typecheck/build frontend).
 - Railway: PostgreSQL + servicio `arca`, dominio https://arca-production-09fa.up.railway.app
+- Deployment productivo validado end-to-end (registro real → ingreso → gasto → dashboard/balance/balanza correctos vía HTTPS).
 
 ## In Progress
 
-- Validación del deployment productivo end-to-end.
+- (nada)
 
 ## Next
 
