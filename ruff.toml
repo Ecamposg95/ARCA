@@ -1,0 +1,12 @@
+# Reglas de ALTA SEÑAL, no de estilo (convención Atlas).
+# Un linter que reporta cientos de violaciones de formato se ignora.
+line-length = 120
+target-version = "py311"
+extend-exclude = ["alembic/versions", "frontend", "node_modules"]
+
+[lint]
+select = ["F", "E9", "B"]
+ignore = [
+    "B008",  # Depends() en defaults es el patrón de FastAPI
+    "B904",  # raise-from en handlers no aporta señal aquí
+]
