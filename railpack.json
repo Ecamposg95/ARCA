@@ -6,8 +6,8 @@
     "node": "20"
   },
   "steps": {
-    "install": {
-      "commands": ["...", "cd frontend && npm ci --include=dev && npm run build"]
+    "build": {
+      "commands": ["cd frontend && npm ci --include=dev && npm run build"]
     }
   },
   "deploy": {
