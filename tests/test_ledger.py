@@ -110,6 +110,42 @@ def test_cross_org_accounts_isolated(db, org):
         )
 
 
+def test_receivable_and_payable_rules(db, org):
+    from app.services.accounting.rules import (
+        payable_created_entry,
+        payable_payment_entry,
+        receivable_collected_entry,
+        receivable_created_entry,
+    )
+
+    receivable_created_entry(db, org.id, "Factura a crédito", Decimal("700"), date(2026, 8, 1), "4100", "r" * 36)
+    receivable_collected_entry(db, org.id, "Cobro parcial", Decimal("300"), date(2026, 8, 5), "r" * 36)
+    payable_created_entry(db, org.id, "Renta por pagar", Decimal("400"), date(2026, 8, 1), "5300", "p" * 36)
+    payable_payment_entry(db, org.id, "Pago de renta", Decimal("400"), date(2026, 8, 10), "p" * 36)
+
+    rows = {row["code"]: row["balance"] for row in trial_balance(db, org.id)}
+    assert rows["1200"] == Decimal("400")  # CxC pendiente 700-300
+    assert rows["1100"] == Decimal("-100")  # cobró 300, pagó 400
+    assert rows["4100"] == Decimal("700")
+    assert rows["5300"] == Decimal("400")
+    assert rows["2100"] == Decimal("0")  # CxP liquidada
+    total = trial_balance(db, org.id)
+    assert sum(r["debit"] for r in total) == sum(r["credit"] for r in total)
+
+
+def test_reversal_of_nets_to_zero(db, org):
+    from app.services.accounting.rules import receivable_created_entry, reversal_of
+
+    entry = receivable_created_entry(
+        db, org.id, "Factura cancelable", Decimal("500"), date(2026, 8, 1), "4100", "x" * 36
+    )
+    reversal = reversal_of(db, org.id, entry, "Cancelación: Factura cancelable", date(2026, 8, 2))
+    assert reversal.reference == f"reversal:{entry.id}"
+    rows = {row["code"]: row["balance"] for row in trial_balance(db, org.id)}
+    assert rows["1200"] == Decimal("0")
+    assert rows["4100"] == Decimal("0")
+
+
 def test_trial_balance_debits_equal_credits(db, org):
     post_journal_entry(
         db,
