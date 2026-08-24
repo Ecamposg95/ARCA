@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens ARCA — HSL con canal separado para permitir alpha (bg-surface/60). */
+:root {
+  --bg: 150 8% 97%;
+  --surface: 0 0% 100%;
+  --surface-2: 150 8% 94%;
+  --ink: 156 20% 11%;
+  --muted: 155 7% 40%;
+  --border: 150 8% 90%;
+  --accent: 169 77% 24%;
+  --accent-soft: 165 36% 92%;
+  --rail: 160 40% 12%;
+  --rail-ink: 150 20% 96%;
+  --rail-muted: 155 12% 62%;
+  --pos: 147 79% 27%;
+  --neg: 9 64% 46%;
+  --warn: 40 83% 38%;
+}
+
+.dark {
+  --bg: 160 15% 8%;
+  --surface: 158 14% 11%;
+  --surface-2: 157 12% 15%;
+  --ink: 150 15% 94%;
+  --muted: 152 8% 62%;
+  --border: 156 10% 20%;
+  --accent: 166 55% 42%;
+  --accent-soft: 166 40% 16%;
+  --rail: 160 40% 7%;
+  --rail-ink: 150 20% 96%;
+  --rail-muted: 155 12% 58%;
+  --pos: 147 55% 45%;
+  --neg: 9 70% 58%;
+  --warn: 40 80% 55%;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-ink font-body antialiased;
+}
+
+/* Cifras: siempre tabulares, es la firma tipográfica de ARCA. */
+.figures {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+*:focus-visible {
+  @apply outline-none ring-2 ring-accent ring-offset-1 ring-offset-bg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
