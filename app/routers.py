@@ -13,6 +13,9 @@ from app.domains.transactions.router import router as transactions_router
 from app.domains.receivables.router import router as receivables_router
 from app.domains.payables.router import router as payables_router
 from app.domains.accounting.router import router as accounting_router
+from app.domains.agent_api.router import router as agent_api_router
+from app.domains.agent_keys.router import router as agent_keys_router
+from app.domains.proposals.router import router as proposals_router
 from app.domains.dashboard.router import router as dashboard_router
 from app.domains.reports.router import router as reports_router
 
@@ -29,5 +32,8 @@ api_router.include_router(transactions_router)
 api_router.include_router(receivables_router)
 api_router.include_router(payables_router)
 api_router.include_router(accounting_router)
+api_router.include_router(agent_api_router)
+api_router.include_router(agent_keys_router)
+api_router.include_router(proposals_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(reports_router)
