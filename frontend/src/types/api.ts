@@ -213,6 +213,8 @@ export interface JournalLine {
 
 export interface JournalEntry {
   id: string
+  folio: string
+  kind: 'INGRESO' | 'EGRESO' | 'DIARIO'
   date: string
   description: string
   reference: string | null

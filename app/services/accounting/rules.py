@@ -43,6 +43,7 @@ def opening_balance_entry(
         source_type="financial_account",
         source_id=source_id,
         created_by=created_by,
+        kind="DIARIO",
     )
 
 
@@ -69,6 +70,7 @@ def income_paid_entry(
         source_type="income",
         source_id=source_id,
         created_by=created_by,
+        kind="INGRESO",
     )
 
 
@@ -95,6 +97,7 @@ def expense_paid_entry(
         source_type="expense",
         source_id=source_id,
         created_by=created_by,
+        kind="EGRESO",
     )
 
 
@@ -121,6 +124,7 @@ def receivable_created_entry(
         source_type="receivable",
         source_id=source_id,
         created_by=created_by,
+        kind="DIARIO",
     )
 
 
@@ -146,6 +150,7 @@ def receivable_collected_entry(
         source_type="receivable",
         source_id=source_id,
         created_by=created_by,
+        kind="INGRESO",
     )
 
 
@@ -172,6 +177,7 @@ def payable_created_entry(
         source_type="payable",
         source_id=source_id,
         created_by=created_by,
+        kind="DIARIO",
     )
 
 
@@ -197,6 +203,7 @@ def payable_payment_entry(
         source_type="payable",
         source_id=source_id,
         created_by=created_by,
+        kind="EGRESO",
     )
 
 
@@ -240,6 +247,7 @@ def reversal_of(
         source_id=entry.source_id,
         reference=f"reversal:{entry.id}",
         created_by=created_by,
+        kind="DIARIO",
     )
 
 
@@ -267,4 +275,5 @@ def transfer_entry(
         source_type="transfer",
         source_id=source_id,
         created_by=created_by,
+        kind="DIARIO",
     )

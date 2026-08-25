@@ -22,6 +22,7 @@ from app.models.accounting import (
     JournalEntryLine,
 )
 from app.services.accounting.coa import get_account_by_code
+from app.services.accounting.folios import next_folio
 
 logger = logging.getLogger("arca.accounting")
 
@@ -60,8 +61,13 @@ def post_journal_entry(
     source_id: str | None = None,
     reference: str | None = None,
     created_by: str | None = None,
+    kind: str = "DIARIO",
 ) -> JournalEntry:
-    """Valida y persiste una póliza balanceada. No hace commit (transacción del caller)."""
+    """Valida y persiste una póliza balanceada. No hace commit (transacción del caller).
+
+    `kind` (INGRESO/EGRESO/DIARIO) lo declara cada regla de negocio y define la
+    serie del folio; no se infiere de las líneas.
+    """
     if len(lines) < 2:
         raise AccountingError("Un asiento contable requiere al menos dos líneas.")
 
@@ -93,6 +99,8 @@ def post_journal_entry(
 
     entry = JournalEntry(
         organization_id=organization_id,
+        folio=next_folio(db, organization_id, kind, date),
+        kind=kind,
         date=date,
         description=description,
         reference=reference,
