@@ -15,7 +15,10 @@ class Expense(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     date = Column(Date, nullable=False, index=True)
     vendor_id = Column(String(36), ForeignKey("vendors.id"), nullable=True)
     description = Column(String(500), nullable=False)
-    amount = Column(Numeric(14, 2), nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)  # TOTAL: lo que se mueve en efectivo
+    subtotal = Column(Numeric(14, 2), nullable=False, default=0)  # base gravable
+    tax_rate = Column(Numeric(5, 4), nullable=False, default=0)  # 0.1600 = 16%
+    tax_amount = Column(Numeric(14, 2), nullable=False, default=0)
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
     financial_account_id = Column(String(36), ForeignKey("financial_accounts.id"), nullable=True)
     payment_method = Column(String(30), nullable=True)

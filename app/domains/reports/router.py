@@ -45,3 +45,14 @@ def cash_flow(
 ):
     default_start, default_end = _default_month_range()
     return service.cash_flow(db, org_id, start or default_start, end or default_end)
+
+
+@router.get("/iva")
+def vat(
+    start: date_type | None = Query(default=None),
+    end: date_type | None = Query(default=None),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    default_start, default_end = _default_month_range()
+    return service.vat_report(db, org_id, start or default_start, end or default_end)

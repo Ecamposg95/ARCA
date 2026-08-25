@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends
+from decimal import Decimal
+
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -15,6 +17,7 @@ class OrganizationUpdate(BaseModel):
     legal_name: str | None = Field(default=None, max_length=255)
     tax_id: str | None = Field(default=None, max_length=20)
     business_type: str | None = Field(default=None, max_length=50)
+    default_tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
 
 
 @router.get("/current", response_model=OrganizationRead)

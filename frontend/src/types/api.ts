@@ -23,6 +23,7 @@ export interface Organization {
   country: string
   timezone: string
   business_type: string | null
+  default_tax_rate: string
 }
 
 export interface AuthResponse {
@@ -246,4 +247,16 @@ export interface TrialBalanceRow {
   debit: number
   credit: number
   balance: number
+}
+
+export interface VatReport {
+  start: string
+  end: string
+  vat_charged: number
+  vat_creditable: number
+  difference: number
+  to_pay: number
+  in_favor: number
+  vat_pending_collection: number
+  vat_pending_payment: number
 }

@@ -136,6 +136,7 @@ def main() -> None:
                     date=day_of(months_ago, random.randint(3, 26)),
                     description=description,
                     amount=Decimal(random.randrange(45000, 180000, 5000)),
+                    tax_rate=Decimal("0.16"),
                     category_id=category(income_categories, category_name).id,
                     customer_id=random.choice(customers).id,
                     financial_account_id=random.choice(accounts).id,
@@ -153,6 +154,8 @@ def main() -> None:
                         date=day_of(months_ago, day),
                         description=description,
                         amount=Decimal(random.randint(low, high)),
+                        # La nómina no causa IVA; el resto de los gastos sí.
+                        tax_rate=Decimal("0") if category_name == "Nómina" else Decimal("0.16"),
                         category_id=category(expense_categories, category_name).id,
                         vendor_id=random.choice(vendors).id,
                         financial_account_id=random.choice(accounts).id,

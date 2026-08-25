@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date as date_type
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,19 @@ from app.models.category import Category
 from app.models.contact import Customer
 from app.models.income import Income
 from app.services.accounting.rules import income_paid_entry
+from app.services.taxes import split_total
 from app.services.transactions import record_transaction
+
+
+def resolve_tax(db: Session, org_id: str, payload):
+    """Desglose de la operación.
+
+    Si el cliente NO manda tasa, se asume 0. La tasa por defecto de la
+    organización es una preferencia de la interfaz (el formulario la
+    preselecciona), no del servidor: aplicar IVA en silencio a quien no lo
+    pidió cambiaría montos de dinero sin que nadie lo decida.
+    """
+    return split_total(payload.amount, payload.tax_rate or 0)
 
 
 def _validate_category(db: Session, org_id: str, category_id: str) -> Category:
@@ -48,12 +61,16 @@ def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
     if payload.customer_id:
         _validate_customer(db, org_id, payload.customer_id)
 
+    tax = resolve_tax(db, org_id, payload)
     income = Income(
         organization_id=org_id,
         date=payload.date,
         customer_id=payload.customer_id,
         description=payload.description.strip(),
-        amount=payload.amount,
+        amount=tax.total,
+        subtotal=tax.subtotal,
+        tax_rate=tax.tax_rate,
+        tax_amount=tax.tax_amount,
         category_id=payload.category_id,
         financial_account_id=payload.financial_account_id,
         notes=payload.notes,
@@ -124,6 +141,7 @@ def _apply_payment(
         revenue_account_code=category.account_code,
         source_id=income.id,
         created_by=user_id,
+        tax_amount=Decimal(income.tax_amount),
     )
     income.financial_account_id = account_id
     income.status = "PAID"

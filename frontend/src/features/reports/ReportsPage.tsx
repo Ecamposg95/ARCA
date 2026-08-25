@@ -1,13 +1,14 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { formatMoney, monthStart, today } from '@/lib/format'
-import type { BalanceSheet, CashFlow, ProfitLoss, ReportLine } from '@/types/api'
+import type { BalanceSheet, CashFlow, ProfitLoss, ReportLine, VatReport } from '@/types/api'
 
-type Tab = 'pl' | 'balance' | 'flow'
+type Tab = 'pl' | 'balance' | 'flow' | 'iva'
 
 function rangeForPeriod(period: string): { start: string; end: string } {
   const now = new Date()
@@ -51,8 +52,14 @@ function ReportSection({ title, lines, total, totalLabel }: { title: string; lin
   )
 }
 
+const TAB_KEYS: Tab[] = ['pl', 'balance', 'flow', 'iva']
+
 export function ReportsPage() {
-  const [tab, setTab] = useState<Tab>('pl')
+  // La pestaña vive en la URL: compartible con el contador y sobrevive a recargar.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requested = searchParams.get('vista') as Tab | null
+  const tab: Tab = requested && TAB_KEYS.includes(requested) ? requested : 'pl'
+  const setTab = (next: Tab) => setSearchParams(next === 'pl' ? {} : { vista: next })
   const [period, setPeriod] = useState('current')
   const { start, end } = rangeForPeriod(period)
 
@@ -66,6 +73,11 @@ export function ReportsPage() {
     queryFn: async () => (await api.get<BalanceSheet>(`/reports/balance-sheet?as_of=${end}`)).data,
     enabled: tab === 'balance',
   })
+  const vatQuery = useQuery({
+    queryKey: ['reports', 'iva', start, end],
+    queryFn: async () => (await api.get<VatReport>(`/reports/iva?start=${start}&end=${end}`)).data,
+    enabled: tab === 'iva',
+  })
   const flowQuery = useQuery({
     queryKey: ['reports', 'flow', start, end],
     queryFn: async () => (await api.get<CashFlow>(`/reports/cash-flow?start=${start}&end=${end}`)).data,
@@ -76,6 +88,7 @@ export function ReportsPage() {
     { key: 'pl', label: 'Estado de resultados' },
     { key: 'balance', label: 'Balance general' },
     { key: 'flow', label: 'Flujo de efectivo' },
+    { key: 'iva', label: 'IVA' },
   ]
 
   return (
@@ -163,6 +176,52 @@ export function ReportsPage() {
               ? 'El balance cuadra: activos = pasivos + capital.'
               : 'Atención: el balance no cuadra. Contacta a soporte.'}
           </p>
+        </Card>
+      ) : null}
+
+      {tab === 'iva' && vatQuery.data ? (
+        <Card className="max-w-2xl">
+          <div className="divide-y divide-border text-sm">
+            <div className="flex items-center justify-between py-3">
+              <span>IVA que cobraste a tus clientes</span>
+              <Money value={vatQuery.data.vat_charged} />
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span>− IVA que pagaste a proveedores</span>
+              <Money value={vatQuery.data.vat_creditable} />
+            </div>
+            <div className="flex items-center justify-between py-3 font-semibold">
+              <span>
+                {vatQuery.data.in_favor > 0 ? 'IVA a favor' : 'IVA a pagar'}
+              </span>
+              <Money
+                value={vatQuery.data.in_favor > 0 ? vatQuery.data.in_favor : vatQuery.data.to_pay}
+                size="lg"
+                tone={vatQuery.data.in_favor > 0 ? 'pos' : 'ink'}
+              />
+            </div>
+          </div>
+          <div className="mt-4 rounded-lg bg-surface-2 p-3 text-xs text-muted">
+            <p className="font-medium text-ink">Todavía no se declara</p>
+            <p className="mt-1">
+              En México el IVA se causa al cobrar y al pagar, no al facturar. Estos montos
+              esperan a que el dinero se mueva:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
+              <span>
+                Por cobrar:{' '}
+                <span className="figures text-ink">
+                  {formatMoney(vatQuery.data.vat_pending_collection)}
+                </span>
+              </span>
+              <span>
+                Por pagar:{' '}
+                <span className="figures text-ink">
+                  {formatMoney(vatQuery.data.vat_pending_payment)}
+                </span>
+              </span>
+            </div>
+          </div>
         </Card>
       ) : null}
 
