@@ -123,6 +123,55 @@ def main() -> None:
             )
         cursor += timedelta(days=random.randint(2, 5))
 
+    # CxC y CxP: una vencida, una con cobro parcial, compromisos abiertos
+    from app.domains.payables.schemas import PayableCreate
+    from app.domains.payables.service import create_payable
+    from app.domains.receivables.schemas import ReceivableCreate
+    from app.domains.receivables.service import collect_receivable, create_receivable
+
+    ventas = next(c for c in income_categories if c.name == "Ventas")
+    renta = next(c for c in expense_categories if c.name == "Renta")
+
+    overdue = create_receivable(
+        db,
+        organization.id,
+        ReceivableCreate(
+            customer_id=customers[0].id,
+            description="Factura 0012 — proyecto web",
+            amount=Decimal("38000"),
+            due_date=today - timedelta(days=20),
+            category_id=ventas.id,
+        ),
+        created_by=user.id,
+    )
+    partial = create_receivable(
+        db,
+        organization.id,
+        ReceivableCreate(
+            customer_id=customers[1].id,
+            description="Iguala agosto",
+            amount=Decimal("24000"),
+            due_date=today + timedelta(days=15),
+            category_id=ventas.id,
+        ),
+        created_by=user.id,
+    )
+    collect_receivable(db, organization.id, partial, Decimal("10000"), bank_1.id, today, user.id)
+    _ = overdue
+
+    create_payable(
+        db,
+        organization.id,
+        PayableCreate(
+            vendor_id=vendors[0].id,
+            description="Renta septiembre",
+            amount=Decimal("18500"),
+            due_date=today + timedelta(days=10),
+            category_id=renta.id,
+        ),
+        created_by=user.id,
+    )
+
     db.commit()
     print("Empresa demo lista: demo@arca.test / demodemo123")
 
