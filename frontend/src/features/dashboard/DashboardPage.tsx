@@ -5,8 +5,8 @@ import { api } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { Money } from '@/components/ui/Money'
 import { Card } from '@/components/ui/Table'
-import { formatCompact, formatMoney, formatMonth, formatMonthYear } from '@/lib/format'
-import type { DashboardSummary } from '@/types/api'
+import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear } from '@/lib/format'
+import type { CashProjection, DashboardSummary } from '@/types/api'
 
 /** Sistema de color del tablero: teal = dinero que entra, ámbar = dinero que sale.
  *  El rojo queda reservado para problemas (vencido, pérdida), nunca para un gasto normal. */
@@ -76,6 +76,10 @@ export function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary')).data,
+  })
+  const { data: projection } = useQuery({
+    queryKey: ['cash-projection'],
+    queryFn: async () => (await api.get<CashProjection>('/reports/cash-projection?days=90')).data,
   })
 
   if (isLoading || !data) {
@@ -179,6 +183,49 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {projection && (projection.expected_inflows > 0 || projection.expected_outflows > 0) ? (
+        <Card className="mt-4">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <MetricLabel>Lo que viene · próximos 90 días</MetricLabel>
+            {projection.shortfall_date ? (
+              <span className="text-xs font-medium text-neg">
+                El dinero no alcanza el {formatDate(projection.shortfall_date)}
+              </span>
+            ) : (
+              <span className="text-xs text-muted">Con lo comprometido, el saldo no se va a cero</span>
+            )}
+          </div>
+          <div className="grid gap-3 divide-y divide-border sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+            <div className="sm:pr-4">
+              <div className="text-xs text-muted">Hoy tienes</div>
+              <div className="mt-1"><Money value={projection.opening_cash} /></div>
+            </div>
+            <div className="pt-3 sm:px-4 sm:pt-0">
+              <div className="text-xs text-muted">+ Te van a pagar</div>
+              <div className="mt-1"><Money value={projection.expected_inflows} tone="pos" /></div>
+            </div>
+            <div className="pt-3 sm:px-4 sm:pt-0">
+              <div className="text-xs text-muted">− Tienes que pagar</div>
+              <div className="mt-1"><Money value={projection.expected_outflows} tone="neg" /></div>
+            </div>
+            <div className="pt-3 sm:pl-4 sm:pt-0">
+              <div className="text-xs text-muted">Quedarías con</div>
+              <div className="mt-1">
+                <Money
+                  value={projection.projected_cash}
+                  size="lg"
+                  tone={projection.projected_cash < 0 ? 'neg' : 'ink'}
+                />
+              </div>
+            </div>
+          </div>
+          {/* Sólo compromisos con fecha: esto no es un pronóstico. */}
+          <p className="mt-3 text-xs text-muted">
+            Calculado con cuentas por cobrar y por pagar ya registradas, en su fecha de vencimiento.
+          </p>
+        </Card>
+      ) : null}
 
       {!hasMovement ? (
         <div className="mt-4 rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center">

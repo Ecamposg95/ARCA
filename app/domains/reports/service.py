@@ -195,3 +195,83 @@ def vat_report(db: Session, organization_id: str, start: date_type, end: date_ty
         "vat_pending_collection": movement(CODE_VAT_CHARGED_PENDING, None, end),
         "vat_pending_payment": movement(CODE_VAT_CREDITABLE_PENDING, None, end),
     }
+
+
+def cash_projection(db: Session, organization_id: str, days: int = 90) -> dict:
+    """Proyección de liquidez con lo YA comprometido: no es un pronóstico.
+
+    Parte del efectivo de hoy y camina hacia adelante sumando los cobros
+    esperados y restando los pagos comprometidos en su fecha de vencimiento.
+    Lo vencido se considera exigible de inmediato.
+    """
+    from datetime import timedelta
+
+    from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
+    from app.models.payable import Payable
+    from app.models.receivable import Receivable
+
+    today = date_type.today()
+    horizon = today + timedelta(days=days)
+
+    opening = Decimal(
+        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
+        .filter(
+            FinancialAccount.organization_id == organization_id,
+            FinancialAccount.deleted_at.is_(None),
+            FinancialAccount.active.is_(True),
+            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+        )
+        .scalar()
+        or 0
+    )
+
+    def pending(model, sign: int) -> list[tuple[date_type, Decimal, str]]:
+        rows = (
+            db.query(model.due_date, model.amount, model.amount_paid, model.description)
+            .filter(
+                model.organization_id == organization_id,
+                model.status.in_(("OPEN", "PARTIAL")),
+                model.due_date <= horizon,
+            )
+            .all()
+        )
+        items = []
+        for due_date, amount, paid, description in rows:
+            balance = Decimal(amount) - Decimal(paid)
+            if balance <= 0:
+                continue
+            # Lo vencido ya es exigible: se coloca en el día de hoy.
+            when = max(due_date, today)
+            items.append((when, balance * sign, description))
+        return items
+
+    movements = pending(Receivable, 1) + pending(Payable, -1)
+    movements.sort(key=lambda item: item[0])
+
+    balance = opening
+    points: list[dict] = [{"date": today, "balance": balance, "change": Decimal("0")}]
+    shortfall: date_type | None = None
+    inflows = Decimal("0")
+    outflows = Decimal("0")
+
+    for when, change, _description in movements:
+        balance += change
+        if change > 0:
+            inflows += change
+        else:
+            outflows += -change
+        if shortfall is None and balance < 0:
+            shortfall = when
+        points.append({"date": when, "balance": balance, "change": change})
+
+    return {
+        "start": today,
+        "end": horizon,
+        "opening_cash": opening,
+        "expected_inflows": inflows,
+        "expected_outflows": outflows,
+        "projected_cash": balance,
+        # El día en que el dinero no alcanza: la alerta que nadie más da.
+        "shortfall_date": shortfall,
+        "points": points,
+    }
