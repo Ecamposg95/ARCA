@@ -3,8 +3,9 @@
 Uso:
     python scripts/seed_demo.py
 
-Crea "ARCA Demo Company" (demo@arca.test / demodemo123) con 5 clientes,
-5 proveedores, 2 cuentas de banco y ~4 meses de ingresos y gastos.
+Crea "Atlas Software Consulting" (demo@arca.test / demodemo123) — una
+consultora de software con 5 clientes, 5 proveedores, 2 cuentas de banco
+y ~4 meses de ingresos y gastos.
 """
 
 from __future__ import annotations
@@ -50,7 +51,7 @@ def main() -> None:
         email="demo@arca.test",
         password="demodemo123",
         name="Demo Atlas",
-        business_name="ARCA Demo Company",
+        business_name="Atlas Software Consulting",
         business_type="services",
         initial_cash=Decimal("25000"),
     )
@@ -64,12 +65,24 @@ def main() -> None:
     db.commit()
 
     customers = []
-    for name in ("Comercial del Norte", "Grupo Vega", "Papelera Juárez", "Laura Medina", "Constructora Ríos"):
+    for name in (
+        "Grupo Industrial del Norte",
+        "Fintech Pagos MX",
+        "Clínica Los Álamos",
+        "Retail Vega",
+        "Constructora Ríos",
+    ):
         customer = Customer(organization_id=organization.id, name=name)
         db.add(customer)
         customers.append(customer)
     vendors = []
-    for name in ("Inmobiliaria Centro", "Telmex", "CFE", "Office Depot", "Agencia Creativa MX"):
+    for name in (
+        "WeWork Reforma",
+        "Amazon Web Services",
+        "Google Workspace",
+        "Despacho Contable Núñez",
+        "Telmex Negocios",
+    ):
         vendor = Vendor(organization_id=organization.id, name=name)
         db.add(vendor)
         vendors.append(vendor)
@@ -94,7 +107,7 @@ def main() -> None:
                 IncomeCreate(
                     date=cursor,
                     description=random.choice(
-                        ("Venta de servicios", "Proyecto web", "Iguala mensual", "Consultoría", "Venta de equipo")
+                        ("Desarrollo de software", "Proyecto web", "Iguala mensual de soporte", "Consultoría técnica", "Implementación ERP")
                     ),
                     amount=Decimal(random.randint(1500, 18000)),
                     category_id=random.choice(income_categories).id,
@@ -111,7 +124,7 @@ def main() -> None:
                 ExpenseCreate(
                     date=cursor,
                     description=random.choice(
-                        ("Renta oficina", "Luz", "Internet", "Publicidad digital", "Papelería", "Nómina quincenal")
+                        ("Renta coworking", "Factura AWS", "Licencias de software", "Publicidad LinkedIn", "Internet y telefonía", "Nómina quincenal")
                     ),
                     amount=Decimal(random.randint(300, 9000)),
                     category_id=random.choice(expense_categories).id,
