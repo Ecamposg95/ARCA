@@ -10,6 +10,8 @@ from app.domains.financial_accounts.router import router as financial_accounts_r
 from app.domains.income.router import router as income_router
 from app.domains.organizations.router import router as organizations_router
 from app.domains.transactions.router import router as transactions_router
+from app.domains.receivables.router import router as receivables_router
+from app.domains.payables.router import router as payables_router
 from app.domains.accounting.router import router as accounting_router
 from app.domains.dashboard.router import router as dashboard_router
 from app.domains.reports.router import router as reports_router
@@ -24,6 +26,8 @@ api_router.include_router(vendors_router)
 api_router.include_router(income_router)
 api_router.include_router(expenses_router)
 api_router.include_router(transactions_router)
+api_router.include_router(receivables_router)
+api_router.include_router(payables_router)
 api_router.include_router(accounting_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(reports_router)

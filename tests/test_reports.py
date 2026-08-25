@@ -92,6 +92,58 @@ def test_dashboard_summary_shape_and_cash(client):
     assert Decimal(str(body["cash"])) == Decimal("13000")
 
 
+def test_dashboard_receivables_and_payables(client):
+    headers, account = _seed_operations(client)
+    customer = client.post("/api/customers", headers=headers, json={"name": "Cliente Crédito"}).json()
+    vendor = client.post("/api/vendors", headers=headers, json={"name": "Proveedor Crédito"}).json()
+    ventas = next(
+        c for c in client.get("/api/categories?kind=INCOME", headers=headers).json() if c["name"] == "Ventas"
+    )
+    renta = next(
+        c for c in client.get("/api/categories?kind=EXPENSE", headers=headers).json() if c["name"] == "Renta"
+    )
+    receivable = client.post(
+        "/api/receivables",
+        headers=headers,
+        json={
+            "customer_id": customer["id"],
+            "description": "Venta a crédito vencida",
+            "amount": "7000",
+            "due_date": "2026-01-01",
+            "category_id": ventas["id"],
+        },
+    ).json()
+    client.post(
+        f"/api/receivables/{receivable['id']}/collect",
+        headers=headers,
+        json={"amount": "2000", "financial_account_id": account["id"]},
+    )
+    client.post(
+        "/api/payables",
+        headers=headers,
+        json={
+            "vendor_id": vendor["id"],
+            "description": "Compra a crédito",
+            "amount": "4000",
+            "due_date": "2027-01-31",
+            "category_id": renta["id"],
+        },
+    )
+
+    summary = client.get("/api/dashboard/summary", headers=headers).json()
+    assert Decimal(str(summary["receivables"])) == Decimal("5000")
+    assert Decimal(str(summary["overdue_receivables"])) == Decimal("5000")
+    assert Decimal(str(summary["payables"])) == Decimal("4000")
+
+    # El balance sigue cuadrando con AR en activos y AP en pasivos
+    report = client.get("/api/reports/balance-sheet?as_of=2027-12-31", headers=headers).json()
+    assert report["balanced"] is True
+    assets = {row["code"]: row["amount"] for row in report["assets"]}
+    liabilities = {row["code"]: row["amount"] for row in report["liabilities"]}
+    assert Decimal(str(assets["1200"])) == Decimal("5000")
+    assert Decimal(str(liabilities["2100"])) == Decimal("4000")
+
+
 def test_accounting_section_forbidden_for_viewer(client, db):
     from app.models.organization import OrganizationMember, ROLE_VIEWER
     from app.models.user import User

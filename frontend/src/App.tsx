@@ -6,6 +6,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ContactsPage, CUSTOMERS_CONFIG, VENDORS_CONFIG } from '@/features/contacts/ContactsPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { DebtsPage, PAYABLES_CONFIG, RECEIVABLES_CONFIG } from '@/features/debts/DebtsPage'
 import { EXPENSE_CONFIG, INCOME_CONFIG, OperationsPage } from '@/features/operations/OperationsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -30,6 +31,8 @@ export function App() {
             <Route path="/cuentas" element={<AccountsPage />} />
             <Route path="/ingresos" element={<OperationsPage config={INCOME_CONFIG} />} />
             <Route path="/gastos" element={<OperationsPage config={EXPENSE_CONFIG} />} />
+            <Route path="/por-cobrar" element={<DebtsPage config={RECEIVABLES_CONFIG} />} />
+            <Route path="/por-pagar" element={<DebtsPage config={PAYABLES_CONFIG} />} />
             <Route path="/clientes" element={<ContactsPage config={CUSTOMERS_CONFIG} />} />
             <Route path="/proveedores" element={<ContactsPage config={VENDORS_CONFIG} />} />
             <Route path="/contabilidad" element={<AccountingPage />} />

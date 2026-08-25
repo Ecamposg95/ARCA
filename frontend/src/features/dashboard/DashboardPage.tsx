@@ -22,13 +22,26 @@ import type { DashboardSummary } from '@/types/api'
 
 const CHART_COLORS = ['#0E6E5C', '#3E8E7E', '#6FAE9F', '#A3CEC3', '#C2402A', '#B07C10', '#5E6B64']
 
-function StatCard({ label, value, tone, to }: { label: string; value: number; tone?: 'pos' | 'neg'; to?: string }) {
+function StatCard({
+  label,
+  value,
+  tone,
+  to,
+  footnote,
+}: {
+  label: string
+  value: number
+  tone?: 'pos' | 'neg'
+  to?: string
+  footnote?: string
+}) {
   const body = (
     <Card className="h-full transition-shadow hover:shadow-float">
       <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-2">
         <Money value={value} size="lg" tone={tone ?? 'ink'} />
       </div>
+      {footnote ? <div className="mt-1 text-xs text-neg">{footnote}</div> : null}
     </Card>
   )
   return to ? <Link to={to}>{body}</Link> : body
@@ -76,6 +89,15 @@ export function DashboardPage() {
           tone={data.monthly_profit >= 0 ? 'pos' : 'neg'}
           to="/reportes"
         />
+        <StatCard
+          label="Por cobrar"
+          value={data.receivables}
+          to="/por-cobrar"
+          footnote={
+            data.overdue_receivables > 0 ? `Vencido: ${formatMoney(data.overdue_receivables)}` : undefined
+          }
+        />
+        <StatCard label="Por pagar" value={data.payables} to="/por-pagar" />
       </div>
 
       {!hasMovement ? (

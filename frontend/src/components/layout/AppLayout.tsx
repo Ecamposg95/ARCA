@@ -16,6 +16,7 @@ const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; 
     label: 'Ventas',
     items: [
       { to: '/ingresos', label: 'Ingresos' },
+      { to: '/por-cobrar', label: 'Por cobrar' },
       { to: '/clientes', label: 'Clientes' },
     ],
   },
@@ -23,6 +24,7 @@ const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; 
     label: 'Gastos',
     items: [
       { to: '/gastos', label: 'Gastos' },
+      { to: '/por-pagar', label: 'Por pagar' },
       { to: '/proveedores', label: 'Proveedores' },
     ],
   },
@@ -38,6 +40,8 @@ const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; 
 const QUICK_ACTIONS = [
   { to: '/ingresos?nuevo=1', label: 'Ingreso' },
   { to: '/gastos?nuevo=1', label: 'Gasto' },
+  { to: '/por-cobrar?nueva=1', label: 'Cuenta por cobrar' },
+  { to: '/por-pagar?nueva=1', label: 'Cuenta por pagar' },
   { to: '/movimientos?transferir=1', label: 'Traspaso' },
   { to: '/clientes?nuevo=1', label: 'Cliente' },
   { to: '/proveedores?nuevo=1', label: 'Proveedor' },

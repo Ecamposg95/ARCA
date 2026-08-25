@@ -1,6 +1,6 @@
 # MVP STATUS — ARCA
 
-_Actualizado: 2026-08-24_
+_Actualizado: 2026-08-24 (M2)_
 
 ## Done
 
@@ -19,10 +19,12 @@ _Actualizado: 2026-08-24_
 
 - (nada)
 
+- M2 Business Finance: CxC y CxP con devengo (§18), cobros/pagos parciales, OVERDUE calculado, cancelación con asiento de reversa (`reversal_of`), dashboard con saldos reales, páginas Por cobrar / Por pagar. 54+ tests.
+
 ## Next
 
-- M2 Business Finance: receivables (CxC), payables (CxP), cobros y pagos parciales, aging.
-- Reversal journal entries para cancelar operaciones pagadas.
+- M3/M4 restantes: aging detallado de cartera, tendencias, selector multi-empresa en UI.
+- Reversal journal entries para cancelar operaciones pagadas (parciales incluidas).
 - Selector de organización multi-empresa en UI (el backend ya lo soporta vía X-Organization-ID).
 - Rol real desde /api/me en el frontend (hoy asume OWNER para navegación).
 
@@ -37,4 +39,3 @@ _Actualizado: 2026-08-24_
 - Sin rate limiting en /auth (slowapi como cortex) ni lockout de cuentas.
 - Sin outbox durable para eventos (bus síncrono en proceso).
 - `cash_flow.opening_cash` cuenta saldos iniciales de cuentas creadas dentro del periodo como "apertura".
-- Dashboard `receivables`/`payables` en 0 hasta M2.
