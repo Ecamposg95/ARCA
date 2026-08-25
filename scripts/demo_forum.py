@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import httpx
 
@@ -57,9 +57,9 @@ def main() -> None:
     parser.add_argument("--password", default="demoforo2026")
     args = parser.parse_args()
 
-    random.seed(7)  # mismo escenario en cada ensayo
-    stamp = date.today().strftime("%m%d") + str(random.randint(10, 99))
-    email = f"demo{stamp}@atlas.mx"
+    random.seed(7)  # mismos montos en cada ensayo
+    # El correo lleva la hora para que dos ensayos del mismo día no choquen.
+    email = f"demo{datetime.now().strftime('%m%d%H%M')}@atlas.mx"
     client = httpx.Client(base_url=f"{args.url.rstrip('/')}/api", timeout=60)
 
     registro = client.post(
@@ -137,7 +137,7 @@ def main() -> None:
                 })
 
     # --- Un gasto con tarjeta: crea deuda, no toca el banco (acto 3) ---
-    post("/expenses", {
+    licencias = post("/expenses", {
         "date": day_of(0, 12),
         "description": "Licencias anuales del equipo",
         "amount": "34800",
@@ -190,6 +190,13 @@ def main() -> None:
     proyeccion = client.get("/reports/cash-projection").json()
     balanza = client.get("/accounting/trial-balance").json()
 
+    def folio_de(source_type: str, source_id: str) -> str:
+        entries = client.get(
+            "/accounting/journal-entries",
+            params={"source_type": source_type, "source_id": source_id},
+        ).json()["items"]
+        return ", ".join(e["folio"] for e in entries) or "—"
+
     print("\n╭─ Escenario listo ──────────────────────────────────────")
     print(f"│ URL        {args.url}")
     print(f"│ Correo     {email}")
@@ -200,7 +207,13 @@ def main() -> None:
     print(f"│ Por cobrar        {resumen['receivables']} (vencido {resumen['overdue_receivables']})")
     print(f"│ Por pagar         {resumen['payables']}")
     print(f"│ Proyección 90d    {proyeccion['projected_cash']}")
-    print(f"│ Balanza cuadra    {balanza['total_debit'] == balanza['total_credit']}")
+    polizas = client.get("/accounting/journal-entries", params={"limit": 1}).json()["total"]
+    print(f"│ Pólizas           {polizas} (balanza cuadra: "
+          f"{balanza['total_debit'] == balanza['total_credit']})")
+    print("│")
+    print("│ Pólizas que se citan en vivo:")
+    print(f"│   Tarjeta AMEX (acto 3)  {folio_de('expense', licencias['id'])}")
+    print(f"│   F-0087 parcial (IVA)   {folio_de('receivable', parcial['id'])}")
     print("│")
     print("│ Llave de agente (para el acto del MCP):")
     print(f"│   {llave['token']}")

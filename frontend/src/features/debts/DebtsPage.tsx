@@ -7,6 +7,7 @@ import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
+import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
 import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -110,6 +111,7 @@ export function DebtsPage({ config }: { config: Config }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
   const [payTarget, setPayTarget] = useState<Debt | null>(null)
+  const [entryFor, setEntryFor] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -314,8 +316,16 @@ export function DebtsPage({ config }: { config: Config }) {
                 <Money value={debt.balance} tone={debt.display_status === 'CANCELLED' ? 'muted' : 'ink'} />
               </td>
               <td className="px-4 py-2.5 text-right">
-                {['OPEN', 'PARTIAL', 'OVERDUE'].includes(debt.display_status) ? (
-                  <div className="flex justify-end gap-1.5">
+                <div className="flex justify-end gap-1.5">
+                  <Button
+                    variant="ghost"
+                    className="!px-2 !py-1 text-xs"
+                    onClick={() => setEntryFor(debt)}
+                  >
+                    Póliza
+                  </Button>
+                  {['OPEN', 'PARTIAL', 'OVERDUE'].includes(debt.display_status) ? (
+                    <>
                     <Button variant="secondary" className="!px-2.5 !py-1 text-xs" onClick={() => openPayModal(debt)}>
                       {config.payAction}
                     </Button>
@@ -331,13 +341,22 @@ export function DebtsPage({ config }: { config: Config }) {
                         Cancelar
                       </Button>
                     ) : null}
-                  </div>
-                ) : null}
+                    </>
+                  ) : null}
+                </div>
               </td>
             </tr>
           ))}
         </Table>
       )}
+
+      <JournalEntryModal
+        sourceType={config.kind === 'receivables' ? 'receivable' : 'payable'}
+        sourceId={entryFor?.id ?? null}
+        title={`Así lo registró ARCA · ${entryFor?.description ?? ''}`}
+        open={entryFor !== null}
+        onClose={() => setEntryFor(null)}
+      />
 
       <Modal title={config.newLabel} open={modalOpen} onClose={closeModal}>
         <form
