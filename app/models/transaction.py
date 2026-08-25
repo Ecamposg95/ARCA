@@ -16,6 +16,19 @@ TRANSACTION_TYPES = (
 # Tipos que aumentan el saldo de la cuenta financiera
 INFLOW_TYPES = ("INCOME", "TRANSFER_IN", "RECEIVABLE_COLLECTION")
 
+# Cómo se movió el dinero. Normalizado (no texto libre) para poder responder
+# "¿con qué gasto?" y para detectar pagos en efectivo no deducibles.
+PAYMENT_METHODS = (
+    "EFECTIVO",
+    "TRANSFERENCIA",
+    "TARJETA_DEBITO",
+    "TARJETA_CREDITO",
+    "DOMICILIACION",
+    "CHEQUE",
+    "PASARELA",
+    "OTRO",
+)
+
 
 class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     """Movimiento de dinero sobre una cuenta financiera.
@@ -33,6 +46,7 @@ class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     date = Column(Date, nullable=False, index=True)
     description = Column(String(500), nullable=False)
     reference = Column(String(100), nullable=True)
+    payment_method = Column(String(20), nullable=True)  # PAYMENT_METHODS
     status = Column(String(20), nullable=False, default="ACTIVE")  # ACTIVE | CANCELLED
     source_type = Column(String(50), nullable=True, index=True)
     source_id = Column(String(36), nullable=True, index=True)

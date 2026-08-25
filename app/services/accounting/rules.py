@@ -33,17 +33,31 @@ def opening_balance_entry(
     date: date_type,
     source_id: str,
     created_by: str | None = None,
+    account_code: str = CODE_CASH_BANK,
+    liability: bool = False,
 ) -> JournalEntry:
-    """Alta de cuenta con saldo inicial: Cargo Caja y Bancos / Abono Capital."""
+    """Alta de instrumento con saldo inicial.
+
+    Activo: Cargo al instrumento / Abono Capital (aportas dinero).
+    Pasivo: Cargo Capital / Abono al instrumento (arrastras una deuda).
+    """
+    lines = (
+        [
+            LineSpec(CODE_CAPITAL, debit=amount, description="Deuda inicial"),
+            LineSpec(account_code, credit=amount, description=account_name),
+        ]
+        if liability
+        else [
+            LineSpec(account_code, debit=amount, description=account_name),
+            LineSpec(CODE_CAPITAL, credit=amount, description="Aportación inicial"),
+        ]
+    )
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=f"Saldo inicial de {account_name}",
-        lines=[
-            LineSpec(CODE_CASH_BANK, debit=amount, description=account_name),
-            LineSpec(CODE_CAPITAL, credit=amount, description="Aportación inicial"),
-        ],
+        lines=lines,
         source_type="financial_account",
         source_id=source_id,
         created_by=created_by,
@@ -60,12 +74,13 @@ def income_paid_entry(
     revenue_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
     tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
     """Ingreso cobrado: Cargo Caja y Bancos (total) / Abono Ingresos (base) + IVA trasladado."""
     tax_amount = Decimal(tax_amount)
     lines = [
-        LineSpec(CODE_CASH_BANK, debit=amount),
+        LineSpec(cash_account_code, debit=amount),
         LineSpec(revenue_account_code, credit=amount - tax_amount),
     ]
     if tax_amount > 0:
@@ -92,6 +107,7 @@ def expense_paid_entry(
     expense_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
     tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
     """Gasto pagado: Cargo Gastos (base) + IVA acreditable / Abono Caja y Bancos (total)."""
@@ -99,7 +115,7 @@ def expense_paid_entry(
     lines = [LineSpec(expense_account_code, debit=amount - tax_amount)]
     if tax_amount > 0:
         lines.append(LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable"))
-    lines.append(LineSpec(CODE_CASH_BANK, credit=amount))
+    lines.append(LineSpec(cash_account_code, credit=amount))
     return post_journal_entry(
         db,
         organization_id,
@@ -155,6 +171,7 @@ def receivable_collected_entry(
     date: date_type,
     source_id: str,
     created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
     tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
     """Cobro de CxC: Cargo Caja y Bancos / Abono CxC.
@@ -164,7 +181,7 @@ def receivable_collected_entry(
     """
     tax_amount = Decimal(tax_amount)
     lines = [
-        LineSpec(CODE_CASH_BANK, debit=amount),
+        LineSpec(cash_account_code, debit=amount),
         LineSpec(CODE_ACCOUNTS_RECEIVABLE, credit=amount),
     ]
     if tax_amount > 0:
@@ -223,6 +240,7 @@ def payable_payment_entry(
     date: date_type,
     source_id: str,
     created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
     tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
     """Pago de CxP: Cargo CxP / Abono Caja y Bancos.
@@ -233,7 +251,7 @@ def payable_payment_entry(
     tax_amount = Decimal(tax_amount)
     lines = [
         LineSpec(CODE_ACCOUNTS_PAYABLE, debit=amount),
-        LineSpec(CODE_CASH_BANK, credit=amount),
+        LineSpec(cash_account_code, credit=amount),
     ]
     if tax_amount > 0:
         lines.append(LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable"))
@@ -307,16 +325,23 @@ def transfer_entry(
     to_account_name: str,
     source_id: str,
     created_by: str | None = None,
+    from_account_code: str = CODE_CASH_BANK,
+    to_account_code: str = CODE_CASH_BANK,
 ) -> JournalEntry:
-    """Traspaso entre cuentas propias: neutro en 1100, se registra para auditoría."""
+    """Traspaso entre instrumentos propios.
+
+    Entre dos activos es neutro. De banco a tarjeta es un PAGO de deuda:
+    Cargo 2200 (debes menos) / Abono 1100 (tienes menos). No es un gasto:
+    el gasto ocurrió cuando deslizaste la tarjeta.
+    """
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
         lines=[
-            LineSpec(CODE_CASH_BANK, debit=amount, description=f"Entrada a {to_account_name}"),
-            LineSpec(CODE_CASH_BANK, credit=amount, description=f"Salida de {from_account_name}"),
+            LineSpec(to_account_code, debit=amount, description=f"Entrada a {to_account_name}"),
+            LineSpec(from_account_code, credit=amount, description=f"Salida de {from_account_name}"),
         ],
         source_type="transfer",
         source_id=source_id,

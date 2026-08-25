@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.expense import Expense
-from app.models.financial_account import FinancialAccount
+from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
 from app.models.payable import Payable
 from app.models.receivable import Receivable
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
@@ -45,12 +45,26 @@ def summary(db: Session, organization_id: str) -> dict:
     today = date.today()
     month_start = _month_start(today)
 
+    # Sólo instrumentos de activo: sumar el saldo de una tarjeta restaría deuda
+    # al efectivo disponible y diría que tienes menos dinero del que tienes.
     cash = (
         db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
         .filter(
             FinancialAccount.organization_id == organization_id,
             FinancialAccount.deleted_at.is_(None),
             FinancialAccount.active.is_(True),
+            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+        )
+        .scalar()
+    )
+
+    card_debt = (
+        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
+        .filter(
+            FinancialAccount.organization_id == organization_id,
+            FinancialAccount.deleted_at.is_(None),
+            FinancialAccount.active.is_(True),
+            FinancialAccount.type.notin_(ASSET_ACCOUNT_TYPES),
         )
         .scalar()
     )
@@ -125,6 +139,7 @@ def summary(db: Session, organization_id: str) -> dict:
 
     return {
         "cash": Decimal(cash or 0),
+        "card_debt": Decimal(card_debt or 0),
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,
         "monthly_profit": monthly_revenue - monthly_expenses,

@@ -64,6 +64,7 @@ def create_account(
         opening_balance=payload.opening_balance,
         institution=payload.institution,
         last_four=payload.last_four,
+        credit_limit=payload.credit_limit,
         created_by=user.id,
     )
     db.commit()

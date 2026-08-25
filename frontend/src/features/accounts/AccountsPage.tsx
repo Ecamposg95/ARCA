@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
+import { formatMoney } from '@/lib/format'
 import { useAccounts } from '@/lib/hooks'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -22,7 +23,13 @@ export function AccountsPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
-  const [form, setForm] = useState({ name: '', type: 'BANK', opening_balance: '', institution: '' })
+  const [form, setForm] = useState({
+    name: '',
+    type: 'BANK',
+    opening_balance: '',
+    institution: '',
+    credit_limit: '',
+  })
   const [error, setError] = useState<string | null>(null)
   const { data: accounts, isLoading } = useAccounts()
 
@@ -31,6 +38,7 @@ export function AccountsPage() {
       const payload: Record<string, unknown> = { name: form.name, type: form.type }
       if (form.opening_balance) payload.opening_balance = form.opening_balance
       if (form.institution) payload.institution = form.institution
+      if (form.type === 'CREDIT_CARD' && form.credit_limit) payload.credit_limit = form.credit_limit
       await api.post('/accounts', payload)
     },
     onSuccess: () => {
@@ -43,7 +51,7 @@ export function AccountsPage() {
 
   function closeModal() {
     setModalOpen(false)
-    setForm({ name: '', type: 'BANK', opening_balance: '', institution: '' })
+    setForm({ name: '', type: 'BANK', opening_balance: '', institution: '', credit_limit: '' })
     setError(null)
     if (searchParams.has('nueva')) {
       searchParams.delete('nueva')
@@ -51,9 +59,11 @@ export function AccountsPage() {
     }
   }
 
-  const total = (accounts ?? [])
-    .filter((account) => account.active)
-    .reduce((sum, account) => sum + Number(account.current_balance), 0)
+  const activos = (accounts ?? []).filter((account) => account.active && !account.is_liability)
+  const pasivos = (accounts ?? []).filter((account) => account.active && account.is_liability)
+  // Nunca sumar una tarjeta al disponible: su saldo es deuda, no dinero.
+  const total = activos.reduce((sum, account) => sum + Number(account.current_balance), 0)
+  const deuda = pasivos.reduce((sum, account) => sum + Number(account.current_balance), 0)
 
   return (
     <div>
@@ -73,27 +83,65 @@ export function AccountsPage() {
         />
       ) : (
         <>
-          <Card className="mb-4 flex items-center justify-between">
-            <span className="text-sm text-muted">Total disponible</span>
-            <Money value={total} size="lg" />
-          </Card>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(accounts ?? []).map((account) => (
-              <Card key={account.id} className={account.active ? '' : 'opacity-60'}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">{account.name}</div>
-                    <div className="mt-0.5 text-xs text-muted">
-                      {TYPE_LABELS[account.type] ?? account.type}
-                      {account.institution ? ` · ${account.institution}` : ''}
-                      {account.last_four ? ` ····${account.last_four}` : ''}
-                    </div>
-                  </div>
-                  <Money value={account.current_balance} size="lg" />
-                </div>
+          <div className="mb-4 grid gap-4 sm:grid-cols-2">
+            <Card className="flex items-center justify-between">
+              <span className="text-sm text-muted">Disponible</span>
+              <Money value={total} size="lg" />
+            </Card>
+            {pasivos.length > 0 ? (
+              <Card className="flex items-center justify-between">
+                <span className="text-sm text-muted">Deuda en tarjetas</span>
+                <Money value={deuda} size="lg" tone={deuda > 0 ? 'neg' : 'ink'} />
               </Card>
-            ))}
+            ) : null}
           </div>
+
+          {[
+            { title: 'Dónde está tu dinero', items: activos, liability: false },
+            { title: 'Lo que debes', items: pasivos, liability: true },
+          ]
+            .filter((group) => group.items.length > 0)
+            .map((group) => (
+              <div key={group.title} className="mb-6">
+                <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                  {group.title}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {group.items.map((account) => (
+                    <Card key={account.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{account.name}</div>
+                          <div className="mt-0.5 text-xs text-muted">
+                            {TYPE_LABELS[account.type] ?? account.type}
+                            {account.institution ? ` · ${account.institution}` : ''}
+                            {account.last_four ? ` ····${account.last_four}` : ''}
+                          </div>
+                          {account.available_credit !== null ? (
+                            <div className="mt-1.5 text-xs text-muted">
+                              Disponible del límite{' '}
+                              <span className="figures text-ink">
+                                {formatMoney(account.available_credit)}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="text-right">
+                          <Money
+                            value={account.current_balance}
+                            size="lg"
+                            tone={group.liability && Number(account.current_balance) > 0 ? 'neg' : 'ink'}
+                          />
+                          {group.liability ? (
+                            <div className="text-[10px] uppercase tracking-wide text-muted">debes</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ))}
         </>
       )}
 
@@ -122,12 +170,16 @@ export function AccountsPage() {
               onChange={(event) => setForm({ ...form, type: event.target.value })}
             />
             <TextInput
-              label="Saldo actual"
+              label={form.type === 'CREDIT_CARD' ? 'Deuda actual' : 'Saldo actual'}
               type="number"
               min="0"
               step="0.01"
               placeholder="0.00"
-              hint="Con cuánto arranca esta cuenta en ARCA."
+              hint={
+                form.type === 'CREDIT_CARD'
+                  ? 'Lo que ya debes en esta tarjeta hoy.'
+                  : 'Con cuánto arranca esta cuenta en ARCA.'
+              }
               value={form.opening_balance}
               onChange={(event) => setForm({ ...form, opening_balance: event.target.value })}
             />

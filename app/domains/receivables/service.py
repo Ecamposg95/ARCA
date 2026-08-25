@@ -19,7 +19,7 @@ from app.services.accounting.rules import (
     receivable_created_entry,
     reversal_of,
 )
-from app.services.transactions import record_transaction
+from app.services.transactions import account_ledger_code, record_transaction
 
 
 def _validate_category(db: Session, org_id: str, category_id: str) -> Category:
@@ -140,6 +140,7 @@ def collect_receivable(
         date=when,
         source_id=receivable.id,
         created_by=user_id,
+        cash_account_code=account_ledger_code(db, org_id, financial_account_id),
         tax_amount=tax_now,
     )
     receivable.amount_paid = Decimal(receivable.amount_paid) + amount

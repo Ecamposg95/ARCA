@@ -17,11 +17,16 @@ Spec completa: `docs/TASK_PACK.md`. Decisiones: `docs/superpowers/specs/` y `doc
 3. **Nunca usar `float` para dinero.** `Decimal` en Python, `Numeric(14,2)` en BD, strings en JSON de entrada.
 4. **Nunca permitir acceso cross-tenant.** Todo query de negocio filtra por `organization_id` obtenido de `get_current_org_id` (membresía validada), jamás del payload. Tests en `tests/test_tenant_isolation.py` lo vigilan.
 5. **Nunca poner lógica contable crítica solo en frontend.** El backend es la autoridad; la UI solo consume.
-6. **Nunca mutar `FinancialAccount.current_balance` directamente.** Solo `app/services/transactions.py::record_transaction()` (patrón lock → refresh → re-check).
-7. **Nunca borrar físicamente registros contables o financieros contabilizados.** Patrón `CANCELLED` + campos `cancelled_*`; los reversos serán pólizas de reversa.
-8. **Las reglas contables viven en `app/services/accounting/rules.py`.** Una función por evento de negocio. Nada de armar asientos en routers.
-9. **Reportes SIEMPRE derivados del ledger**, nunca almacenados a mano.
-10. **Toda póliza lleva folio inmutable** (`Ig-/Eg-/Dr-AAAA-MM-NNNN`) que asigna
+6. **Un instrumento tiene naturaleza y respeta su cuenta contable.** Efectivo y
+   bancos son activo (1100); una tarjeta de crédito es **pasivo** (2200): gastar
+   con ella crea deuda, no reduce efectivo, y su saldo jamás se suma al
+   disponible. Pagar la tarjeta es un traspaso que baja la deuda, **no** un
+   gasto nuevo: el gasto ya se registró al usarla.
+7. **Nunca mutar `FinancialAccount.current_balance` directamente.** Solo `app/services/transactions.py::record_transaction()` (patrón lock → refresh → re-check).
+8. **Nunca borrar físicamente registros contables o financieros contabilizados.** Patrón `CANCELLED` + campos `cancelled_*`; los reversos serán pólizas de reversa.
+9. **Las reglas contables viven en `app/services/accounting/rules.py`.** Una función por evento de negocio. Nada de armar asientos en routers.
+10. **Reportes SIEMPRE derivados del ledger**, nunca almacenados a mano.
+11. **Toda póliza lleva folio inmutable** (`Ig-/Eg-/Dr-AAAA-MM-NNNN`) que asigna
     `app/services/accounting/folios.py` bajo lock del contador. Nunca reasignar,
     reutilizar ni reciclar folios: son el índice de los libros del negocio.
 

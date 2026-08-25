@@ -19,6 +19,7 @@ CODE_VAT_CREDITABLE_PENDING = "1191"
 CODE_VAT_CHARGED_COLLECTED = "2190"
 CODE_VAT_CHARGED_PENDING = "2191"
 CODE_ACCOUNTS_PAYABLE = "2100"
+CODE_CREDIT_CARDS = "2200"
 CODE_CAPITAL = "3100"
 CODE_RETAINED_EARNINGS = "3200"
 CODE_SALES = "4100"
@@ -36,6 +37,7 @@ DEFAULT_CHART = (
     ("1300", "Otros Activos", "ASSET", "1000"),
     ("2000", "Pasivo", "LIABILITY", None),
     ("2100", "Cuentas por Pagar", "LIABILITY", "2000"),
+    ("2200", "Tarjetas de crédito", "LIABILITY", "2000"),
     ("2190", "IVA trasladado cobrado", "LIABILITY", "2000"),
     ("2191", "IVA trasladado pendiente de cobro", "LIABILITY", "2000"),
     ("3000", "Capital", "EQUITY", None),
@@ -92,3 +94,14 @@ def get_account_by_code(db: Session, organization_id: str, code: str) -> Account
     if account is None:
         raise ValueError(f"No existe la cuenta contable {code} en esta organización.")
     return account
+
+
+def ledger_code_for(account_type: str) -> str:
+    """Cuenta contable donde vive cada instrumento.
+
+    Efectivo y bancos comparten 1100; las tarjetas viven en 2200 porque son
+    deuda, no dinero disponible.
+    """
+    from app.models.financial_account import is_liability
+
+    return CODE_CREDIT_CARDS if is_liability(account_type) else CODE_CASH_BANK
