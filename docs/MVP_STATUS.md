@@ -20,9 +20,13 @@ _Actualizado: 2026-08-24 (M2)_
 - (nada)
 
 - M2 Business Finance: CxC y CxP con devengo (§18), cobros/pagos parciales, OVERDUE calculado, cancelación con asiento de reversa (`reversal_of`), dashboard con saldos reales, páginas Por cobrar / Por pagar. 54+ tests.
+- Tema visual Atlas Cortex (teal #2c9aa6, Plus Jakarta Sans + JetBrains Mono, dark tokens definidos).
+- **A0 Fundación agéntica** (ADR-005): llaves de agente por organización (`ak_…`, sha256, scopes, revocables), catálogo de 18 herramientas (14 lectura + 4 propose), `/api/agent/tools` + `/api/agent/invoke` con auditoría total, bandeja de propuestas con aprobación humana que ejecuta los services reales, UI (Configuración→Agentes, página Propuestas con badge). 64 tests.
 
 ## Next
 
+- A2 MCP server (exponer el catálogo vía MCP autenticado con AgentKey) o A1 ARCA CFO (chat con Claude; requiere ANTHROPIC_API_KEY) — orden a decidir.
+- A3 Magic Inbox (documento → propuesta con evidencia).
 - M3/M4 restantes: aging detallado de cartera, tendencias, selector multi-empresa en UI.
 - Reversal journal entries para cancelar operaciones pagadas (parciales incluidas).
 - Selector de organización multi-empresa en UI (el backend ya lo soporta vía X-Organization-ID).
@@ -36,6 +40,7 @@ _Actualizado: 2026-08-24 (M2)_
 
 - `railway up` desde /mnt/d (WSL drvfs) sube archivos corruptos (NUL bytes). Ya no afecta el flujo normal (deploy vía GitHub), pero no usar `railway up` desde /mnt/d.
 - Bundle frontend 713KB (recharts) — code-splitting pendiente.
-- Sin rate limiting en /auth (slowapi como cortex) ni lockout de cuentas.
+- Sin rate limiting en /auth (slowapi como cortex) ni lockout de cuentas; tampoco en /api/agent/invoke por llave.
+- Propuestas de agente sin expiración ni edición previa a aprobar.
 - Sin outbox durable para eventos (bus síncrono en proceso).
 - `cash_flow.opening_cash` cuenta saldos iniciales de cuentas creadas dentro del periodo como "apertura".

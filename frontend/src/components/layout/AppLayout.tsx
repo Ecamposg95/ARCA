@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 
@@ -33,6 +35,7 @@ const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; 
     items: [
       { to: '/reportes', label: 'Reportes' },
       { to: '/contabilidad', label: 'Contabilidad', roles: ['OWNER', 'ADMIN', 'ACCOUNTANT'] },
+      { to: '/propuestas', label: 'Propuestas' },
     ],
   },
 ]
@@ -61,6 +64,12 @@ export function AppLayout() {
   const { user, organization, logout } = useAuthStore()
   const navigate = useNavigate()
   const [quickOpen, setQuickOpen] = useState(false)
+
+  const { data: pendingProposals } = useQuery({
+    queryKey: ['proposals-count'],
+    queryFn: async () => (await api.get<{ count: number }>('/proposals/pending-count')).data.count,
+    refetchInterval: 60_000,
+  })
 
   // MVP: el rol se infiere del registro (OWNER). Cuando haya multiusuario real,
   // vendrá de /api/me; la autoridad siempre es el backend.
@@ -125,7 +134,14 @@ export function AppLayout() {
                       }`
                     }
                   >
-                    {item.label}
+                    <span className="flex items-center justify-between">
+                      {item.label}
+                      {item.to === '/propuestas' && (pendingProposals ?? 0) > 0 ? (
+                        <span className="figures rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {pendingProposals}
+                        </span>
+                      ) : null}
+                    </span>
                   </NavLink>
                 ))}
             </div>
