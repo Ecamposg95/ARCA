@@ -12,6 +12,7 @@
   --muted: 200 10% 40%; /* #5c6a71 */
   --border: 200 22% 92%; /* #e6ecef */
   --accent: 186 58% 41%; /* #2c9aa6 */
+  --on-accent: 0 0% 100%; /* texto sobre el acento */
   --accent-soft: 187 43% 96%; /* #f0f8f9 */
   --rail: 206 26% 11%; /* #141c22 dark surface */
   --rail-ink: 195 20% 96%; /* #f3f6f7 */
@@ -29,6 +30,7 @@
   --muted: 201 13% 57%; /* #8496a0 */
   --border: 203 23% 15%; /* #1e2930 */
   --accent: 188 30% 53%; /* #62a0aa accentBright */
+  --on-accent: 202 40% 8%; /* en oscuro el acento aclara: el texto va oscuro */
   --accent-soft: 200 26% 16%;
   --rail: 204 30% 5%; /* #080c0f bg2 */
   --rail-ink: 195 20% 96%;

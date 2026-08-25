@@ -1,3 +1,4 @@
+import { formatMoney } from '@/lib/format'
 import type { Page } from '@/types/api'
 
 /** Pie de tabla: sin esto, una lista con más de `limit` registros se corta en
@@ -13,6 +14,12 @@ export function TableFooter<T>({
   noun: string
 }) {
   const { total, limit, offset } = page
+  const totalAmount =
+    page.total_amount !== undefined ? (
+      <span className="ml-2">
+        · suma <span className="figures font-medium text-ink">{formatMoney(page.total_amount)}</span>
+      </span>
+    ) : null
   const from = total === 0 ? 0 : offset + 1
   const to = Math.min(offset + limit, total)
   const hasPrev = offset > 0
@@ -22,6 +29,7 @@ export function TableFooter<T>({
     return (
       <div className="border-t border-border px-4 py-2.5 text-xs text-muted">
         <span className="figures">{total}</span> {noun}
+        {totalAmount}
       </div>
     )
   }
@@ -33,6 +41,7 @@ export function TableFooter<T>({
           {from}–{to}
         </span>{' '}
         de <span className="figures">{total}</span> {noun}
+        {totalAmount}
       </span>
       <div className="flex gap-1">
         <button

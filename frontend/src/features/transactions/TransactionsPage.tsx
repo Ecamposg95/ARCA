@@ -10,7 +10,7 @@ import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table } from '@/components/ui/Table'
 import { TableFooter } from '@/components/ui/Pagination'
-import { formatDate, today } from '@/lib/format'
+import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts } from '@/lib/hooks'
 import type { Page, Transaction } from '@/types/api'
 
@@ -28,7 +28,14 @@ export function TransactionsPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const [transferOpen, setTransferOpen] = useState(searchParams.has('transferir'))
-  const [accountFilter, setAccountFilter] = useState('')
+  // La cuenta vive en la URL: se puede compartir "los movimientos de BBVA".
+  const accountFilter = searchParams.get('cuenta') ?? ''
+  const setAccountFilter = (value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set('cuenta', value)
+    else next.delete('cuenta')
+    setSearchParams(next, { replace: true })
+  }
   const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ from_account_id: '', to_account_id: '', amount: '', date: today() })
@@ -114,11 +121,20 @@ export function TransactionsPage() {
           headers={[
             'Fecha',
             'Concepto',
-            'Cuenta',
+            // Repetir el nombre de la cuenta en cada fila cuando ya filtraste por
+            // ella no informa: la columna sólo aparece en la vista de todas.
+            ...(accountFilter ? [] : ['Cuenta']),
             'Tipo',
             <span key="m" className="block text-right">
               Monto
             </span>,
+            ...(accountFilter
+              ? [
+                  <span key="s" className="block text-right">
+                    Saldo
+                  </span>,
+                ]
+              : []),
           ]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun="movimientos" />}
         >
@@ -131,7 +147,11 @@ export function TransactionsPage() {
               <tr key={transaction.id} className="hover:bg-surface-2/50">
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(transaction.date)}</td>
                 <td className="px-4 py-2.5 font-medium">{transaction.description}</td>
-                <td className="px-4 py-2.5 text-muted">{accountName(transaction.financial_account_id)}</td>
+                {accountFilter ? null : (
+                  <td className="px-4 py-2.5 text-muted">
+                    {accountName(transaction.financial_account_id)}
+                  </td>
+                )}
                 <td className="px-4 py-2.5 text-muted">{type.label}</td>
                 <td className="px-4 py-2.5 text-right">
                   <span className="figures font-medium">
@@ -139,6 +159,13 @@ export function TransactionsPage() {
                     <Money value={type.inflow ? transaction.amount : `-${transaction.amount}`} />
                   </span>
                 </td>
+                {accountFilter ? (
+                  <td className="figures whitespace-nowrap px-4 py-2.5 text-right text-muted">
+                    {transaction.running_balance !== null
+                      ? formatMoney(transaction.running_balance)
+                      : '—'}
+                  </td>
+                ) : null}
               </tr>
             )
           })}

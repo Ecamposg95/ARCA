@@ -3,6 +3,8 @@ export interface Page<T> {
   total: number
   limit: number
   offset: number
+  /** Suma de TODO el filtro (no sólo de la página). Sólo en listas de dinero. */
+  total_amount?: string | number
 }
 
 export interface User {
@@ -150,6 +152,7 @@ export interface Transaction {
   reference: string | null
   status: string
   source_type: string | null
+  running_balance: string | null
   created_at: string
 }
 
@@ -158,6 +161,9 @@ export interface DashboardSummary {
   monthly_revenue: number
   monthly_expenses: number
   monthly_profit: number
+  previous_revenue: number
+  previous_expenses: number
+  previous_profit: number
   receivables: number
   overdue_receivables: number
   payables: number

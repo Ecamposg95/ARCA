@@ -235,7 +235,7 @@ export function DebtsPage({ config }: { config: Config }) {
                 }}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   statusFilter === filter.value
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent text-on-accent'
                     : 'border border-border bg-surface text-muted hover:text-ink'
                 }`}
               >

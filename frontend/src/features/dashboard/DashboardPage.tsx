@@ -15,6 +15,24 @@ const OUT = '#c29938'
 const LOSS = '#e05252'
 const GRID = '#8fa0a8'
 
+/** Variación contra el mismo tramo del mes anterior. Sin base previa no se
+ *  inventa un porcentaje: se dice que no hay con qué comparar. */
+function DeltaChip({ current, previous, goodWhenUp = true }: { current: number; previous: number; goodWhenUp?: boolean }) {
+  if (!previous) return null
+  const change = ((current - previous) / Math.abs(previous)) * 100
+  if (!Number.isFinite(change)) return null
+  const up = change >= 0
+  const good = goodWhenUp ? up : !up
+  return (
+    <span
+      className={`figures block text-[11px] font-medium ${good ? 'text-pos' : 'text-neg'}`}
+      title={`Mismo tramo del mes anterior: ${formatMoney(previous)}`}
+    >
+      {up ? '▲' : '▼'} {Math.abs(change).toFixed(0)}% vs. mes anterior
+    </span>
+  )
+}
+
 function MetricLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{children}</div>
@@ -104,12 +122,14 @@ export function DashboardPage() {
               <div className="text-xs text-muted">Ingresos</div>
               <div className="mt-1">
                 <Money value={data.monthly_revenue} size="lg" />
+                <DeltaChip current={data.monthly_revenue} previous={data.previous_revenue} />
               </div>
             </div>
             <div className="py-3 sm:px-4 sm:py-0">
               <div className="text-xs text-muted">Gastos</div>
               <div className="mt-1">
                 <Money value={data.monthly_expenses} size="lg" />
+                <DeltaChip current={data.monthly_expenses} previous={data.previous_expenses} goodWhenUp={false} />
               </div>
             </div>
             <div className="pt-3 sm:pl-4 sm:pt-0">
@@ -120,6 +140,7 @@ export function DashboardPage() {
                   size="lg"
                   tone={data.monthly_profit >= 0 ? 'pos' : 'neg'}
                 />
+                <DeltaChip current={data.monthly_profit} previous={data.previous_profit} />
               </div>
             </div>
           </div>

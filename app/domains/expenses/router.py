@@ -44,7 +44,7 @@ def list_expenses(
     if end:
         query = query.filter(Expense.date <= end)
     query = query.order_by(Expense.date.desc(), Expense.created_at.desc())
-    return paginate(query, limit, offset, ExpenseRead)
+    return paginate(query, limit, offset, ExpenseRead, sum_column=Expense.amount)
 
 
 @router.post("", response_model=ExpenseRead, status_code=201)

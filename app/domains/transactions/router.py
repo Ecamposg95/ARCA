@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.services.accounting.rules import transfer_entry
+from app.services.running_balance import running_balances
 from app.services.transactions import get_locked_account, record_transaction
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -34,6 +35,8 @@ class TransactionRead(BaseModel):
     source_type: str | None
     source_id: str | None
     created_at: datetime
+    # Sólo se llena al filtrar por una cuenta: el acumulado entre bancos no significa nada.
+    running_balance: Decimal | None = None
 
 
 class TransferCreate(BaseModel):
@@ -64,8 +67,18 @@ def list_transactions(
         query = query.filter(FinancialTransaction.date >= start)
     if end:
         query = query.filter(FinancialTransaction.date <= end)
-    query = query.order_by(FinancialTransaction.date.desc(), FinancialTransaction.created_at.desc())
-    return paginate(query, limit, offset, TransactionRead)
+    query = query.order_by(
+        FinancialTransaction.date.desc(),
+        FinancialTransaction.created_at.desc(),
+        FinancialTransaction.id.desc(),
+    )
+    page = paginate(query, limit, offset, TransactionRead)
+
+    if account_id:
+        balances = running_balances(db, org_id, account_id, [item.id for item in page["items"]])
+        for item in page["items"]:
+            item.running_balance = balances.get(item.id)
+    return page
 
 
 @router.post("/transfer", response_model=list[TransactionRead], status_code=201)

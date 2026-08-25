@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func
@@ -57,6 +57,16 @@ def summary(db: Session, organization_id: str) -> dict:
 
     monthly_revenue = account_type_balance(db, organization_id, "REVENUE", start=month_start, end=today)
     monthly_expenses = account_type_balance(db, organization_id, "EXPENSE", start=month_start, end=today)
+
+    # Mismo periodo del mes anterior (hasta el mismo día) para comparar peras con peras:
+    # comparar 10 días de este mes contra 30 del anterior sería engañoso.
+    previous_start = _shift_months(month_start, -1)
+    previous_end = min(
+        _shift_months(previous_start, 1) - timedelta(days=1),
+        previous_start + (today - month_start),
+    )
+    previous_revenue = account_type_balance(db, organization_id, "REVENUE", start=previous_start, end=previous_end)
+    previous_expenses = account_type_balance(db, organization_id, "EXPENSE", start=previous_start, end=previous_end)
 
     # Series de 6 meses desde movimientos
     series_start = _shift_months(today, -5)
@@ -118,6 +128,10 @@ def summary(db: Session, organization_id: str) -> dict:
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,
         "monthly_profit": monthly_revenue - monthly_expenses,
+        "previous_revenue": previous_revenue,
+        "previous_expenses": previous_expenses,
+        "previous_profit": previous_revenue - previous_expenses,
+        "previous_period_end": previous_end,
         "receivables": _outstanding(db, organization_id, Receivable),
         "overdue_receivables": _outstanding(db, organization_id, Receivable, overdue_only=True),
         "payables": _outstanding(db, organization_id, Payable),

@@ -19,7 +19,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(option.key)}
           aria-pressed={value === option.key}
           className={`rounded-md transition-colors ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${
-            value === option.key ? 'bg-accent font-medium text-white' : 'text-muted hover:text-ink'
+            value === option.key ? 'bg-accent font-medium text-on-accent' : 'text-muted hover:text-ink'
           }`}
         >
           {option.label}

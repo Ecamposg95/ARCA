@@ -44,7 +44,7 @@ def list_income(
     if end:
         query = query.filter(Income.date <= end)
     query = query.order_by(Income.date.desc(), Income.created_at.desc())
-    return paginate(query, limit, offset, IncomeRead)
+    return paginate(query, limit, offset, IncomeRead, sum_column=Income.amount)
 
 
 @router.post("", response_model=IncomeRead, status_code=201)
