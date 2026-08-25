@@ -21,11 +21,12 @@ export function AppFooter() {
   return (
     <footer className="shrink-0 border-t border-border bg-surface px-6 py-3 lg:px-10">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted">
-        <span>
-          <span className="font-semibold text-ink">ARCA</span> · Financial Operating System by Atlas
-          Tech
+        <span className="truncate">
+          <span className="font-semibold text-ink">ARCA</span>
+          {/* La bajada completa sólo cuando hay ancho: en móvil desplazaría la versión. */}
+          <span className="hidden sm:inline"> · Financial Operating System by Atlas Tech</span>
         </span>
-        <span className="figures flex items-center gap-3">
+        <span className="figures flex shrink-0 items-center gap-3">
           {data?.environment && data.environment !== 'production' ? (
             <span className="rounded bg-warn/15 px-1.5 py-0.5 font-medium uppercase text-warn">
               {data.environment}
