@@ -45,6 +45,8 @@ class JournalEntryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    folio: str
+    kind: str
     date: date_type
     description: str
     reference: str | None

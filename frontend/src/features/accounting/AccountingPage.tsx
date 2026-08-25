@@ -139,6 +139,7 @@ export function AccountingPage() {
         ) : (
           <Table
             headers={[
+              'Folio',
               'Fecha',
               'Concepto',
               'Origen',
@@ -160,6 +161,9 @@ export function AccountingPage() {
                     onClick={() => setExpanded(open ? null : entry.id)}
                     className="cursor-pointer hover:bg-surface-2/50"
                   >
+                    <td className="figures whitespace-nowrap px-4 py-2.5 text-xs text-muted">
+                      {entry.folio}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(entry.date)}</td>
                     <td className="px-4 py-2.5 font-medium">{entry.description}</td>
                     <td className="px-4 py-2.5 text-muted">
@@ -174,7 +178,7 @@ export function AccountingPage() {
                   </tr>
                   {open ? (
                     <tr className="bg-surface-2/40">
-                      <td colSpan={5} className="px-4 py-3">
+                      <td colSpan={6} className="px-4 py-3">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-[11px] uppercase tracking-wider text-muted">

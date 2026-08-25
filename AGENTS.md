@@ -21,6 +21,9 @@ Spec completa: `docs/TASK_PACK.md`. Decisiones: `docs/superpowers/specs/` y `doc
 7. **Nunca borrar físicamente registros contables o financieros contabilizados.** Patrón `CANCELLED` + campos `cancelled_*`; los reversos serán pólizas de reversa.
 8. **Las reglas contables viven en `app/services/accounting/rules.py`.** Una función por evento de negocio. Nada de armar asientos en routers.
 9. **Reportes SIEMPRE derivados del ledger**, nunca almacenados a mano.
+10. **Toda póliza lleva folio inmutable** (`Ig-/Eg-/Dr-AAAA-MM-NNNN`) que asigna
+    `app/services/accounting/folios.py` bajo lock del contador. Nunca reasignar,
+    reutilizar ni reciclar folios: son el índice de los libros del negocio.
 
 ## Arquitectura
 
