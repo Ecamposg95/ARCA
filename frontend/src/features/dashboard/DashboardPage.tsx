@@ -20,7 +20,8 @@ import { formatMoney, formatMonth } from '@/lib/format'
 import { useAuthStore } from '@/stores/authStore'
 import type { DashboardSummary } from '@/types/api'
 
-const CHART_COLORS = ['#0E6E5C', '#3E8E7E', '#6FAE9F', '#A3CEC3', '#C2402A', '#B07C10', '#5E6B64']
+// Familia cromática cortex: teal como base, semánticos para contrastes
+const CHART_COLORS = ['#2c9aa6', '#62a0aa', '#4ca374', '#8fa0a8', '#c29938', '#e05252', '#5c6a71']
 
 function StatCard({
   label,
@@ -122,12 +123,12 @@ export function DashboardPage() {
             <h3 className="mb-4 text-sm font-medium text-muted">Entradas y salidas de dinero</h3>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={flowData} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(150 8% 90%)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6ecef" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => formatMoney(v).replace('.00', '')} width={90} />
                 <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Bar dataKey="inflows" name="Entradas" fill="#0E6E5C" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="outflows" name="Salidas" fill="#C2402A" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="inflows" name="Entradas" fill="#2c9aa6" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="outflows" name="Salidas" fill="#e05252" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -135,12 +136,12 @@ export function DashboardPage() {
             <h3 className="mb-4 text-sm font-medium text-muted">Ingresos vs gastos</h3>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={rveData} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(150 8% 90%)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6ecef" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => formatMoney(v).replace('.00', '')} width={90} />
                 <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Bar dataKey="revenue" name="Ingresos" fill="#0E6E5C" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="expenses" name="Gastos" fill="#B07C10" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="revenue" name="Ingresos" fill="#2c9aa6" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="expenses" name="Gastos" fill="#c29938" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

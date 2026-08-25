@@ -21,15 +21,17 @@ export default {
         warn: 'hsl(var(--warn) / <alpha-value>)',
       },
       fontFamily: {
-        display: ['Archivo', 'system-ui', 'sans-serif'],
-        body: ['"Public Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        body: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        card: '0 1px 2px 0 rgb(22 33 28 / 0.05)',
-        float: '0 8px 24px -6px rgb(22 33 28 / 0.16)',
+        card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        float: '0 10px 40px -10px rgba(0,0,0,0.12)',
+        accent: '0 0 20px rgba(44, 154, 166, 0.15)',
       },
       borderRadius: {
-        DEFAULT: '10px',
+        DEFAULT: '8px',
       },
     },
   },

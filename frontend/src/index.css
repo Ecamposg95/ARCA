@@ -2,39 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens ARCA — HSL con canal separado para permitir alpha (bg-surface/60). */
+/* Tokens ARCA — paleta Atlas Cortex, HSL con canal separado para permitir alpha (bg-surface/60).
+   Fuente de los valores: atlas-cortex frontend/tailwind.config.js (brand.* / dark.*). */
 :root {
-  --bg: 150 8% 97%;
-  --surface: 0 0% 100%;
-  --surface-2: 150 8% 94%;
-  --ink: 156 20% 11%;
-  --muted: 155 7% 40%;
-  --border: 150 8% 90%;
-  --accent: 169 77% 24%;
-  --accent-soft: 165 36% 92%;
-  --rail: 160 40% 12%;
-  --rail-ink: 150 20% 96%;
-  --rail-muted: 155 12% 62%;
-  --pos: 147 79% 27%;
-  --neg: 9 64% 46%;
-  --warn: 40 83% 38%;
+  --bg: 210 25% 98%; /* #fafbfc */
+  --surface: 0 0% 100%; /* #ffffff */
+  --surface-2: 210 22% 96%; /* #f4f6f8 */
+  --ink: 202 30% 7%; /* #0d1418 */
+  --muted: 200 10% 40%; /* #5c6a71 */
+  --border: 200 22% 92%; /* #e6ecef */
+  --accent: 186 58% 41%; /* #2c9aa6 */
+  --accent-soft: 187 43% 96%; /* #f0f8f9 */
+  --rail: 206 26% 11%; /* #141c22 dark surface */
+  --rail-ink: 195 20% 96%; /* #f3f6f7 */
+  --rail-muted: 201 13% 57%; /* #8496a0 */
+  --pos: 148 36% 47%; /* #4ca374 */
+  --neg: 0 70% 60%; /* #e05252 */
+  --warn: 42 55% 49%; /* #c29938 */
 }
 
 .dark {
-  --bg: 160 15% 8%;
-  --surface: 158 14% 11%;
-  --surface-2: 157 12% 15%;
-  --ink: 150 15% 94%;
-  --muted: 152 8% 62%;
-  --border: 156 10% 20%;
-  --accent: 166 55% 42%;
-  --accent-soft: 166 40% 16%;
-  --rail: 160 40% 7%;
-  --rail-ink: 150 20% 96%;
-  --rail-muted: 155 12% 58%;
-  --pos: 147 55% 45%;
-  --neg: 9 70% 58%;
-  --warn: 40 80% 55%;
+  --bg: 202 30% 7%; /* #0d1418 */
+  --surface: 206 26% 11%; /* #141c22 */
+  --surface-2: 205 25% 13%; /* #19232a */
+  --ink: 195 20% 96%; /* #f3f6f7 */
+  --muted: 201 13% 57%; /* #8496a0 */
+  --border: 203 23% 15%; /* #1e2930 */
+  --accent: 188 30% 53%; /* #62a0aa accentBright */
+  --accent-soft: 200 26% 16%;
+  --rail: 204 30% 5%; /* #080c0f bg2 */
+  --rail-ink: 195 20% 96%;
+  --rail-muted: 201 13% 57%;
+  --pos: 148 40% 55%;
+  --neg: 0 75% 66%;
+  --warn: 42 60% 55%;
 }
 
 html,
@@ -47,11 +48,11 @@ body {
   @apply bg-bg text-ink font-body antialiased;
 }
 
-/* Cifras: siempre tabulares, es la firma tipográfica de ARCA. */
+/* Cifras: JetBrains Mono (convención cortex para datos numéricos) — la firma tipográfica. */
 .figures {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 *:focus-visible {
