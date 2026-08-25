@@ -56,3 +56,12 @@ def vat(
 ):
     default_start, default_end = _default_month_range()
     return service.vat_report(db, org_id, start or default_start, end or default_end)
+
+
+@router.get("/cash-projection")
+def cash_projection(
+    days: int = Query(default=90, ge=7, le=365),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    return service.cash_projection(db, org_id, days)

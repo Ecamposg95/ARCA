@@ -74,6 +74,8 @@ def list_accounts(
 def list_journal_entries(
     start: date_type | None = None,
     end: date_type | None = None,
+    source_type: str | None = None,
+    source_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -84,6 +86,11 @@ def list_journal_entries(
         query = query.filter(JournalEntry.date >= start)
     if end:
         query = query.filter(JournalEntry.date <= end)
+    # Permite abrir "la contabilidad de ESTA operación" sin buscarla en el libro.
+    if source_type:
+        query = query.filter(JournalEntry.source_type == source_type)
+    if source_id:
+        query = query.filter(JournalEntry.source_id == source_id)
     query = query.order_by(JournalEntry.date.desc(), JournalEntry.created_at.desc())
 
     total = query.count()

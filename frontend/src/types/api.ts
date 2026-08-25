@@ -265,3 +265,14 @@ export interface VatReport {
   vat_pending_collection: number
   vat_pending_payment: number
 }
+
+export interface CashProjection {
+  start: string
+  end: string
+  opening_cash: number
+  expected_inflows: number
+  expected_outflows: number
+  projected_cash: number
+  shortfall_date: string | null
+  points: { date: string; balance: number; change: number }[]
+}

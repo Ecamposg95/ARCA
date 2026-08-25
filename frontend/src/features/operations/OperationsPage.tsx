@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table } from '@/components/ui/Table'
 import { TaxSelect } from '@/components/ui/TaxSelect'
+import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
 import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
@@ -84,6 +85,7 @@ export function OperationsPage({ config }: { config: Config }) {
   const [modalOpen, setModalOpen] = useState(searchParams.has('nuevo'))
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
+  const [entryFor, setEntryFor] = useState<Operation | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     date: today(),
@@ -261,8 +263,18 @@ export function OperationsPage({ config }: { config: Config }) {
                 <Money value={item.amount} tone={item.status === 'CANCELLED' ? 'muted' : 'ink'} />
               </td>
               <td className="px-4 py-2.5 text-right">
+                <div className="flex justify-end gap-1.5">
+                  {item.status === 'PAID' ? (
+                    <Button
+                      variant="ghost"
+                      className="!px-2 !py-1 text-xs"
+                      onClick={() => setEntryFor(item)}
+                    >
+                      Póliza
+                    </Button>
+                  ) : null}
                 {item.status === 'PENDING' ? (
-                  <div className="flex justify-end gap-1.5">
+                  <>
                     <Button
                       variant="secondary"
                       className="!px-2.5 !py-1 text-xs"
@@ -287,13 +299,22 @@ export function OperationsPage({ config }: { config: Config }) {
                     >
                       Cancelar
                     </Button>
-                  </div>
+                  </>
                 ) : null}
+                </div>
               </td>
             </tr>
           ))}
         </Table>
       )}
+
+      <JournalEntryModal
+        sourceType={config.kind === 'income' ? 'income' : 'expense'}
+        sourceId={entryFor?.id ?? null}
+        title={`Así lo registró ARCA · ${entryFor?.description ?? ''}`}
+        open={entryFor !== null}
+        onClose={() => setEntryFor(null)}
+      />
 
       <Modal title={config.newLabel} open={modalOpen} onClose={closeModal}>
         <form
