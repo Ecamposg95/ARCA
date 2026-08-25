@@ -95,6 +95,26 @@ export interface Expense {
   created_at: string
 }
 
+export type DebtDisplayStatus = 'OPEN' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE'
+
+export interface Debt {
+  id: string
+  customer_id?: string
+  vendor_id?: string
+  description: string
+  amount: string
+  amount_paid: string
+  balance: string
+  date: string
+  due_date: string
+  category_id: string
+  status: string
+  display_status: DebtDisplayStatus
+  is_overdue: boolean
+  notes: string | null
+  created_at: string
+}
+
 export interface Transaction {
   id: string
   financial_account_id: string
