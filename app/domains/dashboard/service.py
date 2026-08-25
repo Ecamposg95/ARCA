@@ -9,8 +9,25 @@ from sqlalchemy.orm import Session
 from app.models.category import Category
 from app.models.expense import Expense
 from app.models.financial_account import FinancialAccount
+from app.models.payable import Payable
+from app.models.receivable import Receivable
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
 from app.services.accounting.engine import account_type_balance
+
+
+def _outstanding(db: Session, organization_id: str, model, overdue_only: bool = False) -> Decimal:
+    """Saldo pendiente (amount - amount_paid) de cuentas abiertas o parciales."""
+    query = db.query(
+        func.coalesce(func.sum(model.amount), 0),
+        func.coalesce(func.sum(model.amount_paid), 0),
+    ).filter(
+        model.organization_id == organization_id,
+        model.status.in_(("OPEN", "PARTIAL")),
+    )
+    if overdue_only:
+        query = query.filter(model.due_date < date.today())
+    total, paid = query.one()
+    return Decimal(total or 0) - Decimal(paid or 0)
 
 
 def _month_start(day: date) -> date:
@@ -101,9 +118,9 @@ def summary(db: Session, organization_id: str) -> dict:
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,
         "monthly_profit": monthly_revenue - monthly_expenses,
-        "receivables": Decimal("0"),
-        "overdue_receivables": Decimal("0"),
-        "payables": Decimal("0"),
+        "receivables": _outstanding(db, organization_id, Receivable),
+        "overdue_receivables": _outstanding(db, organization_id, Receivable, overdue_only=True),
+        "payables": _outstanding(db, organization_id, Payable),
         "cash_flow": [
             {"month": m, "inflows": flow[m]["inflows"], "outflows": flow[m]["outflows"]} for m in months
         ],
