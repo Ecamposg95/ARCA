@@ -26,8 +26,12 @@ Checklist, en este orden. Toma cinco minutos.
    claude mcp add arca \
        --env ARCA_URL=https://arca-production-d769.up.railway.app \
        --env ARCA_API_KEY=<la llave que imprimió el script> \
-       -- python tools/arca_mcp.py
+       -- /mnt/d/Devs/ARCA/.venv/bin/python /mnt/d/Devs/ARCA/tools/arca_mcp.py
    ```
+
+   Rutas absolutas, no relativas: el servidor arranca con el directorio de trabajo
+   de Claude Code, no con el del proyecto. Confirma con `claude mcp list` que diga
+   `arca: ... ✔ Connected`, y **reinicia Claude Code** para que cargue las herramientas.
 
 3. **Ensayar el acto 4 completo una vez** con el escenario recién sembrado, y después **volver a sembrar** para que la bandeja de Propuestas quede vacía al empezar.
 
@@ -176,7 +180,9 @@ Aprueba. Ve a **Contabilidad**.
 
 Vuelve al tablero. Señala la deuda en tarjetas.
 
-> "Y la deuda pasó de treinta y cuatro mil ochocientos a **cincuenta y tres mil trescientos sesenta**. Un agente propuso, una persona aprobó, y la contabilidad se escribió sola. Ese es el orden correcto de las tres cosas."
+> "Y la deuda pasó de treinta y cuatro mil ochocientos a **cincuenta y tres mil trescientos sesenta**. Miren el disponible: **no se movió un peso**, porque se pagó con tarjeta. Un agente propuso, una persona aprobó, y la contabilidad se escribió sola. Ese es el orden correcto de las tres cosas."
+
+**Ritmo medido en el ensayo:** el turno del agente contra producción tarda unos **4 segundos** de red (18 herramientas, cuatro llamadas), y la aprobación responde en **menos de un décimo de segundo**. Lo que marca el paso del acto es el modelo pensando, no ARCA. La póliza nueva queda **al tope del libro diario**, así que en Contabilidad se ve sin buscar.
 
 ### Plan B del acto 4 — en tres niveles
 

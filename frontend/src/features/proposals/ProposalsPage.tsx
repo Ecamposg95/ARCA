@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { formatDate, formatMoney } from '@/lib/format'
+import { useAccounts, useCategories } from '@/lib/hooks'
 import type { Page, Proposal } from '@/types/api'
 
 const KIND_LABELS: Record<string, string> = {
@@ -20,24 +21,73 @@ const PAYLOAD_LABELS: Record<string, string> = {
   due_date: 'Vence',
   description: 'Concepto',
   amount: 'Monto',
+  tax_rate: 'IVA',
   status: 'Estado',
+  category_id: 'Categoría',
+  financial_account_id: 'Cuenta',
   notes: 'Notas',
   payment_method: 'Método',
   reference: 'Referencia',
 }
 
-function PayloadDetails({ payload }: { payload: Record<string, unknown> }) {
-  const entries = Object.entries(payload).filter(
-    ([key, value]) => value !== null && value !== undefined && PAYLOAD_LABELS[key],
+/** El orden en que un humano revisa: qué es, cuánto, con qué, cuándo. */
+const PAYLOAD_ORDER = [
+  'description',
+  'amount',
+  'tax_rate',
+  'category_id',
+  'financial_account_id',
+  'status',
+  'date',
+  'due_date',
+  'payment_method',
+  'reference',
+  'notes',
+]
+
+const STATUS_LABELS: Record<string, string> = {
+  PAID: 'Pagado',
+  PENDING: 'Pendiente',
+  OPEN: 'Abierta',
+}
+
+/** Aprobar exige entender qué se aprueba: nada de identificadores ni de inglés. */
+function PayloadDetails({
+  payload,
+  kind,
+  names,
+}: {
+  payload: Record<string, unknown>
+  kind: string
+  names: Map<string, string>
+}) {
+  const entries = PAYLOAD_ORDER.filter(
+    (key) => payload[key] !== null && payload[key] !== undefined && payload[key] !== '',
   )
+
+  const labelFor = (key: string) => {
+    if (key === 'financial_account_id')
+      return kind === 'INCOME' || kind === 'RECEIVABLE' ? 'Entra a' : 'Se paga con'
+    return PAYLOAD_LABELS[key]
+  }
+
+  const valueFor = (key: string) => {
+    const raw = payload[key]
+    if (key === 'amount') return formatMoney(String(raw))
+    if (key === 'tax_rate') return `${Math.round(Number(raw) * 100)}%`
+    if (key === 'status') return STATUS_LABELS[String(raw)] ?? String(raw)
+    if (key === 'category_id' || key === 'financial_account_id')
+      return names.get(String(raw)) ?? '—'
+    if (key === 'date' || key === 'due_date') return formatDate(String(raw))
+    return String(raw)
+  }
+
   return (
     <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-      {entries.map(([key, value]) => (
+      {entries.map((key) => (
         <div key={key}>
-          <dt className="text-xs text-muted">{PAYLOAD_LABELS[key]}</dt>
-          <dd className={key === 'amount' ? 'figures font-medium' : ''}>
-            {key === 'amount' ? formatMoney(String(value)) : String(value)}
-          </dd>
+          <dt className="text-xs text-muted">{labelFor(key)}</dt>
+          <dd className={key === 'amount' ? 'figures font-medium' : ''}>{valueFor(key)}</dd>
         </div>
       ))}
     </dl>
@@ -47,6 +97,20 @@ function PayloadDetails({ payload }: { payload: Record<string, unknown> }) {
 export function ProposalsPage() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('PROPOSED')
+  const { data: accounts } = useAccounts()
+  const { data: incomeCategories } = useCategories('INCOME')
+  const { data: expenseCategories } = useCategories('EXPENSE')
+
+  // Los identificadores del payload sólo son útiles traducidos a nombres.
+  const names = useMemo(
+    () =>
+      new Map(
+        [...(accounts ?? []), ...(incomeCategories ?? []), ...(expenseCategories ?? [])].map(
+          (item) => [item.id, item.name],
+        ),
+      ),
+    [accounts, incomeCategories, expenseCategories],
+  )
 
   const { data, isLoading } = useQuery({
     queryKey: ['proposals', statusFilter],
@@ -141,7 +205,7 @@ export function ProposalsPage() {
                   {proposal.evidence ? (
                     <p className="mt-1 text-sm text-muted">{proposal.evidence}</p>
                   ) : null}
-                  <PayloadDetails payload={proposal.payload} />
+                  <PayloadDetails payload={proposal.payload} kind={proposal.kind} names={names} />
                   {proposal.rejection_reason ? (
                     <p className="mt-2 text-sm text-neg">Rechazada: {proposal.rejection_reason}</p>
                   ) : null}
