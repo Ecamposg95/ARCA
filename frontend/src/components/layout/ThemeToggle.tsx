@@ -31,7 +31,7 @@ const OPTIONS: { key: ThemeChoice; label: string; icon: JSX.Element }[] = [
 export function ThemeToggle() {
   const { choice, setChoice } = useThemeStore()
   return (
-    <div className="flex gap-0.5 rounded-lg bg-white/5 p-0.5" role="group" aria-label="Tema">
+    <div className="flex gap-0.5 rounded-lg bg-surface-2 p-0.5" role="group" aria-label="Tema">
       {OPTIONS.map((option) => (
         <button
           key={option.key}
@@ -41,7 +41,7 @@ export function ThemeToggle() {
           aria-label={option.label}
           aria-pressed={choice === option.key}
           className={`rounded-md p-1.5 transition-colors ${
-            choice === option.key ? 'bg-white/15 text-white' : 'text-rail-muted hover:text-white'
+            choice === option.key ? 'bg-accent text-on-accent' : 'text-muted hover:text-ink'
           }`}
         >
           <svg
