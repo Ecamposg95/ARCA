@@ -4,6 +4,7 @@ import { api, errorMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/Field'
+import { AuthShell } from '@/features/auth/AuthShell'
 import type { AuthResponse } from '@/types/api'
 
 export function LoginPage() {
@@ -13,6 +14,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -30,41 +32,57 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-rail px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="font-display text-3xl font-bold tracking-tight text-white">ARCA</div>
-          <p className="mt-2 text-sm text-rail-muted">Tu negocio, en claro.</p>
-        </div>
-        <form onSubmit={onSubmit} className="space-y-4 rounded-xl bg-surface p-6 shadow-float">
-          <TextInput
-            label="Correo"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          <TextInput
-            label="Contraseña"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {error ? <p className="text-sm text-neg">{error}</p> : null}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Entrando…' : 'Entrar'}
-          </Button>
-          <p className="text-center text-sm text-muted">
-            ¿Primera vez aquí?{' '}
-            <Link to="/registro" className="font-medium text-accent hover:underline">
-              Crea tu empresa
-            </Link>
+    <AuthShell
+      footer={
+        <>
+          ¿Primera vez aquí?{' '}
+          <Link to="/registro" className="font-medium text-rail-ink hover:text-accent">
+            Crea tu empresa
+          </Link>
+        </>
+      }
+    >
+      <h1 className="font-display text-lg font-bold tracking-tight">Entra a tu empresa</h1>
+
+      <form onSubmit={onSubmit} className="mt-5 space-y-4">
+        <TextInput
+          label="Correo"
+          type="email"
+          required
+          autoFocus
+          autoComplete="email"
+          placeholder="tu@empresa.mx"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <TextInput
+          label="Contraseña"
+          type={showPassword ? 'text' : 'password'}
+          required
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          action={
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              className="rounded text-[11px] font-medium text-muted transition-colors hover:text-accent"
+            >
+              {showPassword ? 'Ocultar' : 'Mostrar'}
+            </button>
+          }
+        />
+
+        {error ? (
+          <p role="alert" className="rounded border-l-2 border-neg bg-neg/10 px-3 py-2 text-sm text-neg">
+            {error}
           </p>
-        </form>
-      </div>
-    </div>
+        ) : null}
+
+        <Button type="submit" className="h-11 w-full hover:shadow-accent" disabled={loading}>
+          {loading ? 'Entrando…' : 'Entrar'}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }

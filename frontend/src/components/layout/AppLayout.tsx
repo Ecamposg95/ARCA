@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
+import { ArcaMark } from '@/components/ui/ArcaMark'
 import { Button } from '@/components/ui/Button'
 
 const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; roles?: string[] }[] }[] = [
@@ -50,15 +51,6 @@ const QUICK_ACTIONS = [
   { to: '/proveedores?nuevo=1', label: 'Proveedor' },
   { to: '/cuentas?nueva=1', label: 'Cuenta de dinero' },
 ]
-
-function ArcaMark() {
-  return (
-    <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden>
-      <rect width="32" height="32" rx="8" fill="hsl(var(--accent))" />
-      <path d="M9 22 L16 9 L23 22 M12 18 H20" stroke="white" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 export function AppLayout() {
   const { user, organization, logout } = useAuthStore()

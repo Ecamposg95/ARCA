@@ -4,6 +4,7 @@ import { api, errorMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { SelectInput, TextInput } from '@/components/ui/Field'
+import { AuthShell } from '@/features/auth/AuthShell'
 import type { AuthResponse } from '@/types/api'
 
 const BUSINESS_TYPES = [
@@ -65,7 +66,7 @@ export function RegisterPage() {
           label="Nombre del negocio"
           required
           autoFocus
-          placeholder="Taquería La Central"
+          placeholder="Consultoría Aurora"
           value={form.business_name}
           onChange={(event) => update('business_name', event.target.value)}
         />
@@ -132,55 +133,66 @@ export function RegisterPage() {
   const isLast = step === steps.length - 1
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-rail px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="font-display text-3xl font-bold tracking-tight text-white">ARCA</div>
-          <p className="mt-2 text-sm text-rail-muted">
-            Registra lo que pasa en tu negocio; ARCA hace las finanzas y la contabilidad.
-          </p>
-        </div>
-        <div className="rounded-xl bg-surface p-6 shadow-float">
-          <div className="mb-5 flex gap-1.5">
-            {steps.map((_, index) => (
-              <div
-                key={index}
-                className={`h-1 flex-1 rounded-full ${index <= step ? 'bg-accent' : 'bg-surface-2'}`}
-              />
-            ))}
-          </div>
-          <h1 className="mb-4 font-display text-xl font-semibold">{current.title}</h1>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (isLast) void submit()
-              else setStep(step + 1)
-            }}
-            className="space-y-4"
-          >
-            {current.body}
-            {error ? <p className="text-sm text-neg">{error}</p> : null}
-            <div className="flex items-center justify-between pt-1">
-              {step > 0 ? (
-                <Button variant="ghost" onClick={() => setStep(step - 1)}>
-                  Atrás
-                </Button>
-              ) : (
-                <span />
-              )}
-              <Button type="submit" disabled={!current.valid || loading}>
-                {isLast ? (loading ? 'Creando…' : 'Crear mi empresa') : 'Continuar'}
-              </Button>
-            </div>
-          </form>
-        </div>
-        <p className="mt-4 text-center text-sm text-rail-muted">
+    <AuthShell
+      footer={
+        <>
           ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-medium text-white hover:underline">
+          <Link to="/login" className="font-medium text-rail-ink hover:text-accent">
             Entra aquí
           </Link>
-        </p>
+        </>
+      }
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 gap-1.5">
+          {steps.map((_, index) => (
+            <div
+              key={index}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                index <= step ? 'bg-accent' : 'bg-surface-2'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="figures text-[10px] uppercase tracking-widest text-muted">
+          {step + 1}/{steps.length}
+        </span>
       </div>
-    </div>
+
+      <h1 className="mt-5 font-display text-lg font-bold tracking-tight">{current.title}</h1>
+      {step === 0 ? (
+        <p className="mt-1 text-sm text-muted">
+          Registras lo que pasa en tu negocio; ARCA lleva las finanzas y la contabilidad.
+        </p>
+      ) : null}
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (isLast) void submit()
+          else setStep(step + 1)
+        }}
+        className="mt-5 space-y-4"
+      >
+        {current.body}
+        {error ? (
+          <p role="alert" className="rounded border-l-2 border-neg bg-neg/10 px-3 py-2 text-sm text-neg">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          {step > 0 ? (
+            <Button variant="ghost" onClick={() => setStep(step - 1)}>
+              Atrás
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button type="submit" className="h-11 hover:shadow-accent" disabled={!current.valid || loading}>
+            {isLast ? (loading ? 'Creando…' : 'Crear mi empresa') : 'Continuar'}
+          </Button>
+        </div>
+      </form>
+    </AuthShell>
   )
 }

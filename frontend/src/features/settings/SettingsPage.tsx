@@ -55,12 +55,12 @@ export function SettingsPage() {
             onChange={(event) => setForm({ ...form, name: event.target.value })}
           />
           <TextInput
-            label="Razón social"
+            label="Razón social (opcional)"
             value={form.legal_name}
             onChange={(event) => setForm({ ...form, legal_name: event.target.value })}
           />
           <TextInput
-            label="RFC"
+            label="RFC (opcional)"
             value={form.tax_id}
             onChange={(event) => setForm({ ...form, tax_id: event.target.value })}
           />

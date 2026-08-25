@@ -134,31 +134,31 @@ export function ContactsPage({ config }: { config: Config }) {
           />
           <div className="grid grid-cols-2 gap-4">
             <TextInput
-              label="Razón social"
+              label="Razón social (opcional)"
               value={form.legal_name}
               onChange={(event) => setForm({ ...form, legal_name: event.target.value })}
             />
             <TextInput
-              label="RFC"
+              label="RFC (opcional)"
               value={form.tax_id}
               onChange={(event) => setForm({ ...form, tax_id: event.target.value })}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <TextInput
-              label="Correo"
+              label="Correo (opcional)"
               type="email"
               value={form.email}
               onChange={(event) => setForm({ ...form, email: event.target.value })}
             />
             <TextInput
-              label="Teléfono"
+              label="Teléfono (opcional)"
               value={form.phone}
               onChange={(event) => setForm({ ...form, phone: event.target.value })}
             />
           </div>
           <TextInput
-            label="Notas"
+            label="Notas (opcional)"
             value={form.notes}
             onChange={(event) => setForm({ ...form, notes: event.target.value })}
           />

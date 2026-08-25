@@ -343,7 +343,7 @@ export function OperationsPage({ config }: { config: Config }) {
             />
           ) : null}
           <TextInput
-            label="Notas"
+            label="Notas (opcional)"
             placeholder="Opcional"
             value={form.notes}
             onChange={(event) => setForm({ ...form, notes: event.target.value })}

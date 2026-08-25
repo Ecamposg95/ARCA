@@ -133,7 +133,7 @@ export function AccountsPage() {
             />
           </div>
           <TextInput
-            label="Institución"
+            label="Institución (opcional)"
             placeholder="BBVA, Santander… (opcional)"
             value={form.institution}
             onChange={(event) => setForm({ ...form, institution: event.target.value })}

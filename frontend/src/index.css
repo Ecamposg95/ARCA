@@ -48,6 +48,38 @@ body {
   @apply bg-bg text-ink font-body antialiased;
 }
 
+/* Pantallas de acceso: tinta profunda con rayado de libro contable, casi subliminal. */
+.auth-bg {
+  background-color: hsl(var(--rail));
+  background-image: repeating-linear-gradient(
+    to bottom,
+    hsl(var(--rail-ink) / 0.035) 0px,
+    hsl(var(--rail-ink) / 0.035) 1px,
+    transparent 1px,
+    transparent 28px
+  );
+}
+
+/* Una sola secuencia de entrada; el bloque global de reduced-motion la neutraliza. */
+@keyframes arca-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.arca-rise {
+  animation: arca-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.arca-rise-late {
+  animation-delay: 90ms;
+}
+
 /* Cifras: JetBrains Mono (convención cortex para datos numéricos) — la firma tipográfica. */
 .figures {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
