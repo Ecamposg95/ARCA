@@ -8,6 +8,7 @@ import { ContactsPage, CUSTOMERS_CONFIG, VENDORS_CONFIG } from '@/features/conta
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DebtsPage, PAYABLES_CONFIG, RECEIVABLES_CONFIG } from '@/features/debts/DebtsPage'
 import { EXPENSE_CONFIG, INCOME_CONFIG, OperationsPage } from '@/features/operations/OperationsPage'
+import { ProposalsPage } from '@/features/proposals/ProposalsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
@@ -36,6 +37,7 @@ export function App() {
             <Route path="/clientes" element={<ContactsPage config={CUSTOMERS_CONFIG} />} />
             <Route path="/proveedores" element={<ContactsPage config={VENDORS_CONFIG} />} />
             <Route path="/contabilidad" element={<AccountingPage />} />
+            <Route path="/propuestas" element={<ProposalsPage />} />
             <Route path="/reportes" element={<ReportsPage />} />
             <Route path="/configuracion" element={<SettingsPage />} />
           </Route>

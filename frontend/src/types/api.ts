@@ -95,6 +95,30 @@ export interface Expense {
   created_at: string
 }
 
+export interface AgentKey {
+  id: string
+  name: string
+  key_prefix: string
+  scopes: string
+  active: boolean
+  last_used_at: string | null
+  created_at: string
+  token?: string // solo presente al crear
+}
+
+export interface Proposal {
+  id: string
+  kind: 'INCOME' | 'EXPENSE' | 'RECEIVABLE' | 'PAYABLE'
+  payload: Record<string, unknown>
+  summary: string
+  evidence: string | null
+  status: 'PROPOSED' | 'APPROVED' | 'REJECTED'
+  rejection_reason: string | null
+  result_id: string | null
+  created_at: string
+  agent_name: string | null
+}
+
 export type DebtDisplayStatus = 'OPEN' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE'
 
 export interface Debt {

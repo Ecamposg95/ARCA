@@ -61,6 +61,13 @@ Railway (proyecto ARCA, servicio `ARCA` + PostgreSQL). El servicio está conecta
 - `alembic heads` debe imprimir exactamente UN head.
 - Registrar cada módulo de modelos nuevo en `app/models/__init__.py` (si no, create_all/autogenerate lo omiten en silencio).
 
+## Capa agéntica (ADR-005)
+
+- Agentes se autentican con llave `ak_…` (org fija por llave, scopes READ / READ,PROPOSE); superficie en `/api/agent/tools` + `/api/agent/invoke`.
+- El catálogo vive en `app/agents/tools.py` — herramientas nuevas SOLO llaman services existentes; las de escritura crean `AgentProposal`, jamás ejecutan.
+- La aprobación humana (`app/domains/proposals/service.py`) es el único puente propuesta→operación real; re-valida contra el schema Create vigente.
+- Toda invocación se registra en `AgentActionLog`. No agregar herramientas que salten estas capas.
+
 ## Reglas para features nuevas
 
 - Vertical slices: DB → dominio → API → UI → contabilidad → tests, una operación a la vez.
