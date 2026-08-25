@@ -12,9 +12,31 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.core.events import event_bus
-from app.models.financial_account import FinancialAccount
+from app.models.financial_account import FinancialAccount, is_liability
 from app.models.transaction import INFLOW_TYPES, TRANSACTION_TYPES, FinancialTransaction
 from app.services.accounting.engine import _quantize
+
+
+def account_ledger_code(db: Session, organization_id: str, financial_account_id: str) -> str:
+    """Cuenta contable del instrumento con el que se movió el dinero."""
+    from app.services.accounting.coa import CODE_CASH_BANK, ledger_code_for
+
+    account = (
+        db.query(FinancialAccount)
+        .filter(
+            FinancialAccount.id == financial_account_id,
+            FinancialAccount.organization_id == organization_id,
+        )
+        .first()
+    )
+    return ledger_code_for(account.type) if account else CODE_CASH_BANK
+
+
+def default_payment_method(account_type: str) -> str:
+    """Método implícito por el instrumento; el usuario puede sobreescribirlo."""
+    return {"CASH": "EFECTIVO", "BANK": "TRANSFERENCIA", "CREDIT_CARD": "TARJETA_CREDITO"}.get(
+        account_type, "OTRO"
+    )
 
 
 def get_locked_account(db: Session, organization_id: str, financial_account_id: str) -> FinancialAccount:
@@ -48,6 +70,7 @@ def record_transaction(
     source_id: str | None = None,
     transfer_group_id: str | None = None,
     created_by: str | None = None,
+    payment_method: str | None = None,
 ) -> FinancialTransaction:
     """Crea el movimiento y aplica el delta al saldo, en la transacción del caller. No hace commit."""
     if transaction_type not in TRANSACTION_TYPES:
@@ -58,12 +81,19 @@ def record_transaction(
 
     account = get_locked_account(db, organization_id, financial_account_id)
 
-    delta = amount if transaction_type in INFLOW_TYPES else -amount
+    # En un activo el saldo es lo que TIENES; en un pasivo es lo que DEBES,
+    # así que un gasto con tarjeta sube la deuda en vez de bajar tu efectivo.
+    inflow = transaction_type in INFLOW_TYPES
+    if is_liability(account.type):
+        delta = -amount if inflow else amount
+    else:
+        delta = amount if inflow else -amount
     account.current_balance = Decimal(account.current_balance) + delta
 
     transaction = FinancialTransaction(
         organization_id=organization_id,
         financial_account_id=account.id,
+        payment_method=payment_method or default_payment_method(account.type),
         transaction_type=transaction_type,
         amount=amount,
         currency=account.currency,

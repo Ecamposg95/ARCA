@@ -12,7 +12,7 @@ from app.models.contact import Customer
 from app.models.income import Income
 from app.services.accounting.rules import income_paid_entry
 from app.services.taxes import split_total
-from app.services.transactions import record_transaction
+from app.services.transactions import account_ledger_code, record_transaction
 
 
 def resolve_tax(db: Session, org_id: str, payload):
@@ -141,6 +141,7 @@ def _apply_payment(
         revenue_account_code=category.account_code,
         source_id=income.id,
         created_by=user_id,
+        cash_account_code=account_ledger_code(db, org_id, account_id),
         tax_amount=Decimal(income.tax_amount),
     )
     income.financial_account_id = account_id

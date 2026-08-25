@@ -12,7 +12,7 @@ from app.models.contact import Vendor
 from app.models.expense import Expense
 from app.domains.income.service import resolve_tax
 from app.services.accounting.rules import expense_paid_entry
-from app.services.transactions import record_transaction
+from app.services.transactions import account_ledger_code, record_transaction
 
 
 def _validate_category(db: Session, org_id: str, category_id: str) -> Category:
@@ -133,6 +133,7 @@ def _apply_payment(
         expense_account_code=category.account_code,
         source_id=expense.id,
         created_by=user_id,
+        cash_account_code=account_ledger_code(db, org_id, account_id),
         tax_amount=Decimal(expense.tax_amount),
     )
     expense.financial_account_id = account_id

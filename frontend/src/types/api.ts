@@ -42,6 +42,9 @@ export interface FinancialAccount {
   current_balance: string
   institution: string | null
   last_four: string | null
+  credit_limit: string | null
+  is_liability: boolean
+  available_credit: string | null
   active: boolean
   created_at: string
 }
@@ -152,6 +155,7 @@ export interface Transaction {
   description: string
   reference: string | null
   status: string
+  payment_method: string | null
   source_type: string | null
   running_balance: string | null
   created_at: string
@@ -159,6 +163,7 @@ export interface Transaction {
 
 export interface DashboardSummary {
   cash: number
+  card_debt: number
   monthly_revenue: number
   monthly_expenses: number
   monthly_profit: number

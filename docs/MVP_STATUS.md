@@ -21,6 +21,7 @@ _Actualizado: 2026-08-24 (M2)_
 
 - M2 Business Finance: CxC y CxP con devengo (§18), cobros/pagos parciales, OVERDUE calculado, cancelación con asiento de reversa (`reversal_of`), dashboard con saldos reales, páginas Por cobrar / Por pagar. 54+ tests.
 - Tema visual Atlas Cortex (teal #2c9aa6, Plus Jakarta Sans + JetBrains Mono, dark tokens definidos).
+- Instrumentos con naturaleza: tarjetas de crédito contabilizadas como pasivo (2200) con límite y crédito disponible, pago de tarjeta que no duplica el gasto, método de pago normalizado en cada movimiento.
 - Folios de póliza (convención mexicana Ingreso/Egreso/Diario, serie por organización y mes) con contador transaccional y respaldo de asientos históricos.
 - **A0 Fundación agéntica** (ADR-005): llaves de agente por organización (`ak_…`, sha256, scopes, revocables), catálogo de 18 herramientas (14 lectura + 4 propose), `/api/agent/tools` + `/api/agent/invoke` con auditoría total, bandeja de propuestas con aprobación humana que ejecuta los services reales, UI (Configuración→Agentes, página Propuestas con badge). 64 tests.
 

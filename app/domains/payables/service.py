@@ -19,7 +19,7 @@ from app.services.accounting.rules import (
     payable_payment_entry,
     reversal_of,
 )
-from app.services.transactions import record_transaction
+from app.services.transactions import account_ledger_code, record_transaction
 
 
 def _validate_category(db: Session, org_id: str, category_id: str) -> Category:
@@ -139,6 +139,7 @@ def pay_payable(
         date=when,
         source_id=payable.id,
         created_by=user_id,
+        cash_account_code=account_ledger_code(db, org_id, financial_account_id),
         tax_amount=tax_now,
     )
     payable.amount_paid = Decimal(payable.amount_paid) + amount

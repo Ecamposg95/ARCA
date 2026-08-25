@@ -102,12 +102,22 @@ export function DashboardPage() {
 
   return (
     <div>
-      {/* Lo primero que importa: cuánto dinero hay. */}
-      <header className="mb-7">
-        <MetricLabel>Disponible</MetricLabel>
-        <div className="mt-1.5">
-          <Money value={data.cash} size="xl" />
+      {/* Lo primero que importa: cuánto dinero hay —y cuánto de eso ya está comprometido. */}
+      <header className="mb-7 flex flex-wrap items-end gap-x-10 gap-y-3">
+        <div>
+          <MetricLabel>Disponible</MetricLabel>
+          <div className="mt-1.5">
+            <Money value={data.cash} size="xl" />
+          </div>
         </div>
+        {data.card_debt > 0 ? (
+          <Link to="/cuentas" className="group">
+            <MetricLabel>Deuda en tarjetas</MetricLabel>
+            <div className="mt-1.5 group-hover:opacity-80">
+              <Money value={data.card_debt} size="lg" tone="neg" />
+            </div>
+          </Link>
+        ) : null}
       </header>
 
       {/* Dos paneles en vez de cinco tarjetas: menos ruido, misma información. */}
