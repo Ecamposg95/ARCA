@@ -11,7 +11,9 @@ from app.models.accounting import JournalEntry
 from app.models.category import Category
 from app.models.contact import Vendor
 from app.models.payable import Payable
+from app.domains.income.service import resolve_tax
 from app.services.accounting.engine import _quantize
+from app.services.taxes import proportional_tax
 from app.services.accounting.rules import (
     payable_created_entry,
     payable_payment_entry,
@@ -55,11 +57,15 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
     _validate_vendor(db, org_id, payload.vendor_id)
     issue_date = payload.date or date.today()
 
+    tax = resolve_tax(db, org_id, payload)
     payable = Payable(
         organization_id=org_id,
         vendor_id=payload.vendor_id,
         description=payload.description.strip(),
-        amount=_quantize(payload.amount),
+        amount=tax.total,
+        subtotal=tax.subtotal,
+        tax_rate=tax.tax_rate,
+        tax_amount=tax.tax_amount,
         date=issue_date,
         due_date=payload.due_date,
         category_id=payload.category_id,
@@ -79,6 +85,7 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
         expense_account_code=category.account_code,
         source_id=payable.id,
         created_by=created_by,
+        tax_amount=Decimal(payable.tax_amount),
     )
     event_bus.publish("payable.created", {"payable_id": payable.id, "organization_id": org_id})
     db.commit()
@@ -106,6 +113,12 @@ def pay_payable(
         raise ValueError(f"El pago excede el saldo pendiente (${balance}).")
 
     when = payment_date or date.today()
+    remaining_tax = Decimal(payable.tax_amount) - Decimal(payable.tax_paid)
+    tax_now = proportional_tax(
+        Decimal(payable.tax_amount), amount, Decimal(payable.amount), remaining_tax
+    )
+    if Decimal(payable.amount_paid) + amount >= Decimal(payable.amount):
+        tax_now = _quantize(remaining_tax)
     record_transaction(
         db,
         organization_id=org_id,
@@ -126,8 +139,10 @@ def pay_payable(
         date=when,
         source_id=payable.id,
         created_by=user_id,
+        tax_amount=tax_now,
     )
     payable.amount_paid = Decimal(payable.amount_paid) + amount
+    payable.tax_paid = Decimal(payable.tax_paid) + tax_now
     payable.status = "PAID" if payable.amount_paid >= Decimal(payable.amount) else "PARTIAL"
     if payable.status == "PAID":
         event_bus.publish("payable.paid", {"payable_id": payable.id, "organization_id": org_id})

@@ -12,9 +12,11 @@ import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table } from '@/components/ui/Table'
+import { TaxSelect } from '@/components/ui/TaxSelect'
 import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
+import { useAuthStore } from '@/stores/authStore'
 import type { Expense, Income, Page } from '@/types/api'
 
 type Operation = Income & Expense
@@ -77,6 +79,7 @@ export const EXPENSE_CONFIG: Config = {
 
 export function OperationsPage({ config }: { config: Config }) {
   const queryClient = useQueryClient()
+  const defaultTaxRate = useAuthStore((state) => state.organization?.default_tax_rate ?? '0.16')
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nuevo'))
   const [statusFilter, setStatusFilter] = useState('')
@@ -89,6 +92,7 @@ export function OperationsPage({ config }: { config: Config }) {
     category_id: '',
     contact_id: '',
     financial_account_id: '',
+    tax_rate: defaultTaxRate,
     paid: true,
     notes: '',
   })
@@ -129,6 +133,7 @@ export function OperationsPage({ config }: { config: Config }) {
         date: form.date,
         description: form.description,
         amount: form.amount,
+        tax_rate: form.tax_rate,
         category_id: form.category_id,
         status: form.paid ? 'PAID' : 'PENDING',
       }
@@ -170,6 +175,7 @@ export function OperationsPage({ config }: { config: Config }) {
       category_id: '',
       contact_id: '',
       financial_account_id: '',
+      tax_rate: defaultTaxRate,
       paid: true,
       notes: '',
     })
@@ -317,6 +323,11 @@ export function OperationsPage({ config }: { config: Config }) {
               onChange={(event) => setForm({ ...form, amount: event.target.value })}
             />
           </div>
+          <TaxSelect
+            total={form.amount}
+            rate={form.tax_rate}
+            onRateChange={(rate) => setForm({ ...form, tax_rate: rate })}
+          />
           <TextInput
             label="Concepto"
             required

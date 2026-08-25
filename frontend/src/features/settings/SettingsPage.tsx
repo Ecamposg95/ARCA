@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { SelectInput, TextInput } from '@/components/ui/Field'
+import { TAX_RATES } from '@/lib/taxes'
 import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
@@ -15,6 +16,7 @@ export function SettingsPage() {
     name: organization?.name ?? '',
     legal_name: organization?.legal_name ?? '',
     tax_id: organization?.tax_id ?? '',
+    default_tax_rate: organization?.default_tax_rate ?? '0.16',
   })
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -24,6 +26,7 @@ export function SettingsPage() {
       const payload: Record<string, string> = { name: form.name }
       if (form.legal_name) payload.legal_name = form.legal_name
       if (form.tax_id) payload.tax_id = form.tax_id
+      payload.default_tax_rate = form.default_tax_rate
       return (await api.patch<Organization>('/organizations/current', payload)).data
     },
     onSuccess: (updated) => {
@@ -63,6 +66,12 @@ export function SettingsPage() {
             label="RFC (opcional)"
             value={form.tax_id}
             onChange={(event) => setForm({ ...form, tax_id: event.target.value })}
+          />
+          <SelectInput
+            label="Impuesto que se propone al registrar operaciones"
+            options={TAX_RATES}
+            value={form.default_tax_rate}
+            onChange={(event) => setForm({ ...form, default_tax_rate: event.target.value })}
           />
           <div className="text-xs text-muted">
             Moneda: {organization?.currency} · País: {organization?.country} · Usuario: {user?.email}

@@ -1,4 +1,6 @@
-from sqlalchemy import Column, ForeignKey, String, UniqueConstraint
+from decimal import Decimal
+
+from sqlalchemy import Column, ForeignKey, Numeric, String, UniqueConstraint
 
 from app.database import Base
 from app.models.mixins import AuditMixin, UUIDPKMixin
@@ -14,6 +16,8 @@ class Organization(Base, UUIDPKMixin, AuditMixin):
     country = Column(String(2), nullable=False, default="MX")
     timezone = Column(String(64), nullable=False, default="America/Mexico_City")
     business_type = Column(String(50), nullable=True)
+    # Tasa que propone el formulario; un negocio exento la deja en 0.
+    default_tax_rate = Column(Numeric(5, 4), nullable=False, default=Decimal("0.16"))
 
 
 ROLE_OWNER = "OWNER"

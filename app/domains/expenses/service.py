@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date as date_type
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from app.core.events import event_bus
 from app.models.category import Category
 from app.models.contact import Vendor
 from app.models.expense import Expense
+from app.domains.income.service import resolve_tax
 from app.services.accounting.rules import expense_paid_entry
 from app.services.transactions import record_transaction
 
@@ -48,12 +50,16 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
     if payload.vendor_id:
         _validate_vendor(db, org_id, payload.vendor_id)
 
+    tax = resolve_tax(db, org_id, payload)
     expense = Expense(
         organization_id=org_id,
         date=payload.date,
         vendor_id=payload.vendor_id,
         description=payload.description.strip(),
-        amount=payload.amount,
+        amount=tax.total,
+        subtotal=tax.subtotal,
+        tax_rate=tax.tax_rate,
+        tax_amount=tax.tax_amount,
         category_id=payload.category_id,
         financial_account_id=payload.financial_account_id,
         payment_method=payload.payment_method,
@@ -127,6 +133,7 @@ def _apply_payment(
         expense_account_code=category.account_code,
         source_id=expense.id,
         created_by=user_id,
+        tax_amount=Decimal(expense.tax_amount),
     )
     expense.financial_account_id = account_id
     expense.status = "PAID"

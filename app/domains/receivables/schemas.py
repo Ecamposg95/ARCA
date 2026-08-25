@@ -10,7 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 class ReceivableCreate(BaseModel):
     customer_id: str
     description: str = Field(min_length=1, max_length=500)
-    amount: Decimal = Field(gt=0, allow_inf_nan=False)
+    amount: Decimal = Field(gt=0, allow_inf_nan=False)  # TOTAL con impuesto
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     date: date_type | None = None  # emisión; default hoy
     due_date: date_type
     category_id: str
@@ -34,6 +35,9 @@ class ReceivableRead(BaseModel):
     customer_id: str
     description: str
     amount: Decimal
+    subtotal: Decimal
+    tax_rate: Decimal
+    tax_amount: Decimal
     amount_paid: Decimal
     date: date_type
     due_date: date_type

@@ -12,7 +12,8 @@ class ExpenseCreate(BaseModel):
     date: date_type
     vendor_id: str | None = None
     description: str = Field(min_length=1, max_length=500)
-    amount: Decimal = Field(gt=0, allow_inf_nan=False)
+    amount: Decimal = Field(gt=0, allow_inf_nan=False)  # TOTAL con impuesto
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     category_id: str
     financial_account_id: str | None = None
     payment_method: str | None = Field(default=None, max_length=30)
@@ -38,6 +39,9 @@ class ExpenseRead(BaseModel):
     vendor_id: str | None
     description: str
     amount: Decimal
+    subtotal: Decimal
+    tax_rate: Decimal
+    tax_amount: Decimal
     category_id: str
     financial_account_id: str | None
     payment_method: str | None

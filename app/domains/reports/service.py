@@ -145,3 +145,53 @@ def cash_flow(db: Session, organization_id: str, start: date_type, end: date_typ
         "outflows": outflows,
         "closing_cash": opening_cash + inflows - outflows,
     }
+
+
+def vat_report(db: Session, organization_id: str, start: date_type, end: date_type) -> dict:
+    """IVA del periodo por flujo de efectivo: sólo lo cobrado y lo pagado se declara."""
+    from app.services.accounting.coa import (
+        CODE_VAT_CHARGED_COLLECTED,
+        CODE_VAT_CHARGED_PENDING,
+        CODE_VAT_CREDITABLE_PAID,
+        CODE_VAT_CREDITABLE_PENDING,
+    )
+
+    def movement(code: str, since: date_type | None, until: date_type) -> Decimal:
+        """Saldo neto de una cuenta de IVA en el periodo (naturaleza de la cuenta)."""
+        query = (
+            db.query(
+                func.coalesce(func.sum(JournalEntryLine.debit), 0),
+                func.coalesce(func.sum(JournalEntryLine.credit), 0),
+            )
+            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+            .join(Account, Account.id == JournalEntryLine.account_id)
+            .filter(
+                JournalEntry.organization_id == organization_id,
+                JournalEntry.status == "POSTED",
+                Account.code == code,
+                JournalEntry.date <= until,
+            )
+        )
+        if since is not None:
+            query = query.filter(JournalEntry.date >= since)
+        debit, credit = query.one()
+        debit, credit = Decimal(debit or 0), Decimal(credit or 0)
+        # 2190/2191 son pasivo (naturaleza acreedora); 1190/1191 activo (deudora).
+        return credit - debit if code.startswith("2") else debit - credit
+
+    charged = movement(CODE_VAT_CHARGED_COLLECTED, start, end)
+    creditable = movement(CODE_VAT_CREDITABLE_PAID, start, end)
+    difference = charged - creditable
+
+    return {
+        "start": start,
+        "end": end,
+        "vat_charged": charged,
+        "vat_creditable": creditable,
+        "difference": difference,
+        "to_pay": difference if difference > 0 else Decimal("0"),
+        "in_favor": -difference if difference < 0 else Decimal("0"),
+        # Informativos: aún no se declaran porque no se han cobrado/pagado.
+        "vat_pending_collection": movement(CODE_VAT_CHARGED_PENDING, None, end),
+        "vat_pending_payment": movement(CODE_VAT_CREDITABLE_PENDING, None, end),
+    }

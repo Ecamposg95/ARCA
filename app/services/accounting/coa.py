@@ -13,6 +13,11 @@ from app.models.accounting import Account
 CODE_CASH_BANK = "1100"
 CODE_ACCOUNTS_RECEIVABLE = "1200"
 CODE_OTHER_ASSETS = "1300"
+# IVA por flujo de efectivo: lo "pendiente" aún no se declara ante el SAT.
+CODE_VAT_CREDITABLE_PAID = "1190"
+CODE_VAT_CREDITABLE_PENDING = "1191"
+CODE_VAT_CHARGED_COLLECTED = "2190"
+CODE_VAT_CHARGED_PENDING = "2191"
 CODE_ACCOUNTS_PAYABLE = "2100"
 CODE_CAPITAL = "3100"
 CODE_RETAINED_EARNINGS = "3200"
@@ -26,9 +31,13 @@ DEFAULT_CHART = (
     ("1000", "Activo", "ASSET", None),
     ("1100", "Caja y Bancos", "ASSET", "1000"),
     ("1200", "Cuentas por Cobrar", "ASSET", "1000"),
+    ("1190", "IVA acreditable pagado", "ASSET", "1000"),
+    ("1191", "IVA acreditable pendiente de pago", "ASSET", "1000"),
     ("1300", "Otros Activos", "ASSET", "1000"),
     ("2000", "Pasivo", "LIABILITY", None),
     ("2100", "Cuentas por Pagar", "LIABILITY", "2000"),
+    ("2190", "IVA trasladado cobrado", "LIABILITY", "2000"),
+    ("2191", "IVA trasladado pendiente de cobro", "LIABILITY", "2000"),
     ("3000", "Capital", "EQUITY", None),
     ("3100", "Capital", "EQUITY", "3000"),
     ("3200", "Resultados Acumulados", "EQUITY", "3000"),

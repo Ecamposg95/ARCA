@@ -16,8 +16,13 @@ class Receivable(Base, UUIDPKMixin, TenantMixin, AuditMixin):
 
     customer_id = Column(String(36), ForeignKey("customers.id"), nullable=False, index=True)
     description = Column(String(500), nullable=False)
-    amount = Column(Numeric(14, 2), nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)  # TOTAL: lo que se mueve en efectivo
+    subtotal = Column(Numeric(14, 2), nullable=False, default=0)  # base gravable
+    tax_rate = Column(Numeric(5, 4), nullable=False, default=0)  # 0.1600 = 16%
+    tax_amount = Column(Numeric(14, 2), nullable=False, default=0)
     amount_paid = Column(Numeric(14, 2), nullable=False, default=0)
+    # IVA que ya pasó de 'pendiente de cobro' a 'cobrado'.
+    tax_collected = Column(Numeric(14, 2), nullable=False, default=0)
     date = Column(Date, nullable=False)  # fecha de emisión
     due_date = Column(Date, nullable=False, index=True)
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)

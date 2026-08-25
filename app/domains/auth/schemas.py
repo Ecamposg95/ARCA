@@ -43,6 +43,7 @@ class OrganizationRead(BaseModel):
     country: str
     timezone: str
     business_type: str | None
+    default_tax_rate: Decimal
 
 
 class MembershipRead(BaseModel):

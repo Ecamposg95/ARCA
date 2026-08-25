@@ -11,7 +11,9 @@ from app.models.accounting import JournalEntry
 from app.models.category import Category
 from app.models.contact import Customer
 from app.models.receivable import Receivable
+from app.domains.income.service import resolve_tax
 from app.services.accounting.engine import _quantize
+from app.services.taxes import proportional_tax
 from app.services.accounting.rules import (
     receivable_collected_entry,
     receivable_created_entry,
@@ -55,11 +57,15 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
     _validate_customer(db, org_id, payload.customer_id)
     issue_date = payload.date or date.today()
 
+    tax = resolve_tax(db, org_id, payload)
     receivable = Receivable(
         organization_id=org_id,
         customer_id=payload.customer_id,
         description=payload.description.strip(),
-        amount=_quantize(payload.amount),
+        amount=tax.total,
+        subtotal=tax.subtotal,
+        tax_rate=tax.tax_rate,
+        tax_amount=tax.tax_amount,
         date=issue_date,
         due_date=payload.due_date,
         category_id=payload.category_id,
@@ -79,6 +85,7 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
         revenue_account_code=category.account_code,
         source_id=receivable.id,
         created_by=created_by,
+        tax_amount=Decimal(receivable.tax_amount),
     )
     event_bus.publish("receivable.created", {"receivable_id": receivable.id, "organization_id": org_id})
     db.commit()
@@ -106,6 +113,13 @@ def collect_receivable(
         raise ValueError(f"El cobro excede el saldo pendiente (${balance}).")
 
     when = collection_date or date.today()
+    # IVA que aún no se ha trasladado a "cobrado" para esta cuenta.
+    remaining_tax = Decimal(receivable.tax_amount) - Decimal(receivable.tax_collected)
+    tax_now = proportional_tax(
+        Decimal(receivable.tax_amount), amount, Decimal(receivable.amount), remaining_tax
+    )
+    if Decimal(receivable.amount_paid) + amount >= Decimal(receivable.amount):
+        tax_now = _quantize(remaining_tax)
     record_transaction(
         db,
         organization_id=org_id,
@@ -126,8 +140,10 @@ def collect_receivable(
         date=when,
         source_id=receivable.id,
         created_by=user_id,
+        tax_amount=tax_now,
     )
     receivable.amount_paid = Decimal(receivable.amount_paid) + amount
+    receivable.tax_collected = Decimal(receivable.tax_collected) + tax_now
     receivable.status = "PAID" if receivable.amount_paid >= Decimal(receivable.amount) else "PARTIAL"
     if receivable.status == "PAID":
         event_bus.publish("receivable.paid", {"receivable_id": receivable.id, "organization_id": org_id})

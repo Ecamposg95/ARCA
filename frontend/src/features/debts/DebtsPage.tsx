@@ -11,9 +11,11 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table, Card } from '@/components/ui/Table'
+import { TaxSelect } from '@/components/ui/TaxSelect'
 import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
+import { useAuthStore } from '@/stores/authStore'
 import type { Debt, Page } from '@/types/api'
 
 interface Config {
@@ -104,6 +106,7 @@ function DebtStatusBadge({ debt }: { debt: Debt }) {
 
 export function DebtsPage({ config }: { config: Config }) {
   const queryClient = useQueryClient()
+  const defaultTaxRate = useAuthStore((state) => state.organization?.default_tax_rate ?? '0.16')
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
   const [payTarget, setPayTarget] = useState<Debt | null>(null)
@@ -117,6 +120,7 @@ export function DebtsPage({ config }: { config: Config }) {
     amount: '',
     due_date: '',
     category_id: '',
+    tax_rate: defaultTaxRate,
     notes: '',
   })
   const [payForm, setPayForm] = useState({ amount: '', financial_account_id: '', date: today() })
@@ -152,6 +156,7 @@ export function DebtsPage({ config }: { config: Config }) {
         [config.contactField]: form.contact_id,
         description: form.description,
         amount: form.amount,
+        tax_rate: form.tax_rate,
         due_date: form.due_date,
         category_id: form.category_id,
       }
@@ -188,7 +193,15 @@ export function DebtsPage({ config }: { config: Config }) {
   function closeModal() {
     setModalOpen(false)
     setError(null)
-    setForm({ contact_id: '', description: '', amount: '', due_date: '', category_id: '', notes: '' })
+    setForm({
+      contact_id: '',
+      description: '',
+      amount: '',
+      due_date: '',
+      category_id: '',
+      tax_rate: defaultTaxRate,
+      notes: '',
+    })
     if (searchParams.has('nueva')) {
       searchParams.delete('nueva')
       setSearchParams(searchParams, { replace: true })
@@ -369,6 +382,11 @@ export function DebtsPage({ config }: { config: Config }) {
               onChange={(event) => setForm({ ...form, due_date: event.target.value })}
             />
           </div>
+          <TaxSelect
+            total={form.amount}
+            rate={form.tax_rate}
+            onRateChange={(rate) => setForm({ ...form, tax_rate: rate })}
+          />
           <SelectInput
             label={config.categoryLabel}
             required

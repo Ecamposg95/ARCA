@@ -17,6 +17,10 @@ from app.services.accounting.coa import (
     CODE_ACCOUNTS_RECEIVABLE,
     CODE_CAPITAL,
     CODE_CASH_BANK,
+    CODE_VAT_CHARGED_COLLECTED,
+    CODE_VAT_CHARGED_PENDING,
+    CODE_VAT_CREDITABLE_PAID,
+    CODE_VAT_CREDITABLE_PENDING,
 )
 from app.services.accounting.engine import LineSpec, post_journal_entry
 
@@ -56,17 +60,22 @@ def income_paid_entry(
     revenue_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """Ingreso pagado: Cargo Caja y Bancos / Abono Ingresos."""
+    """Ingreso cobrado: Cargo Caja y Bancos (total) / Abono Ingresos (base) + IVA trasladado."""
+    tax_amount = Decimal(tax_amount)
+    lines = [
+        LineSpec(CODE_CASH_BANK, debit=amount),
+        LineSpec(revenue_account_code, credit=amount - tax_amount),
+    ]
+    if tax_amount > 0:
+        lines.append(LineSpec(CODE_VAT_CHARGED_COLLECTED, credit=tax_amount, description="IVA trasladado"))
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(CODE_CASH_BANK, debit=amount),
-            LineSpec(revenue_account_code, credit=amount),
-        ],
+        lines=lines,
         source_type="income",
         source_id=source_id,
         created_by=created_by,
@@ -83,17 +92,20 @@ def expense_paid_entry(
     expense_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """Gasto pagado: Cargo Gastos / Abono Caja y Bancos."""
+    """Gasto pagado: Cargo Gastos (base) + IVA acreditable / Abono Caja y Bancos (total)."""
+    tax_amount = Decimal(tax_amount)
+    lines = [LineSpec(expense_account_code, debit=amount - tax_amount)]
+    if tax_amount > 0:
+        lines.append(LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable"))
+    lines.append(LineSpec(CODE_CASH_BANK, credit=amount))
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(expense_account_code, debit=amount),
-            LineSpec(CODE_CASH_BANK, credit=amount),
-        ],
+        lines=lines,
         source_type="expense",
         source_id=source_id,
         created_by=created_by,
@@ -110,17 +122,24 @@ def receivable_created_entry(
     revenue_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """CxC emitida (devengo): Cargo Cuentas por Cobrar / Abono Ingresos."""
+    """CxC emitida (devengo): Cargo CxC (total) / Abono Ingresos (base) + IVA pendiente de cobro."""
+    tax_amount = Decimal(tax_amount)
+    lines = [
+        LineSpec(CODE_ACCOUNTS_RECEIVABLE, debit=amount),
+        LineSpec(revenue_account_code, credit=amount - tax_amount),
+    ]
+    if tax_amount > 0:
+        lines.append(
+            LineSpec(CODE_VAT_CHARGED_PENDING, credit=tax_amount, description="IVA pendiente de cobro")
+        )
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(CODE_ACCOUNTS_RECEIVABLE, debit=amount),
-            LineSpec(revenue_account_code, credit=amount),
-        ],
+        lines=lines,
         source_type="receivable",
         source_id=source_id,
         created_by=created_by,
@@ -136,17 +155,27 @@ def receivable_collected_entry(
     date: date_type,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """Cobro de CxC: Cargo Caja y Bancos / Abono Cuentas por Cobrar."""
+    """Cobro de CxC: Cargo Caja y Bancos / Abono CxC.
+
+    El IVA proporcional pasa de "pendiente de cobro" a "cobrado": es hasta
+    ahora cuando se declara ante el SAT.
+    """
+    tax_amount = Decimal(tax_amount)
+    lines = [
+        LineSpec(CODE_CASH_BANK, debit=amount),
+        LineSpec(CODE_ACCOUNTS_RECEIVABLE, credit=amount),
+    ]
+    if tax_amount > 0:
+        lines.append(LineSpec(CODE_VAT_CHARGED_PENDING, debit=tax_amount, description="IVA ahora cobrado"))
+        lines.append(LineSpec(CODE_VAT_CHARGED_COLLECTED, credit=tax_amount, description="IVA trasladado"))
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(CODE_CASH_BANK, debit=amount),
-            LineSpec(CODE_ACCOUNTS_RECEIVABLE, credit=amount),
-        ],
+        lines=lines,
         source_type="receivable",
         source_id=source_id,
         created_by=created_by,
@@ -163,17 +192,22 @@ def payable_created_entry(
     expense_account_code: str,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """CxP registrada (devengo): Cargo Gastos / Abono Cuentas por Pagar."""
+    """CxP registrada (devengo): Cargo Gastos (base) + IVA pendiente / Abono CxP (total)."""
+    tax_amount = Decimal(tax_amount)
+    lines = [LineSpec(expense_account_code, debit=amount - tax_amount)]
+    if tax_amount > 0:
+        lines.append(
+            LineSpec(CODE_VAT_CREDITABLE_PENDING, debit=tax_amount, description="IVA pendiente de pago")
+        )
+    lines.append(LineSpec(CODE_ACCOUNTS_PAYABLE, credit=amount))
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(expense_account_code, debit=amount),
-            LineSpec(CODE_ACCOUNTS_PAYABLE, credit=amount),
-        ],
+        lines=lines,
         source_type="payable",
         source_id=source_id,
         created_by=created_by,
@@ -189,17 +223,29 @@ def payable_payment_entry(
     date: date_type,
     source_id: str,
     created_by: str | None = None,
+    tax_amount: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """Pago de CxP: Cargo Cuentas por Pagar / Abono Caja y Bancos."""
+    """Pago de CxP: Cargo CxP / Abono Caja y Bancos.
+
+    El IVA proporcional pasa de "pendiente de pago" a acreditable: es hasta
+    ahora cuando puede acreditarse.
+    """
+    tax_amount = Decimal(tax_amount)
+    lines = [
+        LineSpec(CODE_ACCOUNTS_PAYABLE, debit=amount),
+        LineSpec(CODE_CASH_BANK, credit=amount),
+    ]
+    if tax_amount > 0:
+        lines.append(LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable"))
+        lines.append(
+            LineSpec(CODE_VAT_CREDITABLE_PENDING, credit=tax_amount, description="IVA ya pagado")
+        )
     return post_journal_entry(
         db,
         organization_id,
         date=date,
         description=description,
-        lines=[
-            LineSpec(CODE_ACCOUNTS_PAYABLE, debit=amount),
-            LineSpec(CODE_CASH_BANK, credit=amount),
-        ],
+        lines=lines,
         source_type="payable",
         source_id=source_id,
         created_by=created_by,
