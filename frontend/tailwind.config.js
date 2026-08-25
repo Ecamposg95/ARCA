@@ -12,6 +12,7 @@ export default {
         muted: 'hsl(var(--muted) / <alpha-value>)',
         border: 'hsl(var(--border) / <alpha-value>)',
         accent: 'hsl(var(--accent) / <alpha-value>)',
+        'on-accent': 'hsl(var(--on-accent) / <alpha-value>)',
         'accent-soft': 'hsl(var(--accent-soft) / <alpha-value>)',
         rail: 'hsl(var(--rail) / <alpha-value>)',
         'rail-ink': 'hsl(var(--rail-ink) / <alpha-value>)',

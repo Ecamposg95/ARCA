@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from tests.helpers import auth_headers, register
 
 
@@ -99,4 +101,27 @@ def test_paid_income_cannot_be_cancelled_yet(client):
 def test_income_list_pagination_envelope(client):
     headers, _account, _ventas = _setup(client)
     body = client.get("/api/income", headers=headers).json()
-    assert set(body.keys()) == {"items", "total", "limit", "offset"}
+    # Las cuatro llaves canónicas Atlas siempre están; las listas de dinero
+    # añaden total_amount (suma de TODO el filtro, no sólo de la página).
+    assert {"items", "total", "limit", "offset"} <= set(body.keys())
+    assert set(body.keys()) - {"items", "total", "limit", "offset"} == {"total_amount"}
+
+
+def test_income_total_amount_covers_whole_filter(client):
+    headers, account, ventas = _setup(client)
+    for amount in ("1000", "2500"):
+        client.post(
+            "/api/income",
+            headers=headers,
+            json={
+                "date": "2026-08-10",
+                "description": "Venta",
+                "amount": amount,
+                "category_id": ventas["id"],
+                "financial_account_id": account["id"],
+                "status": "PAID",
+            },
+        )
+    body = client.get("/api/income?limit=1", headers=headers).json()
+    assert len(body["items"]) == 1  # una sola fila en la página…
+    assert Decimal(str(body["total_amount"])) == Decimal("3500")  # …pero el total es del filtro

@@ -5,6 +5,7 @@ import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
 import { ArcaMark } from '@/components/ui/ArcaMark'
 import { Button } from '@/components/ui/Button'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 
 const NAV_SECTIONS: { label: string | null; items: { to: string; label: string; roles?: string[] }[] }[] = [
   { label: null, items: [{ to: '/', label: 'Inicio' }] },
@@ -194,8 +195,11 @@ export function AppLayout() {
         </nav>
 
         <div className="border-t border-white/10 px-5 py-4">
-          <div className="truncate text-sm">{user?.name}</div>
-          <div className="mt-1 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-sm">{user?.name}</span>
+            <ThemeToggle />
+          </div>
+          <div className="flex items-center justify-between">
             <NavLink
               to="/configuracion"
               onClick={() => setNavOpen(false)}
