@@ -8,6 +8,7 @@ import { TextInput } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table } from '@/components/ui/Table'
+import { TableFooter } from '@/components/ui/Pagination'
 import type { Contact, Page } from '@/types/api'
 
 interface Config {
@@ -44,13 +45,18 @@ export function ContactsPage({ config }: { config: Config }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nuevo'))
   const [search, setSearch] = useState('')
+  const [offset, setOffset] = useState(0)
   const [form, setForm] = useState(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.resource, search],
+    queryKey: [config.resource, search, offset],
     queryFn: async () =>
-      (await api.get<Page<Contact>>(`/${config.resource}`, { params: search ? { q: search } : {} })).data,
+      (
+        await api.get<Page<Contact>>(`/${config.resource}`, {
+          params: { ...(search ? { q: search } : {}), offset },
+        })
+      ).data,
   })
 
   const createMutation = useMutation({
@@ -88,7 +94,10 @@ export function ContactsPage({ config }: { config: Config }) {
           type="search"
           placeholder={`Buscar ${config.title.toLowerCase()}…`}
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setOffset(0)
+          }}
           className="w-full max-w-xs rounded border border-border bg-surface px-3 py-2 text-sm"
         />
       </PageHeader>
@@ -102,7 +111,10 @@ export function ContactsPage({ config }: { config: Config }) {
           action={<Button onClick={() => setModalOpen(true)}>Agregar {config.singular.toLowerCase()}</Button>}
         />
       ) : (
-        <Table headers={['Nombre', 'RFC', 'Correo', 'Teléfono']}>
+        <Table
+          headers={['Nombre', 'RFC', 'Correo', 'Teléfono']}
+          footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.title.toLowerCase()} />}
+        >
           {items.map((contact) => (
             <tr key={contact.id} className="hover:bg-surface-2/50">
               <td className="px-4 py-2.5">

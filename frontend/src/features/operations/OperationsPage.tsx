@@ -12,6 +12,7 @@ import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table } from '@/components/ui/Table'
+import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
 import type { Expense, Income, Page } from '@/types/api'
@@ -33,7 +34,8 @@ interface Config {
   payAction: string
   emptyTitle: string
   emptyMessage: string
-  amountTone: 'pos' | 'neg'
+  /** Plural para el pie de tabla: "ingresos" | "gastos" */
+  noun: string
 }
 
 export const INCOME_CONFIG: Config = {
@@ -52,7 +54,7 @@ export const INCOME_CONFIG: Config = {
   emptyTitle: 'Aún no tienes ingresos',
   emptyMessage:
     'Registra tu primera venta o ingreso para comenzar a entender cómo se mueve tu negocio.',
-  amountTone: 'pos',
+  noun: 'ingresos',
 }
 
 export const EXPENSE_CONFIG: Config = {
@@ -70,7 +72,7 @@ export const EXPENSE_CONFIG: Config = {
   payAction: 'Registrar pago',
   emptyTitle: 'Aún no tienes gastos',
   emptyMessage: 'Registra tu primer gasto para saber a dónde se va el dinero.',
-  amountTone: 'neg',
+  noun: 'gastos',
 }
 
 export function OperationsPage({ config }: { config: Config }) {
@@ -78,6 +80,7 @@ export function OperationsPage({ config }: { config: Config }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nuevo'))
   const [statusFilter, setStatusFilter] = useState('')
+  const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     date: today(),
@@ -94,13 +97,12 @@ export function OperationsPage({ config }: { config: Config }) {
   const { data: categories } = useCategories(config.categoryKind)
   const { data: contacts } = useContacts(config.contactResource)
 
-  const listKey = [config.kind, statusFilter]
   const { data, isLoading } = useQuery({
-    queryKey: listKey,
+    queryKey: [config.kind, statusFilter, offset],
     queryFn: async () =>
       (
         await api.get<Page<Operation>>(config.endpoint, {
-          params: statusFilter ? { status: statusFilter } : {},
+          params: { ...(statusFilter ? { status: statusFilter } : {}), offset },
         })
       ).data,
   })
@@ -191,7 +193,10 @@ export function OperationsPage({ config }: { config: Config }) {
             <button
               key={status}
               type="button"
-              onClick={() => setStatusFilter(status)}
+              onClick={() => {
+                setStatusFilter(status)
+                setOffset(0)
+              }}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 statusFilter === status
                   ? 'bg-accent text-white'
@@ -219,7 +224,20 @@ export function OperationsPage({ config }: { config: Config }) {
           action={<Button onClick={() => setModalOpen(true)}>{config.newLabel}</Button>}
         />
       ) : (
-        <Table headers={['Fecha', 'Concepto', config.contactResource === 'customers' ? 'Cliente' : 'Proveedor', 'Categoría', 'Estado', <span key="m" className="block text-right">Monto</span>, '']}>
+        <Table
+          headers={[
+            'Fecha',
+            'Concepto',
+            config.contactResource === 'customers' ? 'Cliente' : 'Proveedor',
+            'Categoría',
+            'Estado',
+            <span key="m" className="block text-right">
+              Monto
+            </span>,
+            '',
+          ]}
+          footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.noun} />}
+        >
           {items.map((item) => (
             <tr key={item.id} className="hover:bg-surface-2/50">
               <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(item.date)}</td>
@@ -232,7 +250,9 @@ export function OperationsPage({ config }: { config: Config }) {
                 <StatusBadge status={item.status} paidLabel={config.paidLabel} />
               </td>
               <td className="px-4 py-2.5 text-right">
-                <Money value={item.amount} tone={item.status === 'CANCELLED' ? 'muted' : config.amountTone} />
+                {/* Sin color: en una lista donde todo es ingreso (o todo gasto), pintar
+                    cada cifra no informa. El estado ya lo dice la insignia. */}
+                <Money value={item.amount} tone={item.status === 'CANCELLED' ? 'muted' : 'ink'} />
               </td>
               <td className="px-4 py-2.5 text-right">
                 {item.status === 'PENDING' ? (

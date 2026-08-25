@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table } from '@/components/ui/Table'
+import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, today } from '@/lib/format'
 import { useAccounts } from '@/lib/hooks'
 import type { Page, Transaction } from '@/types/api'
@@ -28,16 +29,17 @@ export function TransactionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [transferOpen, setTransferOpen] = useState(searchParams.has('transferir'))
   const [accountFilter, setAccountFilter] = useState('')
+  const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ from_account_id: '', to_account_id: '', amount: '', date: today() })
 
   const { data: accounts } = useAccounts()
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', accountFilter],
+    queryKey: ['transactions', accountFilter, offset],
     queryFn: async () =>
       (
         await api.get<Page<Transaction>>('/transactions', {
-          params: accountFilter ? { account_id: accountFilter } : {},
+          params: { ...(accountFilter ? { account_id: accountFilter } : {}), offset },
         })
       ).data,
   })
@@ -92,7 +94,10 @@ export function TransactionsPage() {
             placeholder="Todas las cuentas"
             options={accountOptions}
             value={accountFilter}
-            onChange={(event) => setAccountFilter(event.target.value)}
+            onChange={(event) => {
+              setAccountFilter(event.target.value)
+              setOffset(0)
+            }}
           />
         </div>
       </PageHeader>
@@ -105,7 +110,18 @@ export function TransactionsPage() {
           message="Cuando registres ingresos, gastos o traspasos, aquí verás cada peso entrar y salir."
         />
       ) : (
-        <Table headers={['Fecha', 'Concepto', 'Cuenta', 'Tipo', <span key="m" className="block text-right">Monto</span>]}>
+        <Table
+          headers={[
+            'Fecha',
+            'Concepto',
+            'Cuenta',
+            'Tipo',
+            <span key="m" className="block text-right">
+              Monto
+            </span>,
+          ]}
+          footer={<TableFooter page={data!} onOffsetChange={setOffset} noun="movimientos" />}
+        >
           {items.map((transaction) => {
             const type = TYPE_LABELS[transaction.transaction_type] ?? {
               label: transaction.transaction_type,
@@ -119,10 +135,8 @@ export function TransactionsPage() {
                 <td className="px-4 py-2.5 text-muted">{type.label}</td>
                 <td className="px-4 py-2.5 text-right">
                   <span className="figures font-medium">
-                    <Money
-                      value={type.inflow ? transaction.amount : `-${transaction.amount}`}
-                      tone={type.inflow ? 'pos' : 'ink'}
-                    />
+                    {/* El signo ya dice la dirección; el color sería redundante. */}
+                    <Money value={type.inflow ? transaction.amount : `-${transaction.amount}`} />
                   </span>
                 </td>
               </tr>

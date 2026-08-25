@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table, Card } from '@/components/ui/Table'
+import { TableFooter } from '@/components/ui/Pagination'
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
 import type { Debt, Page } from '@/types/api'
@@ -107,6 +108,7 @@ export function DebtsPage({ config }: { config: Config }) {
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
   const [payTarget, setPayTarget] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
+  const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -124,11 +126,11 @@ export function DebtsPage({ config }: { config: Config }) {
   const { data: contacts } = useContacts(config.contactResource)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter],
+    queryKey: [config.kind, statusFilter, offset],
     queryFn: async () =>
       (
         await api.get<Page<Debt>>(config.endpoint, {
-          params: statusFilter ? { status: statusFilter } : {},
+          params: { ...(statusFilter ? { status: statusFilter } : {}), offset },
         })
       ).data,
   })
@@ -227,7 +229,10 @@ export function DebtsPage({ config }: { config: Config }) {
               <button
                 key={filter.value}
                 type="button"
-                onClick={() => setStatusFilter(filter.value)}
+                onClick={() => {
+                  setStatusFilter(filter.value)
+                  setOffset(0)
+                }}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   statusFilter === filter.value
                     ? 'bg-accent text-white'
@@ -277,6 +282,7 @@ export function DebtsPage({ config }: { config: Config }) {
             <span key="s" className="block text-right">Saldo</span>,
             '',
           ]}
+          footer={<TableFooter page={data!} onOffsetChange={setOffset} noun="cuentas" />}
         >
           {items.map((debt) => (
             <tr key={debt.id} className="hover:bg-surface-2/50">
