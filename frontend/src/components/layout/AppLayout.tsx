@@ -167,9 +167,10 @@ export function AppLayout() {
 
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      {/* Encabezado y pie fijos; sólo el contenido central se desplaza. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader quickActions={QUICK_ACTIONS} onOpenNav={() => setNavOpen(true)} />
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
             <Outlet />
           </div>

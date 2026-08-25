@@ -19,7 +19,7 @@ export function AppFooter() {
   })
 
   return (
-    <footer className="mt-10 border-t border-border px-6 py-4 lg:px-10">
+    <footer className="shrink-0 border-t border-border bg-surface px-6 py-3 lg:px-10">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted">
         <span>
           <span className="font-semibold text-ink">ARCA</span> · Financial Operating System by Atlas
