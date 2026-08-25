@@ -56,6 +56,7 @@ export function AppLayout() {
   const { user, organization, logout } = useAuthStore()
   const navigate = useNavigate()
   const [quickOpen, setQuickOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
 
   const { data: pendingProposals } = useQuery({
     queryKey: ['proposals-count'],
@@ -67,18 +68,72 @@ export function AppLayout() {
   // vendrá de /api/me; la autoridad siempre es el backend.
   const role = 'OWNER'
 
+  function go(to: string) {
+    setQuickOpen(false)
+    setNavOpen(false)
+    navigate(to)
+  }
+
   return (
     <div className="flex h-full">
-      <aside className="flex w-60 shrink-0 flex-col bg-rail text-rail-ink">
+      {/* Barra superior sólo en móvil: abre el cajón de navegación. */}
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-rail px-4 text-rail-ink lg:hidden">
+        <button
+          type="button"
+          onClick={() => setNavOpen(true)}
+          aria-label="Abrir navegación"
+          className="rounded-lg p-2 hover:bg-white/10"
+        >
+          <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M3 5.5h14M3 10h14M3 14.5h14" strokeLinecap="round" />
+          </svg>
+        </button>
+        {/* min-w-0: sin esto el truncate no encoge y el botón se sale de la pantalla. */}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{organization?.name}</span>
+        <Button
+          className="shrink-0 !px-3 !py-1.5 text-xs"
+          onClick={() => setQuickOpen((value) => !value)}
+        >
+          + Nuevo
+        </Button>
+        {quickOpen ? (
+          <div className="absolute right-4 top-12 z-40 w-56 overflow-hidden rounded-xl bg-surface py-1 shadow-float">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action.to}
+                type="button"
+                className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-surface-2"
+                onClick={() => go(action.to)}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </header>
+
+      {navOpen ? (
+        <div
+          className="fixed inset-0 z-30 bg-ink/50 lg:hidden"
+          onClick={() => setNavOpen(false)}
+          aria-hidden
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col bg-rail text-rail-ink transition-transform lg:static lg:translate-x-0 ${
+          navOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="flex items-center gap-2.5 px-5 pb-6 pt-6">
           <ArcaMark />
-          <div>
+          <div className="min-w-0">
             <div className="font-display text-lg font-bold leading-none tracking-tight">ARCA</div>
             <div className="mt-0.5 truncate text-xs text-rail-muted">{organization?.name}</div>
           </div>
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="hidden px-4 pb-4 lg:block">
           <div className="relative">
             <Button className="w-full" onClick={() => setQuickOpen((value) => !value)}>
               + Nuevo
@@ -90,10 +145,7 @@ export function AppLayout() {
                     key={action.to}
                     type="button"
                     className="block w-full px-4 py-2 text-left text-sm text-ink hover:bg-surface-2"
-                    onClick={() => {
-                      setQuickOpen(false)
-                      navigate(action.to)
-                    }}
+                    onClick={() => go(action.to)}
                   >
                     {action.label}
                   </button>
@@ -118,6 +170,7 @@ export function AppLayout() {
                     key={item.to}
                     to={item.to}
                     end={item.to === '/'}
+                    onClick={() => setNavOpen(false)}
                     className={({ isActive }) =>
                       `block rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
                         isActive
@@ -143,7 +196,11 @@ export function AppLayout() {
         <div className="border-t border-white/10 px-5 py-4">
           <div className="truncate text-sm">{user?.name}</div>
           <div className="mt-1 flex items-center justify-between">
-            <NavLink to="/configuracion" className="text-xs text-rail-muted hover:text-white">
+            <NavLink
+              to="/configuracion"
+              onClick={() => setNavOpen(false)}
+              className="text-xs text-rail-muted hover:text-white"
+            >
               Configuración
             </NavLink>
             <button
@@ -160,8 +217,11 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto" onClick={() => quickOpen && setQuickOpen(false)}>
-        <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10">
+      <main
+        className="min-w-0 flex-1 overflow-y-auto pt-14 lg:pt-0"
+        onClick={() => quickOpen && setQuickOpen(false)}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
           <Outlet />
         </div>
       </main>

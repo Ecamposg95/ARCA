@@ -17,6 +17,20 @@ export function splitMoney(value: string | number | null | undefined): { main: s
   return { main: formatted.slice(0, dot), cents: formatted.slice(dot) }
 }
 
+/** Cifra compacta para ejes de gráficas: $180k, $1.2M. */
+export function formatCompact(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`
+  if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`
+  return `$${value}`
+}
+
+/** "agosto de 2026" → "Agosto de 2026" (sólo la inicial; `capitalize` de CSS rompe el "de"). */
+export function formatMonthYear(date: Date): string {
+  const label = date.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 export function formatDate(iso: string): string {
   const [year, month, day] = iso.split('T')[0].split('-').map(Number)
   return new Date(year, month - 1, day).toLocaleDateString('es-MX', {

@@ -75,7 +75,7 @@ Convención de nombres: `AAAAMMDD_NN_descripcion.py` con `revision = "AAAAMMDD_N
 python scripts/seed_demo.py
 ```
 
-Crea "ARCA Demo Company" (demo@arca.test / demodemo123) con clientes, proveedores, cuentas y 4 meses de operaciones.
+Crea "Atlas Software Consulting" (demo@arca.mx / demodemo123) con clientes, proveedores, cuentas y 4 meses de operaciones.
 
 ## Tests
 

@@ -3,7 +3,7 @@
 Uso:
     python scripts/seed_demo.py
 
-Crea "Atlas Software Consulting" (demo@arca.test / demodemo123) — una
+Crea "Atlas Software Consulting" (demo@arca.mx / demodemo123) — una
 consultora de software con 5 clientes, 5 proveedores, 2 cuentas de banco
 y ~4 meses de ingresos y gastos.
 """
@@ -42,13 +42,13 @@ def main() -> None:
     db = SessionLocal()
     random.seed(42)
 
-    if db.query(User).filter(User.email == "demo@arca.test").first():
-        print("La empresa demo ya existe (demo@arca.test).")
+    if db.query(User).filter(User.email == "demo@arca.mx").first():
+        print("La empresa demo ya existe (demo@arca.mx).")
         return
 
     user, organization = register_user(
         db,
-        email="demo@arca.test",
+        email="demo@arca.mx",
         password="demodemo123",
         name="Demo Atlas",
         business_name="Atlas Software Consulting",
@@ -96,45 +96,70 @@ def main() -> None:
     )
     accounts = [bank_1, bank_2]
 
+    def category(kind_categories, name: str):
+        return next(c for c in kind_categories if c.name == name)
+
+    # Concepto y categoría van emparejados: un despacho de software no gasta en inventario.
+    INCOME_MIX = (
+        ("Desarrollo de software", "Servicios"),
+        ("Proyecto web", "Servicios"),
+        ("Iguala mensual de soporte", "Servicios"),
+        ("Consultoría técnica", "Servicios"),
+        ("Implementación ERP", "Ventas"),
+    )
+    EXPENSE_MIX = (
+        ("Nómina quincenal", "Nómina", 38000, 52000),
+        ("Renta coworking", "Renta", 15000, 21000),
+        ("Factura AWS", "Software", 4000, 12000),
+        ("Licencias de software", "Software", 1200, 4000),
+        ("Publicidad LinkedIn", "Marketing", 2000, 8000),
+        ("Internet y telefonía", "Servicios", 800, 1800),
+        ("Honorarios contables", "Honorarios", 3500, 6000),
+    )
+
     today = date.today()
-    start = today - timedelta(days=120)
-    cursor = start
-    while cursor <= today:
-        for _ in range(random.randint(1, 3)):
+
+    def day_of(months_ago: int, day: int) -> date:
+        """Día `day` del mes `months_ago` meses atrás, sin pasarse de hoy."""
+        index = today.year * 12 + (today.month - 1) - months_ago
+        year, month = divmod(index, 12)
+        return min(date(year, month + 1, min(day, 28)), today)
+
+    # Cadencia mensual real de un despacho: proyectos e igualas contra costos fijos.
+    for months_ago in range(3, -1, -1):
+        for _ in range(random.randint(2, 3)):
+            description, category_name = random.choice(INCOME_MIX)
             create_income(
                 db,
                 organization.id,
                 IncomeCreate(
-                    date=cursor,
-                    description=random.choice(
-                        ("Desarrollo de software", "Proyecto web", "Iguala mensual de soporte", "Consultoría técnica", "Implementación ERP")
-                    ),
-                    amount=Decimal(random.randint(1500, 18000)),
-                    category_id=random.choice(income_categories).id,
+                    date=day_of(months_ago, random.randint(3, 26)),
+                    description=description,
+                    amount=Decimal(random.randrange(45000, 180000, 5000)),
+                    category_id=category(income_categories, category_name).id,
                     customer_id=random.choice(customers).id,
                     financial_account_id=random.choice(accounts).id,
                     status="PAID",
                 ),
                 created_by=user.id,
             )
-        for _ in range(random.randint(1, 2)):
-            create_expense(
-                db,
-                organization.id,
-                ExpenseCreate(
-                    date=cursor,
-                    description=random.choice(
-                        ("Renta coworking", "Factura AWS", "Licencias de software", "Publicidad LinkedIn", "Internet y telefonía", "Nómina quincenal")
+        # Nómina dos veces al mes; el resto de los costos fijos, una.
+        for description, category_name, low, high in EXPENSE_MIX:
+            for day in (14, 28) if category_name == "Nómina" else (random.randint(2, 12),):
+                create_expense(
+                    db,
+                    organization.id,
+                    ExpenseCreate(
+                        date=day_of(months_ago, day),
+                        description=description,
+                        amount=Decimal(random.randint(low, high)),
+                        category_id=category(expense_categories, category_name).id,
+                        vendor_id=random.choice(vendors).id,
+                        financial_account_id=random.choice(accounts).id,
+                        status="PAID",
                     ),
-                    amount=Decimal(random.randint(300, 9000)),
-                    category_id=random.choice(expense_categories).id,
-                    vendor_id=random.choice(vendors).id,
-                    financial_account_id=random.choice(accounts).id,
-                    status="PAID",
-                ),
-                created_by=user.id,
-            )
-        cursor += timedelta(days=random.randint(2, 5))
+                    created_by=user.id,
+                )
 
     # CxC y CxP: una vencida, una con cobro parcial, compromisos abiertos
     from app.domains.payables.schemas import PayableCreate
@@ -186,7 +211,7 @@ def main() -> None:
     )
 
     db.commit()
-    print("Empresa demo lista: demo@arca.test / demodemo123")
+    print("Empresa demo lista: demo@arca.mx / demodemo123")
 
 
 if __name__ == "__main__":
