@@ -37,8 +37,34 @@ export function Table({
   )
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = '',
+  onClick,
+}: {
+  children: ReactNode
+  className?: string
+  onClick?: () => void
+}) {
   return (
-    <div className={`rounded-xl border border-border bg-surface p-5 shadow-card ${className}`}>{children}</div>
+    <div
+      className={`rounded-xl border border-border bg-surface p-5 shadow-card ${className}`}
+      onClick={onClick}
+      // Una tarjeta clicable también se abre con teclado; una estática no roba el tab.
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+    >
+      {children}
+    </div>
   )
 }

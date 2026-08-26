@@ -7,6 +7,7 @@ import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
+import { DebtDetailPanel } from '@/features/debts/DebtDetailPanel'
 import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
 import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
@@ -122,6 +123,8 @@ export function DebtsPage({ config }: { config: Config }) {
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
   const [payTarget, setPayTarget] = useState<Debt | null>(null)
   const [entryFor, setEntryFor] = useState<Debt | null>(null)
+  // El panel FINNOVA: la fila seleccionada abre su detalle sin perder la lista.
+  const [detailFor, setDetailFor] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [search, setSearch] = useState('')
@@ -423,8 +426,15 @@ export function DebtsPage({ config }: { config: Config }) {
                   label={`Seleccionar ${debt.description}`}
                 />
               </td>
-              <td className="px-4 py-2.5 font-medium">{contactName(debt)}</td>
-              <td className="px-4 py-2.5">{debt.description}</td>
+              <td
+                className="cursor-pointer px-4 py-2.5 font-medium"
+                onClick={() => setDetailFor(debt)}
+              >
+                {contactName(debt)}
+              </td>
+              <td className="cursor-pointer px-4 py-2.5" onClick={() => setDetailFor(debt)}>
+                <span className="underline-offset-2 hover:underline">{debt.description}</span>
+              </td>
               <td className={`whitespace-nowrap px-4 py-2.5 ${debt.is_overdue ? 'font-medium text-neg' : 'text-muted'}`}>
                 {formatDate(debt.due_date)}
               </td>
@@ -508,6 +518,19 @@ export function DebtsPage({ config }: { config: Config }) {
           </div>
         </form>
       </Modal>
+
+      {detailFor ? (
+        <DebtDetailPanel
+          debt={items.find((item) => item.id === detailFor.id) ?? detailFor}
+          kind={config.kind}
+          contactName={contactName(detailFor)}
+          payLabel={config.payAction}
+          onClose={() => setDetailFor(null)}
+          onPay={() => {
+            openPayModal(detailFor)
+          }}
+        />
+      ) : null}
 
       <JournalEntryModal
         sourceType={config.kind === 'receivables' ? 'receivable' : 'payable'}
