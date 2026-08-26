@@ -215,6 +215,44 @@ export interface CashFlow {
   closing_cash: number
 }
 
+export interface AgingContact {
+  contact_id: string
+  name: string
+  total: number
+  oldest_days: number
+  /** Un campo por tramo ("0-30", "31-60", "61-90", "+90"). */
+  [bucket: string]: number | string
+}
+
+export interface AgingReport {
+  as_of: string
+  kind: 'receivable' | 'payable'
+  buckets: string[]
+  contacts: AgingContact[]
+  totals: Record<string, number>
+  total: number
+  overdue: number
+  average_days: number
+}
+
+export interface NetWorthPoint {
+  month: string
+  assets: number
+  liabilities: number
+  net_worth: number
+}
+
+export interface NetWorth {
+  as_of: string
+  assets: ReportLine[]
+  liabilities: ReportLine[]
+  total_assets: number
+  total_liabilities: number
+  net_worth: number
+  change_vs_previous_month: number
+  series: NetWorthPoint[]
+}
+
 export interface JournalLine {
   id: string
   account_id: string

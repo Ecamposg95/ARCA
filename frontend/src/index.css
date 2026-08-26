@@ -101,3 +101,19 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Columnas secundarias: en pantallas chicas se esconden para que la tabla quepa
+   sin scroll lateral. El índice va en data-secondary, base 1. */
+@media (max-width: 640px) {
+  table[data-secondary~="1"] > * > tr > *:nth-child(1),
+  table[data-secondary~="2"] > * > tr > *:nth-child(2),
+  table[data-secondary~="3"] > * > tr > *:nth-child(3),
+  table[data-secondary~="4"] > * > tr > *:nth-child(4),
+  table[data-secondary~="5"] > * > tr > *:nth-child(5),
+  table[data-secondary~="6"] > * > tr > *:nth-child(6),
+  table[data-secondary~="7"] > * > tr > *:nth-child(7),
+  table[data-secondary~="8"] > * > tr > *:nth-child(8),
+  table[data-secondary~="9"] > * > tr > *:nth-child(9) {
+    display: none;
+  }
+}

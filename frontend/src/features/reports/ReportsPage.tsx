@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '@/api/client'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { Card } from '@/components/ui/Table'
-import { formatMoney, monthStart, today } from '@/lib/format'
-import type { BalanceSheet, CashFlow, ProfitLoss, ReportLine, VatReport } from '@/types/api'
+import { Card, Table } from '@/components/ui/Table'
+import { formatCompact, formatMonth, formatMoney, monthStart, today } from '@/lib/format'
+import type {
+  AgingReport,
+  BalanceSheet,
+  CashFlow,
+  NetWorth,
+  ProfitLoss,
+  ReportLine,
+  VatReport,
+} from '@/types/api'
 
-type Tab = 'pl' | 'balance' | 'flow' | 'iva'
+type Tab = 'pl' | 'balance' | 'flow' | 'iva' | 'cartera' | 'patrimonio'
 
 function rangeForPeriod(period: string): { start: string; end: string } {
   const now = new Date()
@@ -52,7 +61,19 @@ function ReportSection({ title, lines, total, totalLabel }: { title: string; lin
   )
 }
 
-const TAB_KEYS: Tab[] = ['pl', 'balance', 'flow', 'iva']
+/** El patrimonio sin comparación es un número suelto: importa hacia dónde va. */
+function DeltaSinceLastMonth({ value }: { value: number | string }) {
+  const amount = Number(value)
+  if (!amount) return <span className="text-sm text-muted">Sin cambio desde el mes pasado</span>
+  const up = amount > 0
+  return (
+    <span className={`figures text-sm font-medium ${up ? 'text-pos' : 'text-neg'}`}>
+      {up ? '▲' : '▼'} {formatMoney(Math.abs(amount))} desde el mes pasado
+    </span>
+  )
+}
+
+const TAB_KEYS: Tab[] = ['pl', 'balance', 'flow', 'iva', 'cartera', 'patrimonio']
 
 export function ReportsPage() {
   // La pestaña vive en la URL: compartible con el contador y sobrevive a recargar.
@@ -83,12 +104,25 @@ export function ReportsPage() {
     queryFn: async () => (await api.get<CashFlow>(`/reports/cash-flow?start=${start}&end=${end}`)).data,
     enabled: tab === 'flow',
   })
+  const [agingKind, setAgingKind] = useState<'receivable' | 'payable'>('receivable')
+  const agingQuery = useQuery({
+    queryKey: ['reports', 'aging', agingKind],
+    queryFn: async () => (await api.get<AgingReport>(`/reports/aging?kind=${agingKind}`)).data,
+    enabled: tab === 'cartera',
+  })
+  const netWorthQuery = useQuery({
+    queryKey: ['reports', 'net-worth'],
+    queryFn: async () => (await api.get<NetWorth>('/reports/net-worth?months=12')).data,
+    enabled: tab === 'patrimonio',
+  })
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'pl', label: 'Estado de resultados' },
     { key: 'balance', label: 'Balance general' },
     { key: 'flow', label: 'Flujo de efectivo' },
     { key: 'iva', label: 'IVA' },
+    { key: 'cartera', label: 'Cartera' },
+    { key: 'patrimonio', label: 'Patrimonio' },
   ]
 
   return (
@@ -246,6 +280,192 @@ export function ReportsPage() {
             </div>
           </div>
         </Card>
+      ) : null}
+
+      {tab === 'cartera' && agingQuery.data ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { key: 'receivable' as const, label: 'Quién me debe' },
+              { key: 'payable' as const, label: 'A quién le debo' },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setAgingKind(option.key)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  agingKind === option.key
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-border bg-surface text-muted hover:text-ink'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <p className="text-xs uppercase tracking-wider text-muted">Saldo total</p>
+              <Money value={agingQuery.data.total} size="lg" />
+            </Card>
+            <Card>
+              <p className="text-xs uppercase tracking-wider text-muted">Vencido</p>
+              <Money
+                value={agingQuery.data.overdue}
+                size="lg"
+                tone={Number(agingQuery.data.overdue) > 0 ? 'neg' : 'ink'}
+              />
+            </Card>
+            <Card>
+              <p className="text-xs uppercase tracking-wider text-muted">
+                Antigüedad promedio
+              </p>
+              <p className="figures text-2xl font-semibold">
+                {agingQuery.data.average_days}
+                <span className="ml-1 text-sm font-normal text-muted">días</span>
+              </p>
+            </Card>
+          </div>
+
+          {agingQuery.data.contacts.length === 0 ? (
+            <Card>
+              <p className="text-sm text-muted">
+                {agingKind === 'receivable'
+                  ? 'Nadie te debe nada por ahora.'
+                  : 'No tienes cuentas por pagar abiertas.'}
+              </p>
+            </Card>
+          ) : (
+            <Table
+              headers={[
+                agingKind === 'receivable' ? 'Cliente' : 'Proveedor',
+                ...agingQuery.data.buckets.map((bucket) => (
+                  <span key={bucket} className="block text-right">
+                    {bucket === 'Por vencer' ? bucket : `${bucket} días`}
+                  </span>
+                )),
+                <span key="t" className="block text-right">
+                  Total
+                </span>,
+              ]}
+              secondary={[2, 3, 4]}
+            >
+              {agingQuery.data.contacts.map((contact) => (
+                <tr key={contact.contact_id} className="hover:bg-surface-2/50">
+                  <td className="px-4 py-2.5 font-medium">{contact.name}</td>
+                  {agingQuery.data!.buckets.map((bucket) => {
+                    const amount = Number(contact[bucket] ?? 0)
+                    return (
+                      <td key={bucket} className="figures px-4 py-2.5 text-right">
+                        {amount > 0 ? (
+                          <span className={bucket === '+90' ? 'text-neg' : undefined}>
+                            {formatMoney(amount)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className="px-4 py-2.5 text-right">
+                    <Money value={contact.total} />
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-ink/70 font-semibold">
+                <td className="px-4 py-2.5">Total</td>
+                {agingQuery.data.buckets.map((bucket) => (
+                  <td key={bucket} className="figures px-4 py-2.5 text-right">
+                    {formatMoney(agingQuery.data!.totals[bucket] ?? 0)}
+                  </td>
+                ))}
+                <td className="px-4 py-2.5 text-right">
+                  <Money value={agingQuery.data.total} />
+                </td>
+              </tr>
+            </Table>
+          )}
+        </div>
+      ) : null}
+
+      {tab === 'patrimonio' && netWorthQuery.data ? (
+        <div className="space-y-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wider text-muted">Patrimonio neto</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-4">
+              <Money value={netWorthQuery.data.net_worth} size="xl" />
+              <DeltaSinceLastMonth value={netWorthQuery.data.change_vs_previous_month} />
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              Lo que tienes menos lo que debes. Sale del mismo libro que el Balance general.
+            </p>
+          </Card>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <ReportSection
+                title="Lo que tienes"
+                lines={netWorthQuery.data.assets}
+                total={netWorthQuery.data.total_assets}
+                totalLabel="Total de activos"
+              />
+            </Card>
+            <Card>
+              <ReportSection
+                title="Lo que debes"
+                lines={netWorthQuery.data.liabilities}
+                total={netWorthQuery.data.total_liabilities}
+                totalLabel="Total de deudas"
+              />
+            </Card>
+          </div>
+
+          <Card>
+            <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
+              Cómo ha evolucionado
+            </h3>
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={netWorthQuery.data.series}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={(value: string) => formatMonth(value)}
+                    tick={{ fontSize: 11 }}
+                    stroke="var(--color-muted)"
+                  />
+                  <YAxis
+                    tickFormatter={(value: number) => formatCompact(value)}
+                    tick={{ fontSize: 11 }}
+                    stroke="var(--color-muted)"
+                    width={64}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatMoney(value)}
+                    labelFormatter={(value: string) => formatMonth(value)}
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="net_worth"
+                    name="Patrimonio"
+                    stroke="#2c9aa6"
+                    fill="#2c9aa6"
+                    fillOpacity={0.14}
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
       ) : null}
     </div>
   )

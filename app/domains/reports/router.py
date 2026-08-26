@@ -65,3 +65,21 @@ def cash_projection(
     org_id: str = Depends(get_current_org_id),
 ):
     return service.cash_projection(db, org_id, days)
+
+
+@router.get("/aging")
+def aging(
+    kind: str = Query(default="receivable", pattern="^(receivable|payable)$"),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    return service.aging_report(db, org_id, kind)
+
+
+@router.get("/net-worth")
+def net_worth(
+    months: int = Query(default=12, ge=2, le=36),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    return service.net_worth(db, org_id, months)

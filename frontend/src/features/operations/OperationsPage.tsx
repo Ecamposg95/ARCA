@@ -123,6 +123,12 @@ export function OperationsPage({ config }: { config: Config }) {
     return (id: string | null) => (id ? (map.get(id) ?? '—') : '—')
   }, [contacts])
 
+  const accountLabel = useMemo(() => {
+    const map = new Map((accounts ?? []).map((account) => [account.id, account.name]))
+    // Sin cuenta significa que el dinero todavía no se mueve, no que falte un dato.
+    return (id: string | null) => (id ? (map.get(id) ?? '—') : 'Sin pagar')
+  }, [accounts])
+
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: [config.kind] })
     void queryClient.invalidateQueries({ queryKey: ['accounts'] })
@@ -238,12 +244,14 @@ export function OperationsPage({ config }: { config: Config }) {
             'Concepto',
             config.contactResource === 'customers' ? 'Cliente' : 'Proveedor',
             'Categoría',
+            config.kind === 'income' ? 'Entró a' : 'Se pagó con',
             'Estado',
             <span key="m" className="block text-right">
               Monto
             </span>,
             '',
           ]}
+          secondary={[3, 4, 5]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.noun} />}
         >
           {items.map((item) => (
@@ -254,6 +262,10 @@ export function OperationsPage({ config }: { config: Config }) {
                 {contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id)}
               </td>
               <td className="px-4 py-2.5 text-muted">{categoryName(item.category_id)}</td>
+              {/* Con qué se movió el dinero: es la pregunta que da origen a ARCA. */}
+              <td className="whitespace-nowrap px-4 py-2.5 text-muted">
+                {accountLabel(item.financial_account_id)}
+              </td>
               <td className="px-4 py-2.5">
                 <StatusBadge status={item.status} paidLabel={config.paidLabel} />
               </td>
