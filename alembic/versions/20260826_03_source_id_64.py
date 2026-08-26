@@ -21,23 +21,25 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # batch_alter_table: SQLite no sabe ALTER COLUMN y Alembic lo emula
+    # recreando la tabla. PostgreSQL hace el ALTER directo.
     for table in ("journal_entries", "financial_transactions"):
-        op.alter_column(
-            table,
-            "source_id",
-            existing_type=sa.String(36),
-            type_=sa.String(64),
-            existing_nullable=True,
-        )
+        with op.batch_alter_table(table) as batch:
+            batch.alter_column(
+                "source_id",
+                existing_type=sa.String(36),
+                type_=sa.String(64),
+                existing_nullable=True,
+            )
 
 
 def downgrade() -> None:
     # Sólo es seguro si nadie usó claves compuestas todavía.
     for table in ("journal_entries", "financial_transactions"):
-        op.alter_column(
-            table,
-            "source_id",
-            existing_type=sa.String(64),
-            type_=sa.String(36),
-            existing_nullable=True,
-        )
+        with op.batch_alter_table(table) as batch:
+            batch.alter_column(
+                "source_id",
+                existing_type=sa.String(64),
+                type_=sa.String(36),
+                existing_nullable=True,
+            )
