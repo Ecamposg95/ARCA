@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, today } from '@/lib/format'
 import { useAccounts } from '@/lib/hooks'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -21,6 +21,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function AccountsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(searchParams.has('nueva'))
   const [form, setForm] = useState({
@@ -31,7 +32,32 @@ export function AccountsPage() {
     credit_limit: '',
   })
   const [error, setError] = useState<string | null>(null)
+  const [payError, setPayError] = useState<string | null>(null)
+  // La tarjeta que se está pagando, con el formulario del traspaso.
+  const [payingCard, setPayingCard] = useState<{ id: string; name: string } | null>(null)
+  const [payForm, setPayForm] = useState({ from_account_id: '', amount: '', date: today() })
   const { data: accounts, isLoading } = useAccounts()
+
+  const payCardMutation = useMutation({
+    mutationFn: async () => {
+      // Pagar la tarjeta ES un traspaso banco→tarjeta: baja la deuda sin
+      // duplicar el gasto, que ya se reconoció al comprar.
+      await api.post('/transactions/transfer', {
+        from_account_id: payForm.from_account_id,
+        to_account_id: payingCard!.id,
+        amount: payForm.amount,
+        date: payForm.date,
+      })
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      setPayingCard(null)
+      setPayError(null)
+    },
+    onError: (err) => setPayError(errorMessage(err)),
+  })
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -113,7 +139,8 @@ export function AccountsPage() {
                     return (
                     <Card
                       key={account.id}
-                      className={overdrawn ? '!border-neg/50' : ''}
+                      className={`cursor-pointer transition-colors hover:border-border-strong ${overdrawn ? '!border-neg/50' : ''}`}
+                      onClick={() => navigate(`/movimientos?cuenta=${account.id}`)}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -154,6 +181,27 @@ export function AccountsPage() {
                           ) : null}
                         </div>
                       </div>
+                      <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
+                        <span className="text-xs text-muted">Ver movimientos →</span>
+                        {group.liability && Number(account.current_balance) > 0 ? (
+                          <Button
+                            variant="secondary"
+                            className="!px-2.5 !py-1 text-xs"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setPayingCard({ id: account.id, name: account.name })
+                              setPayForm({
+                                from_account_id: '',
+                                // Precargado con la deuda actual: liquidar es lo común.
+                                amount: String(account.current_balance),
+                                date: today(),
+                              })
+                            }}
+                          >
+                            Pagar la tarjeta
+                          </Button>
+                        ) : null}
+                      </div>
                     </Card>
                     )
                   })}
@@ -162,6 +210,60 @@ export function AccountsPage() {
             ))}
         </>
       )}
+
+      <Modal
+        title={`Pagar la tarjeta · ${payingCard?.name ?? ''}`}
+        open={payingCard !== null}
+        onClose={() => setPayingCard(null)}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            payCardMutation.mutate()
+          }}
+          className="space-y-4"
+        >
+          <p className="text-sm text-muted">
+            Es un traspaso: baja tu deuda y tu banco, sin registrar un gasto nuevo — el gasto ya
+            se reconoció cuando compraste.
+          </p>
+          <SelectInput
+            label="¿Desde qué cuenta pagas?"
+            required
+            placeholder="Elige la cuenta"
+            options={activos.map((account) => ({ value: account.id, label: account.name }))}
+            value={payForm.from_account_id}
+            onChange={(event) => setPayForm({ ...payForm, from_account_id: event.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <TextInput
+              label="¿Cuánto pagas?"
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              value={payForm.amount}
+              onChange={(event) => setPayForm({ ...payForm, amount: event.target.value })}
+            />
+            <TextInput
+              label="Fecha"
+              type="date"
+              required
+              value={payForm.date}
+              onChange={(event) => setPayForm({ ...payForm, date: event.target.value })}
+            />
+          </div>
+          {payError ? <p className="text-sm text-neg">{payError}</p> : null}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setPayingCard(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={payCardMutation.isPending}>
+              {payCardMutation.isPending ? 'Pagando…' : 'Registrar pago'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal title="Nueva cuenta de dinero" open={modalOpen} onClose={closeModal}>
         <form
