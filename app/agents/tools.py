@@ -51,6 +51,18 @@ class AsOfParams(BaseModel):
     as_of: date_type | None = None
 
 
+class AgingParams(BaseModel):
+    kind: Literal["receivable", "payable"] = "receivable"
+
+
+class ProjectionParams(BaseModel):
+    days: int = Field(default=90, ge=7, le=365)
+
+
+class NetWorthParams(BaseModel):
+    months: int = Field(default=12, ge=2, le=36)
+
+
 class KindParams(BaseModel):
     kind: Literal["INCOME", "EXPENSE"] | None = None
 
@@ -127,6 +139,18 @@ def _profit_loss(db: Session, org_id: str, params: PeriodParams):
 
 def _balance_sheet(db: Session, org_id: str, params: AsOfParams):
     return _json(reports.balance_sheet(db, org_id, params.as_of or date.today()))
+
+
+def _aging(db: Session, org_id: str, params: AgingParams):
+    return _json(reports.aging_report(db, org_id, params.kind))
+
+
+def _cash_projection(db: Session, org_id: str, params: ProjectionParams):
+    return _json(reports.cash_projection(db, org_id, params.days))
+
+
+def _net_worth(db: Session, org_id: str, params: NetWorthParams):
+    return _json(reports.net_worth(db, org_id, params.months))
 
 
 def _cash_flow(db: Session, org_id: str, params: PeriodParams):
@@ -262,6 +286,9 @@ TOOLS: dict[str, ToolSpec] = {
         ToolSpec("balance_sheet", "Balance general a una fecha (default: hoy).", AsOfParams, "READ", _balance_sheet),
         ToolSpec("cash_flow", "Flujo de efectivo del periodo (default: mes actual).", PeriodParams, "READ", _cash_flow),
         ToolSpec("trial_balance", "Balanza de comprobación por cuenta contable.", EmptyParams, "READ", _trial_balance),
+        ToolSpec("aging_report", "Antigüedad de cartera por contraparte con tramos y días promedio (DSO).", AgingParams, "READ", _aging),
+        ToolSpec("cash_projection", "Proyección de liquidez a N días con compromisos ya registrados; avisa el día del faltante.", ProjectionParams, "READ", _cash_projection),
+        ToolSpec("net_worth", "Patrimonio neto: activos menos deudas, con evolución mensual.", NetWorthParams, "READ", _net_worth),
         ToolSpec("list_accounts", "Cuentas de dinero (caja, bancos) con saldos actuales.", EmptyParams, "READ", _list_accounts),
         ToolSpec("list_categories", "Categorías de ingreso/gasto con su cuenta contable.", KindParams, "READ", _list_categories),
         ToolSpec("list_customers", "Clientes de la organización (búsqueda por nombre).", SearchParams, "READ", _contact_lister(Customer)),
