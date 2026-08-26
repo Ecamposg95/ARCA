@@ -9,7 +9,7 @@ from app.domains.payables.schemas import DebtCancel, PayableCreate, PayableRead,
 from app.models.organization import WRITE_ROLES
 from app.models.payable import Payable
 from app.models.user import User
-from app.schemas.common import paginate
+from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 
 router = APIRouter(prefix="/payables", tags=["payables"])
@@ -29,6 +29,8 @@ def _get_payable(db: Session, org_id: str, payable_id: str) -> Payable:
 @router.get("")
 def list_payables(
     status: str | None = Query(default=None, pattern="^(OPEN|PARTIAL|PAID|CANCELLED|OVERDUE)$"),
+    q: str | None = Query(default=None, max_length=200),
+    sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -42,7 +44,14 @@ def list_payables(
         )
     elif status:
         query = query.filter(Payable.status == status)
-    query = query.order_by(Payable.due_date.asc(), Payable.created_at.desc())
+    if q:
+        query = query.filter(Payable.description.ilike(f"%{q}%"))
+    query = apply_sort(
+        query,
+        sort,
+        {"due_date": Payable.due_date, "date": Payable.date, "amount": Payable.amount},
+        (Payable.due_date.asc(), Payable.created_at.desc()),
+    )
     return paginate(query, limit, offset, PayableRead)
 
 

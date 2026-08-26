@@ -1,5 +1,6 @@
 from datetime import date as date_type
 
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -8,8 +9,9 @@ from app.domains.income import service
 from app.domains.income.schemas import IncomeCancel, IncomeCreate, IncomePay, IncomeRead
 from app.models.income import Income
 from app.models.organization import WRITE_ROLES
+from app.models.project import Project
 from app.models.user import User
-from app.schemas.common import paginate
+from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 
 router = APIRouter(prefix="/income", tags=["income"])
@@ -34,6 +36,7 @@ def list_income(
     q: str | None = Query(default=None, max_length=200),
     category_id: str | None = None,
     project_id: str | None = None,
+    sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -53,7 +56,12 @@ def list_income(
         query = query.filter(Income.category_id == category_id)
     if project_id:
         query = query.filter(Income.project_id == project_id)
-    query = query.order_by(Income.date.desc(), Income.created_at.desc())
+    query = apply_sort(
+        query,
+        sort,
+        {"date": Income.date, "amount": Income.amount},
+        (Income.date.desc(), Income.created_at.desc()),
+    )
     return paginate(query, limit, offset, IncomeRead, sum_column=Income.amount)
 
 
@@ -103,4 +111,34 @@ def cancel_income(
 ):
     income = _get_income(db, org_id, income_id)
     income = service.cancel_income(db, income, user.id, payload.reason)
+    return IncomeRead.model_validate(income)
+
+
+class IncomeProjectPatch(BaseModel):
+    """Lo único editable tras el registro es la etiqueta analítica. Cambiar
+    montos o fechas de algo contabilizado exige reverso, nunca edición."""
+
+    project_id: str | None
+
+
+@router.patch("/{income_id}", response_model=IncomeRead)
+def patch_income(
+    income_id: str,
+    payload: IncomeProjectPatch,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _membership=Depends(require_role(WRITE_ROLES)),
+):
+    income = _get_income(db, org_id, income_id)
+    if payload.project_id is not None:
+        project = (
+            db.query(Project)
+            .filter(Project.id == payload.project_id, Project.organization_id == org_id)
+            .first()
+        )
+        if project is None:
+            raise HTTPException(status_code=400, detail="Ese proyecto no existe en tu empresa.")
+    income.project_id = payload.project_id
+    db.commit()
+    db.refresh(income)
     return IncomeRead.model_validate(income)
