@@ -182,6 +182,20 @@ export interface DashboardSummary {
   expense_categories: { category: string; amount: number }[]
 }
 
+export interface FlowPoint {
+  bucket: string
+  start: string
+  inflows: number
+  outflows: number
+  net: number
+  top_expense_categories: { category: string; amount: number }[]
+}
+
+export interface CashFlowSeries {
+  granularity: 'month' | 'week'
+  points: FlowPoint[]
+}
+
 export interface ReportLine {
   code: string
   name: string
@@ -318,6 +332,7 @@ export interface AgingReport {
   total: number
   overdue: number
   average_days: number
+  previous_average_days: number | null
 }
 
 export interface NetWorthPoint {

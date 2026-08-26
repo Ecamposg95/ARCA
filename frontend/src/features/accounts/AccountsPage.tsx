@@ -107,11 +107,24 @@ export function AccountsPage() {
                   {group.title}
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {group.items.map((account) => (
-                    <Card key={account.id}>
+                  {group.items.map((account) => {
+                    // Un activo en negativo es sobregiro: se dice, no se esconde.
+                    const overdrawn = !group.liability && Number(account.current_balance) < 0
+                    return (
+                    <Card
+                      key={account.id}
+                      className={overdrawn ? '!border-neg/50' : ''}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate font-medium">{account.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-medium">{account.name}</span>
+                            {overdrawn ? (
+                              <span className="rounded-full bg-neg/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neg">
+                                Sobregirada
+                              </span>
+                            ) : null}
+                          </div>
                           <div className="mt-0.5 text-xs text-muted">
                             {TYPE_LABELS[account.type] ?? account.type}
                             {account.institution ? ` · ${account.institution}` : ''}
@@ -130,7 +143,11 @@ export function AccountsPage() {
                           <Money
                             value={account.current_balance}
                             size="lg"
-                            tone={group.liability && Number(account.current_balance) > 0 ? 'neg' : 'ink'}
+                            tone={
+                              overdrawn || (group.liability && Number(account.current_balance) > 0)
+                                ? 'neg'
+                                : 'ink'
+                            }
                           />
                           {group.liability ? (
                             <div className="text-[10px] uppercase tracking-wide text-muted">debes</div>
@@ -138,7 +155,8 @@ export function AccountsPage() {
                         </div>
                       </div>
                     </Card>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}

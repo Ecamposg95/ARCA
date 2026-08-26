@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { Money } from '@/components/ui/Money'
 import { Card } from '@/components/ui/Table'
-import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear } from '@/lib/format'
-import type { CashProjection, DashboardSummary } from '@/types/api'
+import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear, formatShortDay } from '@/lib/format'
+import type { CashFlowSeries, CashProjection, DashboardSummary, FinancialAccount } from '@/types/api'
 
 /** Sistema de color del tablero: teal = dinero que entra, ámbar = dinero que sale.
  *  El rojo queda reservado para problemas (vencido, pérdida), nunca para un gasto normal. */
@@ -72,10 +72,79 @@ function ChartCard({
   )
 }
 
+/** Tooltip que explica la barra en vez de repetirla: entradas, salidas, neto
+ *  y en qué se fue el gasto del periodo. */
+function FlowTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: { payload: CashFlowSeries['points'][number] }[]
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  const point = payload[0].payload
+  return (
+    <div className="rounded-lg border border-border bg-surface px-3.5 py-3 text-xs shadow-card">
+      <div className="mb-2 font-semibold">{label}</div>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-6">
+          <span className="flex items-center gap-1.5 text-muted">
+            <span className="h-2 w-2 rounded-full" style={{ background: IN }} />
+            Entradas
+          </span>
+          <span className="figures font-medium">{formatMoney(point.inflows)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-6">
+          <span className="flex items-center gap-1.5 text-muted">
+            <span className="h-2 w-2 rounded-full" style={{ background: OUT }} />
+            Salidas
+          </span>
+          <span className="figures font-medium">{formatMoney(point.outflows)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-6 border-t border-border pt-1">
+          <span className="text-muted">Neto</span>
+          <span className={`figures font-semibold ${point.net < 0 ? 'text-neg' : 'text-pos'}`}>
+            {formatMoney(point.net)}
+          </span>
+        </div>
+      </div>
+      {point.top_expense_categories.length > 0 ? (
+        <div className="mt-2 border-t border-border pt-2">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            En qué se fue
+          </div>
+          {point.top_expense_categories.map((row) => (
+            <div key={row.category} className="flex items-center justify-between gap-6">
+              <span className="text-muted">{row.category}</span>
+              <span className="figures">{formatMoney(row.amount)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function DashboardPage() {
+  // La granularidad vive en la URL: "mira las últimas semanas" se comparte.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const granularity: 'month' | 'week' = searchParams.get('flujo') === 'semana' ? 'week' : 'month'
+  const setGranularity = (next: 'month' | 'week') =>
+    setSearchParams(next === 'week' ? { flujo: 'semana' } : {}, { replace: true })
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary')).data,
+  })
+  const { data: flow } = useQuery({
+    queryKey: ['dashboard', 'flow', granularity],
+    queryFn: async () =>
+      (await api.get<CashFlowSeries>(`/dashboard/cash-flow?granularity=${granularity}`)).data,
+  })
+  const { data: accounts } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: async () => (await api.get<FinancialAccount[]>('/accounts')).data,
   })
   const { data: projection } = useQuery({
     queryKey: ['cash-projection'],
@@ -95,7 +164,27 @@ export function DashboardPage() {
   const hasMovement =
     data.cash_flow.some((row) => row.inflows > 0 || row.outflows > 0) || data.cash !== 0
 
-  const flowData = data.cash_flow.map((row) => ({ ...row, month: formatMonth(row.month) }))
+  const flowData = (flow?.points ?? data.cash_flow.map((row) => ({
+    bucket: row.month,
+    start: `${row.month}-01`,
+    inflows: row.inflows,
+    outflows: row.outflows,
+    net: row.inflows - row.outflows,
+    top_expense_categories: [],
+  }))).map((point) => ({
+    ...point,
+    label:
+      (flow?.granularity ?? 'month') === 'week'
+        ? formatShortDay(point.start)
+        : formatMonth(point.bucket),
+  }))
+
+  // Un activo en negativo es un sobregiro: dinero que el banco te está prestando
+  // sin que lo hayas pedido. Se dice, no se esconde.
+  const overdrawn = (accounts ?? []).filter(
+    (account) =>
+      account.type !== 'CREDIT_CARD' && Number(account.current_balance) < 0 && account.active,
+  )
   const resultData = data.revenue_vs_expenses.map((row) => ({
     month: formatMonth(row.month),
     profit: row.revenue - row.expenses,
@@ -123,6 +212,22 @@ export function DashboardPage() {
           </Link>
         ) : null}
       </header>
+
+      {overdrawn.length > 0 ? (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-neg/30 bg-neg/5 px-4 py-2.5 text-sm">
+          <span className="font-medium text-neg">
+            {overdrawn.length === 1
+              ? `${overdrawn[0].name} está sobregirada`
+              : `${overdrawn.length} cuentas están sobregiradas`}
+          </span>
+          <span className="text-muted">
+            — el Disponible ya lo descuenta.{' '}
+            <Link to="/cuentas" className="underline hover:text-ink">
+              Ver cuentas
+            </Link>
+          </span>
+        </div>
+      ) : null}
 
       {/* Dos paneles en vez de cinco tarjetas: menos ruido, misma información. */}
       <div className="grid gap-4 lg:grid-cols-5">
@@ -245,27 +350,53 @@ export function DashboardPage() {
         </div>
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <ChartCard
-            title="Entradas y salidas de dinero"
-            legend={[
-              { label: 'Entradas', color: IN },
-              { label: 'Salidas', color: OUT },
-            ]}
-          >
+          <Card>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Entradas y salidas de dinero</h2>
+              <div className="flex items-center gap-4">
+                <ChartLegend
+                  items={[
+                    { label: 'Entradas', color: IN },
+                    { label: 'Salidas', color: OUT },
+                  ]}
+                />
+                <div className="flex overflow-hidden rounded-md border border-border text-[11px] font-medium">
+                  {(
+                    [
+                      { key: 'week', label: 'Semana' },
+                      { key: 'month', label: 'Mes' },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setGranularity(option.key)}
+                      className={
+                        granularity === option.key
+                          ? 'bg-accent px-2.5 py-1 text-on-accent'
+                          : 'bg-surface px-2.5 py-1 text-muted hover:text-ink'
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={210}>
               <BarChart data={flowData} barGap={3} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" vertical={false} stroke={GRID} strokeOpacity={0.25} />
-                <XAxis dataKey="month" {...axisProps} />
+                <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" />
                 <YAxis {...axisProps} tickFormatter={formatCompact} width={52} />
                 <Tooltip
                   cursor={{ fill: GRID, fillOpacity: 0.08 }}
-                  formatter={(value) => formatMoney(Number(value))}
+                  content={<FlowTooltip />}
                 />
                 <Bar dataKey="inflows" name="Entradas" fill={IN} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 <Bar dataKey="outflows" name="Salidas" fill={OUT} radius={[3, 3, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
+          </Card>
 
           {/* Distinta pregunta que el flujo de efectivo: ¿gané o perdí cada mes? */}
           <ChartCard title="Resultado por mes">

@@ -135,3 +135,72 @@ def test_aging_is_isolated_by_organization(client):
     report_b = client.get("/api/reports/aging", headers=headers_b).json()
     assert Decimal(str(report_b["total"])) == Decimal("0")
     assert report_b["contacts"] == []
+
+
+def test_previous_average_days_reflects_last_month_state(client):
+    headers, ventas = _setup(client)
+    customer = client.post("/api/customers", headers=headers, json={"name": "Cliente"}).json()
+    # Vencida hace 40 días: hoy promedia 40; hace 30 días llevaba 10 de vencida.
+    _receivable(client, headers, ventas, customer["id"], "10000", 40)
+
+    report = client.get("/api/reports/aging", headers=headers).json()
+    assert report["average_days"] == 40
+    assert report["previous_average_days"] == 10
+
+
+def test_recent_receivables_do_not_exist_in_the_previous_snapshot(client):
+    headers, ventas = _setup(client)
+    customer = client.post("/api/customers", headers=headers, json={"name": "Cliente"}).json()
+    today = date.today()
+    # Emitida hace 5 días: hace un mes no existía.
+    client.post(
+        "/api/receivables",
+        headers=headers,
+        json={
+            "customer_id": customer["id"],
+            "description": "Factura nueva",
+            "amount": "8000",
+            "date": (today - timedelta(days=5)).isoformat(),
+            "due_date": (today + timedelta(days=25)).isoformat(),
+            "category_id": ventas["id"],
+        },
+    )
+    report = client.get("/api/reports/aging", headers=headers).json()
+    # Hace un mes no había cartera: sin base no se inventa un cero.
+    assert report["previous_average_days"] is None
+
+
+def test_collections_after_the_snapshot_do_not_shrink_the_previous_balance(client):
+    headers, ventas = _setup(client)
+    customer = client.post("/api/customers", headers=headers, json={"name": "Cliente"}).json()
+    account = client.get("/api/accounts", headers=headers).json()[0]
+
+    receivable = _receivable(client, headers, ventas, customer["id"], "10000", 60)
+    # Cobro reciente: hoy el saldo es 2,000, pero hace 30 días eran los 10,000.
+    client.post(
+        f"/api/receivables/{receivable['id']}/collect",
+        headers=headers,
+        json={"amount": "8000", "financial_account_id": account["id"]},
+    )
+
+    report = client.get("/api/reports/aging", headers=headers).json()
+    assert report["average_days"] == 60  # el saldo restante sigue igual de viejo
+    assert report["previous_average_days"] == 30
+
+
+def test_a_fully_collected_receivable_still_counts_in_the_snapshot(client):
+    headers, ventas = _setup(client)
+    customer = client.post("/api/customers", headers=headers, json={"name": "Cliente"}).json()
+    account = client.get("/api/accounts", headers=headers).json()[0]
+
+    receivable = _receivable(client, headers, ventas, customer["id"], "6000", 45)
+    client.post(
+        f"/api/receivables/{receivable['id']}/collect",
+        headers=headers,
+        json={"amount": "6000", "financial_account_id": account["id"]},
+    )
+
+    report = client.get("/api/reports/aging", headers=headers).json()
+    # Hoy no debe nada… pero hace 30 días llevaba 15 días de vencida.
+    assert Decimal(str(report["total"])) == Decimal("0")
+    assert report["previous_average_days"] == 15

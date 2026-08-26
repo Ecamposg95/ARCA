@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date as date_type
+from datetime import timedelta
 from decimal import Decimal
 
 from sqlalchemy import func
@@ -288,6 +289,69 @@ AGING_BUCKETS = (
 )
 
 
+def _average_days_as_of(
+    db: Session,
+    organization_id: str,
+    model,
+    collection_type: str,
+    as_of: date_type,
+) -> int | None:
+    """Antigüedad promedio como estaba la cartera en `as_of`.
+
+    Se reconstruye desde los movimientos: el saldo de entonces es el monto menos
+    los cobros con fecha ≤ as_of. Una cuenta ya liquidada hoy cuenta si estaba
+    abierta entonces; una emitida después, no existe en la foto.
+    """
+    from datetime import datetime, time, timezone
+
+    from app.models.transaction import FinancialTransaction
+
+    as_of_end = datetime.combine(as_of, time.max, tzinfo=timezone.utc)
+
+    rows = (
+        db.query(model.id, model.due_date, model.amount, model.cancelled_at)
+        .filter(
+            model.organization_id == organization_id,
+            model.date <= as_of,
+        )
+        .all()
+    )
+    if not rows:
+        # Sin cartera entonces no hay base: None, que no es lo mismo que 0 días.
+        return None
+
+    collected = dict(
+        db.query(
+            FinancialTransaction.source_id,
+            func.coalesce(func.sum(FinancialTransaction.amount), 0),
+        )
+        .filter(
+            FinancialTransaction.organization_id == organization_id,
+            FinancialTransaction.transaction_type == collection_type,
+            FinancialTransaction.status == "ACTIVE",
+            FinancialTransaction.date <= as_of,
+        )
+        .group_by(FinancialTransaction.source_id)
+        .all()
+    )
+
+    weighted = Decimal("0")
+    total = Decimal("0")
+    for row_id, due_date, amount, cancelled_at in rows:
+        if cancelled_at is not None:
+            cancelled = cancelled_at if cancelled_at.tzinfo else cancelled_at.replace(tzinfo=timezone.utc)
+            if cancelled <= as_of_end:
+                continue
+        balance = Decimal(amount) - Decimal(collected.get(row_id, 0))
+        if balance <= 0:
+            continue
+        days_late = max((as_of - due_date).days, 0)
+        weighted += Decimal(days_late) * balance
+        total += balance
+
+    return int(weighted / total) if total > 0 else None
+
+
 def aging_report(db: Session, organization_id: str, kind: str = "receivable") -> dict:
     """Antigüedad de saldos por contraparte, más los días promedio de cobro.
 
@@ -363,6 +427,11 @@ def aging_report(db: Session, organization_id: str, kind: str = "receivable") ->
     contacts = sorted(by_contact.values(), key=lambda item: item["total"], reverse=True)
     average_days = int(weighted_days / grand_total) if grand_total > 0 else 0
 
+    collection_type = "PAYABLE_PAYMENT" if kind == "payable" else "RECEIVABLE_COLLECTION"
+    previous_average_days = _average_days_as_of(
+        db, organization_id, model, collection_type, today - timedelta(days=30)
+    )
+
     return {
         "as_of": today,
         "kind": kind,
@@ -373,6 +442,8 @@ def aging_report(db: Session, organization_id: str, kind: str = "receivable") ->
         "overdue": overdue_total,
         # Días promedio ponderados por saldo: cuánto tarda en promedio tu dinero.
         "average_days": average_days,
+        # La misma métrica hace 30 días: sin comparación, un número es un adorno.
+        "previous_average_days": previous_average_days,
     }
 
 

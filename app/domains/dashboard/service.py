@@ -41,6 +41,106 @@ def _shift_months(day: date, months: int) -> date:
     return date(year, month, 1)
 
 
+def cash_flow_series(db: Session, organization_id: str, granularity: str = "month") -> dict:
+    """Entradas y salidas por periodo, con el desglose que alimenta el tooltip.
+
+    `month`: últimos 6 meses. `week`: últimas 12 semanas ISO. Cada punto trae
+    entradas, salidas, neto y las 3 categorías de gasto más grandes del periodo
+    — el tooltip debe explicar la barra, no repetirla.
+    """
+    today = date.today()
+
+    if granularity == "week":
+        # Lunes de la semana actual, 12 semanas hacia atrás.
+        current_start = today - timedelta(days=today.weekday())
+        starts = [current_start - timedelta(weeks=offset) for offset in range(11, -1, -1)]
+
+        def bucket_of(day: date) -> str:
+            year, week, _ = day.isocalendar()
+            return f"{year}-W{week:02d}"
+
+        buckets = [(bucket_of(start), start) for start in starts]
+        series_start = starts[0]
+    else:
+        month_starts = [_shift_months(_month_start(today), -offset) for offset in range(5, -1, -1)]
+
+        def bucket_of(day: date) -> str:
+            return day.strftime("%Y-%m")
+
+        buckets = [(bucket_of(start), start) for start in month_starts]
+        series_start = month_starts[0]
+
+    points: dict[str, dict] = {
+        key: {
+            "bucket": key,
+            "start": start,
+            "inflows": Decimal("0"),
+            "outflows": Decimal("0"),
+        }
+        for key, start in buckets
+    }
+
+    rows = (
+        db.query(
+            FinancialTransaction.date,
+            FinancialTransaction.transaction_type,
+            FinancialTransaction.amount,
+        )
+        .filter(
+            FinancialTransaction.organization_id == organization_id,
+            FinancialTransaction.status == "ACTIVE",
+            FinancialTransaction.date >= series_start,
+        )
+        .all()
+    )
+    for row_date, transaction_type, amount in rows:
+        key = bucket_of(row_date)
+        if key not in points:
+            continue
+        amount = Decimal(amount or 0)
+        if transaction_type in INFLOW_TYPES:
+            points[key]["inflows"] += amount
+        else:
+            points[key]["outflows"] += amount
+
+    # Top categorías de gasto PAGADO por periodo: una sola consulta agregada.
+    expense_rows = (
+        db.query(Expense.date, Category.name, Expense.amount)
+        .join(Category, Category.id == Expense.category_id)
+        .filter(
+            Expense.organization_id == organization_id,
+            Expense.status == "PAID",
+            Expense.date >= series_start,
+        )
+        .all()
+    )
+    by_bucket_category: dict[str, dict[str, Decimal]] = {}
+    for row_date, category_name, amount in expense_rows:
+        key = bucket_of(row_date)
+        if key not in points:
+            continue
+        bucket = by_bucket_category.setdefault(key, {})
+        bucket[category_name] = bucket.get(category_name, Decimal("0")) + Decimal(amount or 0)
+
+    ordered = []
+    for key, _start in buckets:
+        top = sorted(
+            by_bucket_category.get(key, {}).items(), key=lambda item: item[1], reverse=True
+        )[:3]
+        point = points[key]
+        ordered.append(
+            {
+                **point,
+                "net": point["inflows"] - point["outflows"],
+                "top_expense_categories": [
+                    {"category": name, "amount": amount} for name, amount in top
+                ],
+            }
+        )
+
+    return {"granularity": granularity, "points": ordered}
+
+
 def summary(db: Session, organization_id: str) -> dict:
     today = date.today()
     month_start = _month_start(today)
