@@ -80,8 +80,11 @@ def test_income_rejects_zero_amount(client):
     assert response.status_code == 422
 
 
-def test_paid_income_cannot_be_cancelled_yet(client):
+def test_cancelling_a_collected_income_reverses_it(client):
+    """Antes esto se rechazaba con "los reversos llegan pronto". Ya llegaron."""
     headers, account, ventas = _setup(client)
+    saldo_inicial = client.get("/api/accounts", headers=headers).json()[0]["current_balance"]
+
     income = client.post(
         "/api/income",
         headers=headers,
@@ -94,8 +97,17 @@ def test_paid_income_cannot_be_cancelled_yet(client):
             "status": "PAID",
         },
     ).json()
+
     response = client.post(f"/api/income/{income['id']}/cancel", headers=headers, json={})
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json()["status"] == "CANCELLED"
+
+    # El dinero regresó y el libro quedó cuadrado, sin borrar nada.
+    saldo_final = client.get("/api/accounts", headers=headers).json()[0]["current_balance"]
+    assert Decimal(str(saldo_final)) == Decimal(str(saldo_inicial))
+
+    balance = client.get("/api/accounting/trial-balance", headers=headers).json()
+    assert Decimal(str(balance["total_debit"])) == Decimal(str(balance["total_credit"]))
 
 
 def test_income_list_pagination_envelope(client):

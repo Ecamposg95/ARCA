@@ -97,8 +97,11 @@ def test_cancel_unpaid_reverses_ledger(client):
     assert balances.get("4100", Decimal("0")) == Decimal("0")
 
 
-def test_cancel_with_collections_rejected(client):
+def test_cancelling_with_collections_reverses_everything(client):
+    """Antes se rechazaba. Ahora se revierte el registro Y el cobro."""
     headers, account, ventas, customer = _setup(client)
+    saldo_inicial = client.get("/api/accounts", headers=headers).json()[0]["current_balance"]
+
     receivable = _create(client, headers, ventas, customer)
     client.post(
         f"/api/receivables/{receivable['id']}/collect",
@@ -106,7 +109,13 @@ def test_cancel_with_collections_rejected(client):
         json={"amount": "1000", "financial_account_id": account["id"]},
     )
     response = client.post(f"/api/receivables/{receivable['id']}/cancel", headers=headers, json={})
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json()["status"] == "CANCELLED"
+
+    from decimal import Decimal
+
+    saldo_final = client.get("/api/accounts", headers=headers).json()[0]["current_balance"]
+    assert Decimal(str(saldo_final)) == Decimal(str(saldo_inicial))
 
 
 def test_overdue_is_computed(client):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date as date_type
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -12,7 +12,13 @@ from app.models.contact import Vendor
 from app.models.expense import Expense
 from app.domains.income.service import resolve_tax
 from app.services.accounting.rules import expense_paid_entry
-from app.services.transactions import account_ledger_code, record_transaction
+from app.services.reversals import reverse_operation
+from app.models.financial_account import FinancialAccount
+from app.services.transactions import (
+    account_ledger_code,
+    default_payment_method,
+    record_transaction,
+)
 
 
 def _validate_category(db: Session, org_id: str, category_id: str) -> Category:
@@ -62,6 +68,8 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
         tax_amount=tax.tax_amount,
         category_id=payload.category_id,
         project_id=payload.project_id,
+        retention_isr=payload.retention_isr,
+        retention_iva=payload.retention_iva,
         financial_account_id=payload.financial_account_id,
         payment_method=payload.payment_method,
         reference=payload.reference,
@@ -111,12 +119,15 @@ def _apply_payment(
     if not account_id:
         raise ValueError("Indica desde qué cuenta pagaste.")
 
+    # Del banco sale el total MENOS lo retenido: esa parte no llega al proveedor,
+    # se queda como deuda con el SAT hasta que se entera.
+    withheld = Decimal(expense.retention_isr) + Decimal(expense.retention_iva)
     record_transaction(
         db,
         organization_id=org_id,
         financial_account_id=account_id,
         transaction_type="EXPENSE",
-        amount=expense.amount,
+        amount=Decimal(expense.amount) - withheld,
         date=paid_date,
         description=expense.description,
         reference=expense.reference,
@@ -136,8 +147,16 @@ def _apply_payment(
         created_by=user_id,
         cash_account_code=account_ledger_code(db, org_id, account_id),
         tax_amount=Decimal(expense.tax_amount),
+        retention_isr=Decimal(expense.retention_isr),
+        retention_iva=Decimal(expense.retention_iva),
     )
     expense.financial_account_id = account_id
+    # Cómo se pagó vive también en el gasto, no sólo en el movimiento: sin esto
+    # el aviso de deducibilidad no tiene con qué decidir.
+    if not expense.payment_method:
+        account = db.get(FinancialAccount, account_id)
+        if account is not None:
+            expense.payment_method = default_payment_method(account.type)
     expense.status = "PAID"
     expense.paid_at = datetime.now(timezone.utc)
     event_bus.publish("expense.paid", {"expense_id": expense.id, "organization_id": org_id})
@@ -145,7 +164,15 @@ def _apply_payment(
 
 def cancel_expense(db: Session, expense: Expense, user_id: str, reason: str | None) -> Expense:
     if expense.status == "PAID":
-        raise ValueError("Un gasto pagado no puede cancelarse todavía; los reversos llegan pronto.")
+        reverse_operation(
+            db,
+            expense.organization_id,
+            source_type="expense",
+            source_id=expense.id,
+            description=f"Reverso: {expense.description}",
+            date=date.today(),
+            user_id=user_id,
+        )
     if expense.status == "CANCELLED":
         raise ValueError("Este gasto ya está cancelado.")
     expense.status = "CANCELLED"

@@ -19,6 +19,7 @@ from app.services.accounting.rules import (
     receivable_created_entry,
     reversal_of,
 )
+from app.services.reversals import reverse_operation
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -157,8 +158,25 @@ def collect_receivable(
 def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id: str, reason: str | None) -> Receivable:
     if receivable.status == "CANCELLED":
         raise ValueError("Esta cuenta ya está cancelada.")
+    # Con cobros registrados no basta cancelar: hay que revertir la póliza del
+    # registro Y la de cada cobro, y devolver el dinero a su cuenta.
     if Decimal(receivable.amount_paid) > 0:
-        raise ValueError("No puedes cancelar una cuenta con cobros registrados; los reversos completos llegan pronto.")
+        reverse_operation(
+            db,
+            org_id,
+            source_type="receivable",
+            source_id=receivable.id,
+            description=f"Reverso: {receivable.description}",
+            date=date.today(),
+            user_id=user_id,
+        )
+        receivable.status = "CANCELLED"
+        receivable.cancelled_at = datetime.now(timezone.utc)
+        receivable.cancelled_by = user_id
+        receivable.cancellation_reason = reason
+        db.commit()
+        db.refresh(receivable)
+        return receivable
 
     original = (
         db.query(JournalEntry)

@@ -15,7 +15,7 @@ import { Table } from '@/components/ui/Table'
 import { TaxSelect } from '@/components/ui/TaxSelect'
 import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
 import { TableFooter } from '@/components/ui/Pagination'
-import { formatDate, today } from '@/lib/format'
+import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
 import type { Expense, Income, Page } from '@/types/api'
@@ -93,6 +93,8 @@ export function OperationsPage({ config }: { config: Config }) {
     amount: '',
     category_id: '',
     project_id: '',
+    retention_isr: '',
+    retention_iva: '',
     contact_id: '',
     financial_account_id: '',
     tax_rate: defaultTaxRate,
@@ -108,6 +110,7 @@ export function OperationsPage({ config }: { config: Config }) {
     setOffset(0)
   }
   const hasFilters = Boolean(filters.q || filters.start || filters.end || filters.project_id)
+  const retentionTotal = Number(form.retention_isr || 0) + Number(form.retention_iva || 0)
 
   const { data: accounts } = useAccounts()
   // Sólo los proyectos abiertos: etiquetar contra uno cerrado ensucia el reporte.
@@ -171,6 +174,8 @@ export function OperationsPage({ config }: { config: Config }) {
       }
       if (form.contact_id) payload[config.contactField] = form.contact_id
       if (form.project_id) payload.project_id = form.project_id
+      if (form.retention_isr) payload.retention_isr = form.retention_isr
+      if (form.retention_iva) payload.retention_iva = form.retention_iva
       if (form.financial_account_id) payload.financial_account_id = form.financial_account_id
       if (form.notes) payload.notes = form.notes
       await api.post(config.endpoint, payload)
@@ -207,6 +212,8 @@ export function OperationsPage({ config }: { config: Config }) {
       amount: '',
       category_id: '',
       project_id: '',
+      retention_isr: '',
+      retention_iva: '',
       contact_id: '',
       financial_account_id: '',
       tax_rate: defaultTaxRate,
@@ -353,7 +360,17 @@ export function OperationsPage({ config }: { config: Config }) {
           {items.map((item) => (
             <tr key={item.id} className="hover:bg-surface-2/50">
               <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(item.date)}</td>
-              <td className="px-4 py-2.5 font-medium">{item.description}</td>
+              <td className="px-4 py-2.5 font-medium">
+                {item.description}
+                {item.deductibility_warning ? (
+                  <span
+                    className="ml-2 cursor-help rounded-full bg-warn/10 px-1.5 py-0.5 text-[11px] font-medium text-warn"
+                    title={item.deductibility_warning}
+                  >
+                    No deducible
+                  </span>
+                ) : null}
+              </td>
               <td className="px-4 py-2.5 text-muted">
                 {contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id)}
               </td>
@@ -481,6 +498,44 @@ export function OperationsPage({ config }: { config: Config }) {
               onChange={(event) => setForm({ ...form, contact_id: event.target.value })}
             />
           </div>
+          {config.kind === 'expense' ? (
+            <details className="rounded-lg border border-border bg-surface-2/40 px-3 py-2">
+              <summary className="cursor-pointer text-sm text-muted">
+                ¿Le retienes impuestos al proveedor?
+              </summary>
+              <p className="mt-2 text-xs text-muted">
+                Honorarios y arrendamiento a personas físicas retienen ISR e IVA. Lo retenido no
+                se le paga al proveedor: se lo entregas al SAT.
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <TextInput
+                  label="ISR retenido"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.retention_isr}
+                  onChange={(event) => setForm({ ...form, retention_isr: event.target.value })}
+                />
+                <TextInput
+                  label="IVA retenido"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.retention_iva}
+                  onChange={(event) => setForm({ ...form, retention_iva: event.target.value })}
+                />
+              </div>
+              {retentionTotal > 0 ? (
+                <p className="mt-2 text-xs">
+                  Al proveedor le llegan{' '}
+                  <span className="figures font-medium">
+                    {formatMoney(Math.max(Number(form.amount || 0) - retentionTotal, 0))}
+                  </span>{' '}
+                  y le debes {formatMoney(retentionTotal)} al SAT.
+                </p>
+              ) : null}
+            </details>
+          ) : null}
           {(projects ?? []).length > 0 ? (
             <SelectInput
               label="Proyecto (opcional)"
