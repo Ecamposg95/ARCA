@@ -54,6 +54,10 @@ class TransferCreate(BaseModel):
 def list_transactions(
     account_id: str | None = None,
     transaction_type: str | None = None,
+    # Origen: "los cobros de ESTA factura". Ambos o ninguno — un source_id
+    # suelto cruzaría tipos de entidad distintos.
+    source_type: str | None = Query(default=None, max_length=50),
+    source_id: str | None = Query(default=None, max_length=64),
     start: date_type | None = None,
     end: date_type | None = None,
     limit: int = Query(default=50, ge=1, le=200),
@@ -66,6 +70,10 @@ def list_transactions(
         query = query.filter(FinancialTransaction.financial_account_id == account_id)
     if transaction_type:
         query = query.filter(FinancialTransaction.transaction_type == transaction_type)
+    if source_type:
+        query = query.filter(FinancialTransaction.source_type == source_type)
+    if source_id:
+        query = query.filter(FinancialTransaction.source_id == source_id)
     if start:
         query = query.filter(FinancialTransaction.date >= start)
     if end:
