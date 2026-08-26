@@ -16,5 +16,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // recharts pesa ~350 KB y sólo lo usan Dashboard y Reportes: en su
+          // propio chunk se comparte entre ambas rutas y no viaja en el login.
+          charts: ['recharts'],
+          vendor: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query', 'axios', 'zustand'],
+        },
+      },
+    },
   },
 })
