@@ -51,6 +51,29 @@ def _quantize(amount: Decimal) -> Decimal:
     return Decimal(amount).quantize(TWO_PLACES)
 
 
+class ClosedPeriodError(AccountingError):
+    """Se intentó tocar un mes ya cerrado."""
+
+
+def _assert_period_open(db: Session, organization_id: str, date: date_type) -> None:
+    from app.models.period import PeriodLock
+
+    lock = (
+        db.query(PeriodLock)
+        .filter(
+            PeriodLock.organization_id == organization_id,
+            PeriodLock.year == date.year,
+            PeriodLock.month == date.month,
+            PeriodLock.reopened_at.is_(None),
+        )
+        .first()
+    )
+    if lock is not None:
+        raise ClosedPeriodError(
+            f"{date.strftime('%m/%Y')} está cerrado. Reábrelo si necesitas corregir algo."
+        )
+
+
 def post_journal_entry(
     db: Session,
     organization_id: str,
@@ -70,6 +93,10 @@ def post_journal_entry(
     """
     if len(lines) < 2:
         raise AccountingError("Un asiento contable requiere al menos dos líneas.")
+
+    # El candado se valida AQUÍ, en el único punto por donde pasa toda póliza:
+    # ponerlo en cada router dejaría puertas abiertas por olvido.
+    _assert_period_open(db, organization_id, date)
 
     total_debit = Decimal("0")
     total_credit = Decimal("0")

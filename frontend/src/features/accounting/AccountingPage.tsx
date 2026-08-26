@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
+import { PeriodsPanel } from '@/features/accounting/PeriodsPanel'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { TableFooter } from '@/components/ui/Pagination'
@@ -11,12 +12,13 @@ import { formatDate, formatMoney } from '@/lib/format'
 import { PERIOD_OPTIONS, rangeForPeriod, type PeriodKey } from '@/lib/periods'
 import type { JournalEntry, LedgerAccount, Page, TrialBalanceRow } from '@/types/api'
 
-type Tab = 'diario' | 'balanza' | 'catalogo'
+type Tab = 'diario' | 'balanza' | 'catalogo' | 'periodos'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'diario', label: 'Libro diario' },
   { key: 'balanza', label: 'Balanza' },
   { key: 'catalogo', label: 'Catálogo de cuentas' },
+  { key: 'periodos', label: 'Cierre de periodo' },
 ]
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
@@ -302,6 +304,8 @@ export function AccountingPage() {
           ))}
         </Table>
       ) : null}
+
+      {tab === 'periodos' ? <PeriodsPanel /> : null}
     </div>
   )
 }

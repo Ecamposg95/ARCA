@@ -31,6 +31,10 @@ CODE_FIXED_ASSETS = "1400"
 CODE_ACCUMULATED_DEPRECIATION = "1490"  # contra-activo: naturaleza acreedora
 CODE_DEPRECIATION_EXPENSE = "5800"
 CODE_LOANS_PAYABLE = "2300"
+# Retenciones: impuesto que le descuentas al proveedor y le entregas al SAT.
+# Mientras no lo enteras, es dinero de terceros que traes en la bolsa.
+CODE_ISR_WITHHELD = "2400"
+CODE_VAT_WITHHELD = "2410"
 CODE_INTEREST_EXPENSE = "5900"
 
 # (code, name, type, parent_code)
@@ -47,6 +51,8 @@ DEFAULT_CHART = (
     ("2100", "Cuentas por Pagar", "LIABILITY", "2000"),
     ("2200", "Tarjetas de crédito", "LIABILITY", "2000"),
     ("2300", "Préstamos por Pagar", "LIABILITY", "2000"),
+    ("2400", "ISR Retenido por Enterar", "LIABILITY", "2000"),
+    ("2410", "IVA Retenido por Enterar", "LIABILITY", "2000"),
     ("2190", "IVA trasladado cobrado", "LIABILITY", "2000"),
     ("2191", "IVA trasladado pendiente de cobro", "LIABILITY", "2000"),
     ("3000", "Capital", "EQUITY", None),

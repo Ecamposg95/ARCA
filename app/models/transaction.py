@@ -11,10 +11,14 @@ TRANSACTION_TYPES = (
     "RECEIVABLE_COLLECTION",
     "PAYABLE_PAYMENT",
     "ADJUSTMENT",
+    # Reversos: tipos propios para que un "deshacer" no se confunda con un
+    # ingreso o un gasto real en la lista de movimientos.
+    "REVERSAL_IN",
+    "REVERSAL_OUT",
 )
 
 # Tipos que aumentan el saldo de la cuenta financiera
-INFLOW_TYPES = ("INCOME", "TRANSFER_IN", "RECEIVABLE_COLLECTION")
+INFLOW_TYPES = ("INCOME", "TRANSFER_IN", "RECEIVABLE_COLLECTION", "REVERSAL_IN")
 
 # Cómo se movió el dinero. Normalizado (no texto libre) para poder responder
 # "¿con qué gasto?" y para detectar pagos en efectivo no deducibles.

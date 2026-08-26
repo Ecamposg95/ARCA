@@ -95,6 +95,10 @@ export interface Expense {
   financial_account_id: string | null
   payment_method: string | null
   reference: string | null
+  retention_isr: string
+  retention_iva: string
+  /** Aviso fiscal calculado en el backend (LISR 27-III). */
+  deductibility_warning: string | null
   status: OperationStatus
   notes: string | null
   paid_at: string | null

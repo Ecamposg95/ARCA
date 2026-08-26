@@ -21,7 +21,9 @@ from app.services.accounting.coa import (
     CODE_DEPRECIATION_EXPENSE,
     CODE_FIXED_ASSETS,
     CODE_INTEREST_EXPENSE,
+    CODE_ISR_WITHHELD,
     CODE_LOANS_PAYABLE,
+    CODE_VAT_WITHHELD,
     CODE_VAT_CHARGED_COLLECTED,
     CODE_VAT_CHARGED_PENDING,
     CODE_VAT_CREDITABLE_PAID,
@@ -114,13 +116,27 @@ def expense_paid_entry(
     created_by: str | None = None,
     cash_account_code: str = CODE_CASH_BANK,
     tax_amount: Decimal = Decimal("0"),
+    retention_isr: Decimal = Decimal("0"),
+    retention_iva: Decimal = Decimal("0"),
 ) -> JournalEntry:
-    """Gasto pagado: Cargo Gastos (base) + IVA acreditable / Abono Caja y Bancos (total)."""
+    """Gasto pagado: Cargo Gastos (base) + IVA acreditable / Abono Caja y Bancos.
+
+    Con retenciones, al proveedor le sale menos dinero del que factura: la
+    diferencia se queda como pasivo con el SAT hasta que se entera.
+    """
     tax_amount = Decimal(tax_amount)
+    retention_isr = Decimal(retention_isr)
+    retention_iva = Decimal(retention_iva)
+    withheld = retention_isr + retention_iva
+
     lines = [LineSpec(expense_account_code, debit=amount - tax_amount)]
     if tax_amount > 0:
         lines.append(LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable"))
-    lines.append(LineSpec(cash_account_code, credit=amount))
+    if retention_isr > 0:
+        lines.append(LineSpec(CODE_ISR_WITHHELD, credit=retention_isr, description="ISR retenido"))
+    if retention_iva > 0:
+        lines.append(LineSpec(CODE_VAT_WITHHELD, credit=retention_iva, description="IVA retenido"))
+    lines.append(LineSpec(cash_account_code, credit=amount - withheld))
     return post_journal_entry(
         db,
         organization_id,

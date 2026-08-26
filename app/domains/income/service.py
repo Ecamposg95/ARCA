@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date as date_type
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from app.models.contact import Customer
 from app.models.income import Income
 from app.services.accounting.rules import income_paid_entry
 from app.services.taxes import split_total
+from app.services.reversals import reverse_operation
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -152,10 +153,22 @@ def _apply_payment(
 
 
 def cancel_income(db: Session, income: Income, user_id: str, reason: str | None) -> Income:
-    if income.status == "PAID":
-        raise ValueError("Un ingreso cobrado no puede cancelarse todavía; los reversos llegan pronto.")
     if income.status == "CANCELLED":
         raise ValueError("Este ingreso ya está cancelado.")
+
+    # Si ya movió dinero, cancelar no basta: hay que revertir la contabilidad y
+    # devolver el saldo. Nada se borra; se emite la póliza espejo.
+    if income.status == "PAID":
+        reverse_operation(
+            db,
+            income.organization_id,
+            source_type="income",
+            source_id=income.id,
+            description=f"Reverso: {income.description}",
+            date=date.today(),
+            user_id=user_id,
+        )
+
     income.status = "CANCELLED"
     income.cancelled_at = datetime.now(timezone.utc)
     income.cancelled_by = user_id

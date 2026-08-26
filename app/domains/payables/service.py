@@ -19,6 +19,7 @@ from app.services.accounting.rules import (
     payable_payment_entry,
     reversal_of,
 )
+from app.services.reversals import reverse_operation
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -156,8 +157,25 @@ def pay_payable(
 def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, reason: str | None) -> Payable:
     if payable.status == "CANCELLED":
         raise ValueError("Esta cuenta ya está cancelada.")
+    # Con pagos registrados no basta cancelar: hay que revertir la póliza del
+    # registro Y la de cada pago, y devolver el dinero a su cuenta.
     if Decimal(payable.amount_paid) > 0:
-        raise ValueError("No puedes cancelar una cuenta con pagos registrados; los reversos completos llegan pronto.")
+        reverse_operation(
+            db,
+            org_id,
+            source_type="payable",
+            source_id=payable.id,
+            description=f"Reverso: {payable.description}",
+            date=date.today(),
+            user_id=user_id,
+        )
+        payable.status = "CANCELLED"
+        payable.cancelled_at = datetime.now(timezone.utc)
+        payable.cancelled_by = user_id
+        payable.cancellation_reason = reason
+        db.commit()
+        db.refresh(payable)
+        return payable
 
     original = (
         db.query(JournalEntry)

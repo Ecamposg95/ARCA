@@ -18,6 +18,10 @@ class Payable(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     subtotal = Column(Numeric(14, 2), nullable=False, default=0)  # base gravable
     tax_rate = Column(Numeric(5, 4), nullable=False, default=0)  # 0.1600 = 16%
     tax_amount = Column(Numeric(14, 2), nullable=False, default=0)
+    # Retenciones: lo que NO le pagas al proveedor porque se lo entregas al SAT.
+    # El proveedor cobra amount − retenciones; tú debes el resto al fisco.
+    retention_isr = Column(Numeric(14, 2), nullable=False, default=0)
+    retention_iva = Column(Numeric(14, 2), nullable=False, default=0)
     amount_paid = Column(Numeric(14, 2), nullable=False, default=0)
     # IVA que ya pasó de 'pendiente de pago' a acreditable.
     tax_paid = Column(Numeric(14, 2), nullable=False, default=0)

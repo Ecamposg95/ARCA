@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class ExpenseCreate(BaseModel):
@@ -16,6 +16,9 @@ class ExpenseCreate(BaseModel):
     tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     category_id: str
     project_id: str | None = None
+    # Retenciones al proveedor. Se capturan; ARCA sugiere pero no impone.
+    retention_isr: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
+    retention_iva: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
     financial_account_id: str | None = None
     payment_method: str | None = Field(default=None, max_length=30)
     reference: str | None = Field(default=None, max_length=100)
@@ -43,6 +46,8 @@ class ExpenseRead(BaseModel):
     subtotal: Decimal
     tax_rate: Decimal
     tax_amount: Decimal
+    retention_isr: Decimal
+    retention_iva: Decimal
     category_id: str
     project_id: str | None = None
     financial_account_id: str | None
@@ -52,3 +57,11 @@ class ExpenseRead(BaseModel):
     notes: str | None
     paid_at: datetime | None
     created_at: datetime
+
+    @computed_field
+    @property
+    def deductibility_warning(self) -> str | None:
+        """Aviso fiscal calculado en el backend: la UI sólo lo muestra."""
+        from app.services.deductibility import cash_warning
+
+        return cash_warning(self.amount, self.payment_method)
