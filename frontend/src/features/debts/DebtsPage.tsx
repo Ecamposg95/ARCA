@@ -14,6 +14,16 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Table, Card } from '@/components/ui/Table'
 import { TaxSelect } from '@/components/ui/TaxSelect'
 import { TableFooter } from '@/components/ui/Pagination'
+import {
+  BatchBar,
+  BatchNotice,
+  RowCheckbox,
+  SortableHeader,
+  exportRowsCsv,
+  runBatch,
+  useRowSelection,
+  type BatchOutcome,
+} from '@/components/ui/TableTools'
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
@@ -114,6 +124,21 @@ export function DebtsPage({ config }: { config: Config }) {
   const [entryFor, setEntryFor] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
+  const [search, setSearch] = useState('')
+
+  // El orden vive en la URL: una cartera ordenada se comparte tal cual.
+  const sort = searchParams.get('orden') ?? ''
+  const setSort = (next: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set('orden', next)
+    else params.delete('orden')
+    setSearchParams(params, { replace: true })
+    setOffset(0)
+  }
+
+  const [batchOutcome, setBatchOutcome] = useState<BatchOutcome | null>(null)
+  const [batchPayOpen, setBatchPayOpen] = useState(false)
+  const [batchAccountId, setBatchAccountId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -132,11 +157,16 @@ export function DebtsPage({ config }: { config: Config }) {
   const { data: contacts } = useContacts(config.contactResource)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter, offset],
+    queryKey: [config.kind, statusFilter, search, sort, offset],
     queryFn: async () =>
       (
         await api.get<Page<Debt>>(config.endpoint, {
-          params: { ...(statusFilter ? { status: statusFilter } : {}), offset },
+          params: {
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(search ? { q: search } : {}),
+            ...(sort ? { sort } : {}),
+            offset,
+          },
         })
       ).data,
   })
@@ -225,6 +255,46 @@ export function DebtsPage({ config }: { config: Config }) {
   }
 
   const items = data?.items ?? []
+  const selection = useRowSelection(items)
+  const selectedOpen = selection.selectedItems.filter((debt) =>
+    ['OPEN', 'PARTIAL', 'OVERDUE'].includes(debt.display_status),
+  )
+
+  async function batchPay() {
+    const outcome = await runBatch(
+      selectedOpen,
+      (debt) => debt.description,
+      async (debt) => {
+        // El lote liquida el SALDO de cada cuenta: cobros parciales se hacen
+        // uno por uno desde su propio modal.
+        await api.post(`${config.endpoint}/${debt.id}/${config.payEndpoint}`, {
+          amount: debt.balance,
+          financial_account_id: batchAccountId,
+        })
+      },
+      errorMessage,
+    )
+    setBatchOutcome(outcome)
+    setBatchPayOpen(false)
+    selection.clear()
+    invalidate()
+  }
+
+  function exportSelection() {
+    exportRowsCsv(
+      `${config.kind}-seleccion.csv`,
+      [config.contactLabel, 'Concepto', 'Vence', 'Estado', 'Pagado', 'Total', 'Saldo'],
+      selection.selectedItems.map((debt) => [
+        contactName(debt),
+        debt.description,
+        debt.due_date,
+        debt.display_status,
+        String(debt.amount_paid),
+        String(debt.amount),
+        String(debt.balance),
+      ]),
+    )
+  }
   const openItems = items.filter((debt) => ['OPEN', 'PARTIAL', 'OVERDUE'].includes(debt.display_status))
   const totalOutstanding = openItems.reduce((sum, debt) => sum + Number(debt.balance), 0)
   const totalOverdue = openItems
@@ -258,6 +328,16 @@ export function DebtsPage({ config }: { config: Config }) {
               </button>
             ))}
           </div>
+          <input
+            type="search"
+            placeholder="Buscar por concepto…"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setOffset(0)
+            }}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
+          />
         </div>
       </PageHeader>
 
@@ -287,20 +367,62 @@ export function DebtsPage({ config }: { config: Config }) {
           action={<Button onClick={() => setModalOpen(true)}>{config.newLabel}</Button>}
         />
       ) : (
+        <>
+        <BatchNotice
+          outcome={batchOutcome}
+          noun={config.kind === 'receivables' ? 'cobradas' : 'pagadas'}
+          onClose={() => setBatchOutcome(null)}
+        />
+        <BatchBar count={selection.selected.size} onClear={selection.clear}>
+          {selectedOpen.length > 0 ? (
+            <Button
+              variant="secondary"
+              className="!px-2.5 !py-1 text-xs"
+              onClick={() => {
+                setBatchAccountId(accounts?.length === 1 ? accounts[0].id : '')
+                setBatchPayOpen(true)
+              }}
+            >
+              {config.payAction} ({selectedOpen.length})
+            </Button>
+          ) : null}
+          <Button variant="secondary" className="!px-2.5 !py-1 text-xs" onClick={exportSelection}>
+            Exportar CSV
+          </Button>
+        </BatchBar>
         <Table
           headers={[
+            <RowCheckbox
+              key="all"
+              checked={selection.allOnPage}
+              onChange={selection.togglePage}
+              label="Seleccionar página"
+            />,
             config.contactLabel,
             'Concepto',
-            'Vence',
+            <SortableHeader key="v" field="due_date" label="Vence" sort={sort} onSort={setSort} />,
             'Estado',
             <span key="p" className="block text-right">Pagado / Total</span>,
-            <span key="s" className="block text-right">Saldo</span>,
+            <span key="s" className="block text-right">
+              <SortableHeader field="amount" label="Saldo" sort={sort} onSort={setSort} align="right" />
+            </span>,
             '',
           ]}
+          secondary={[5, 6]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun="cuentas" />}
         >
           {items.map((debt) => (
-            <tr key={debt.id} className="hover:bg-surface-2/50">
+            <tr
+              key={debt.id}
+              className={`hover:bg-surface-2/50 ${selection.selected.has(debt.id) ? 'bg-accent-soft/40' : ''}`}
+            >
+              <td className="w-10 px-4 py-2.5">
+                <RowCheckbox
+                  checked={selection.selected.has(debt.id)}
+                  onChange={() => selection.toggle(debt.id)}
+                  label={`Seleccionar ${debt.description}`}
+                />
+              </td>
               <td className="px-4 py-2.5 font-medium">{contactName(debt)}</td>
               <td className="px-4 py-2.5">{debt.description}</td>
               <td className={`whitespace-nowrap px-4 py-2.5 ${debt.is_overdue ? 'font-medium text-neg' : 'text-muted'}`}>
@@ -348,7 +470,44 @@ export function DebtsPage({ config }: { config: Config }) {
             </tr>
           ))}
         </Table>
+        </>
       )}
+
+      <Modal
+        title={`${config.payAction} en lote`}
+        open={batchPayOpen}
+        onClose={() => setBatchPayOpen(false)}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void batchPay()
+          }}
+          className="space-y-3"
+        >
+          <p className="text-sm text-muted">
+            Se liquidará el saldo completo de {selectedOpen.length} cuenta
+            {selectedOpen.length === 1 ? '' : 's'}. Para un cobro parcial usa el botón de la
+            fila. Si alguna falla, verás cuál y por qué.
+          </p>
+          <SelectInput
+            label={config.accountLabel}
+            required
+            placeholder="Elige la cuenta"
+            options={(accounts ?? [])
+              .filter((account) => account.active)
+              .map((account) => ({ value: account.id, label: account.name }))}
+            value={batchAccountId}
+            onChange={(event) => setBatchAccountId(event.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setBatchPayOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">{config.payAction}</Button>
+          </div>
+        </form>
+      </Modal>
 
       <JournalEntryModal
         sourceType={config.kind === 'receivables' ? 'receivable' : 'payable'}

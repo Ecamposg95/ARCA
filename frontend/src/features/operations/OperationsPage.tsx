@@ -15,6 +15,18 @@ import { Table } from '@/components/ui/Table'
 import { TaxSelect } from '@/components/ui/TaxSelect'
 import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
 import { TableFooter } from '@/components/ui/Pagination'
+import {
+  BatchBar,
+  BatchNotice,
+  FilterChip,
+  FilterToggle,
+  RowCheckbox,
+  SortableHeader,
+  exportRowsCsv,
+  runBatch,
+  useRowSelection,
+  type BatchOutcome,
+} from '@/components/ui/TableTools'
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
@@ -104,12 +116,42 @@ export function OperationsPage({ config }: { config: Config }) {
 
   // Un filtro nuevo debe volver a la primera página: si no, la lista sale vacía
   // sin explicación cuando el resultado cabe en menos páginas que el offset.
-  const [filters, setFiltersState] = useState({ q: '', start: '', end: '', project_id: '' })
+  const [filters, setFiltersState] = useState({
+    q: '',
+    start: '',
+    end: '',
+    project_id: '',
+    non_deductible: false,
+  })
+  const emptyFilters = { q: '', start: '', end: '', project_id: '', non_deductible: false }
   const setFilters = (next: Partial<typeof filters>) => {
     setFiltersState({ ...filters, ...next })
     setOffset(0)
   }
-  const hasFilters = Boolean(filters.q || filters.start || filters.end || filters.project_id)
+  const activeFilterCount =
+    Number(Boolean(filters.q)) +
+    Number(Boolean(filters.start || filters.end)) +
+    Number(Boolean(filters.project_id)) +
+    Number(filters.non_deductible)
+  const hasFilters = activeFilterCount > 0
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // El orden vive en la URL: una vista ordenada se comparte tal cual.
+  const sort = searchParams.get('orden') ?? ''
+  const setSort = (next: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set('orden', next)
+    else params.delete('orden')
+    setSearchParams(params, { replace: true })
+    setOffset(0)
+  }
+
+  const [batchOutcome, setBatchOutcome] = useState<BatchOutcome | null>(null)
+  const [batchNoun, setBatchNoun] = useState('aplicadas')
+  const [batchPayOpen, setBatchPayOpen] = useState(false)
+  const [batchProjectOpen, setBatchProjectOpen] = useState(false)
+  const [batchAccountId, setBatchAccountId] = useState('')
+  const [batchProjectId, setBatchProjectId] = useState('')
   const retentionTotal = Number(form.retention_isr || 0) + Number(form.retention_iva || 0)
 
   const { data: accounts } = useAccounts()
@@ -124,7 +166,7 @@ export function OperationsPage({ config }: { config: Config }) {
   const { data: contacts } = useContacts(config.contactResource)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter, filters, offset],
+    queryKey: [config.kind, statusFilter, filters, sort, offset],
     queryFn: async () =>
       (
         await api.get<Page<Operation>>(config.endpoint, {
@@ -134,6 +176,8 @@ export function OperationsPage({ config }: { config: Config }) {
             ...(filters.start ? { start: filters.start } : {}),
             ...(filters.end ? { end: filters.end } : {}),
             ...(filters.project_id ? { project_id: filters.project_id } : {}),
+            ...(filters.non_deductible ? { non_deductible: true } : {}),
+            ...(sort ? { sort } : {}),
             offset,
           },
         })
@@ -227,6 +271,61 @@ export function OperationsPage({ config }: { config: Config }) {
   }
 
   const items = data?.items ?? []
+  const selection = useRowSelection(items)
+  const selectedPending = selection.selectedItems.filter((item) => item.status === 'PENDING')
+
+  async function batchPay() {
+    const outcome = await runBatch(
+      selectedPending,
+      (item) => item.description,
+      async (item) => {
+        await api.post(`${config.endpoint}/${item.id}/pay`, {
+          financial_account_id: batchAccountId,
+        })
+      },
+      errorMessage,
+    )
+    setBatchNoun(config.kind === 'income' ? 'cobradas' : 'pagadas')
+    setBatchOutcome(outcome)
+    setBatchPayOpen(false)
+    selection.clear()
+    invalidate()
+  }
+
+  async function batchAssignProject() {
+    const outcome = await runBatch(
+      selection.selectedItems,
+      (item) => item.description,
+      async (item) => {
+        await api.patch(`${config.endpoint}/${item.id}`, {
+          project_id: batchProjectId || null,
+        })
+      },
+      errorMessage,
+    )
+    setBatchNoun('etiquetadas')
+    setBatchOutcome(outcome)
+    setBatchProjectOpen(false)
+    selection.clear()
+    invalidate()
+    void queryClient.invalidateQueries({ queryKey: ['projects'] })
+  }
+
+  function exportSelection() {
+    exportRowsCsv(
+      `${config.noun}-seleccion.csv`,
+      ['Fecha', 'Concepto', config.contactResource === 'customers' ? 'Cliente' : 'Proveedor', 'Categoría', 'Cuenta', 'Estado', 'Monto'],
+      selection.selectedItems.map((item) => [
+        item.date,
+        item.description,
+        contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id),
+        categoryName(item.category_id),
+        accountLabel(item.financial_account_id),
+        item.status,
+        String(item.amount),
+      ]),
+    )
+  }
 
   return (
     <div>
@@ -261,57 +360,103 @@ export function OperationsPage({ config }: { config: Config }) {
           ))}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <input
-            type="search"
-            placeholder="Buscar por concepto…"
-            value={filters.q}
-            onChange={(event) => setFilters({ q: event.target.value })}
-            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <FilterToggle
+            count={activeFilterCount}
+            open={filtersOpen}
+            onToggle={() => setFiltersOpen(!filtersOpen)}
           />
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <span>Del</span>
-            <input
-              type="date"
-              value={filters.start}
-              onChange={(event) => setFilters({ start: event.target.value })}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+          {/* Chips: lo aplicado se ve y se quita sin abrir el panel. */}
+          {filters.q ? (
+            <FilterChip label={`"${filters.q}"`} onRemove={() => setFilters({ q: '' })} />
+          ) : null}
+          {filters.start || filters.end ? (
+            <FilterChip
+              label={`${filters.start || '…'} → ${filters.end || '…'}`}
+              onRemove={() => setFilters({ start: '', end: '' })}
             />
-            <span>al</span>
-            <input
-              type="date"
-              value={filters.end}
-              onChange={(event) => setFilters({ end: event.target.value })}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+          ) : null}
+          {filters.project_id ? (
+            <FilterChip
+              label={
+                (projects ?? []).find((project) => project.id === filters.project_id)?.name ??
+                'Proyecto'
+              }
+              onRemove={() => setFilters({ project_id: '' })}
             />
-          </div>
-          {(projects ?? []).length > 0 ? (
-            <select
-              value={filters.project_id}
-              onChange={(event) => setFilters({ project_id: event.target.value })}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
-            >
-              <option value="">Todos los proyectos</option>
-              {(projects ?? []).map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+          ) : null}
+          {filters.non_deductible ? (
+            <FilterChip
+              label="Sólo no deducibles"
+              onRemove={() => setFilters({ non_deductible: false })}
+            />
           ) : null}
           {hasFilters ? (
             <button
               type="button"
               onClick={() => {
-                setFiltersState({ q: '', start: '', end: '', project_id: '' })
+                setFiltersState(emptyFilters)
                 setOffset(0)
               }}
               className="text-xs text-muted underline hover:text-ink"
             >
-              Limpiar filtros
+              Limpiar todo
             </button>
           ) : null}
         </div>
+
+        {filtersOpen ? (
+          <div className="mt-2 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface px-3 py-2.5">
+            <input
+              type="search"
+              placeholder="Buscar por concepto…"
+              value={filters.q}
+              onChange={(event) => setFilters({ q: event.target.value })}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
+            />
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <span>Del</span>
+              <input
+                type="date"
+                value={filters.start}
+                onChange={(event) => setFilters({ start: event.target.value })}
+                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+              />
+              <span>al</span>
+              <input
+                type="date"
+                value={filters.end}
+                onChange={(event) => setFilters({ end: event.target.value })}
+                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+              />
+            </div>
+            {(projects ?? []).length > 0 ? (
+              <select
+                value={filters.project_id}
+                onChange={(event) => setFilters({ project_id: event.target.value })}
+                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+              >
+                <option value="">Todos los proyectos</option>
+                {(projects ?? []).map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {config.kind === 'expense' ? (
+              <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={filters.non_deductible}
+                  onChange={(event) => setFilters({ non_deductible: event.target.checked })}
+                  className="h-4 w-4 accent-[hsl(var(--accent))]"
+                />
+                Sólo no deducibles
+              </label>
+            ) : null}
+          </div>
+        ) : null}
       </PageHeader>
 
       {isLoading ? (
@@ -325,7 +470,7 @@ export function OperationsPage({ config }: { config: Config }) {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setFiltersState({ q: '', start: '', end: '', project_id: '' })
+                  setFiltersState(emptyFilters)
                   setOffset(0)
                 }}
               >
@@ -341,24 +486,68 @@ export function OperationsPage({ config }: { config: Config }) {
           />
         )
       ) : (
+        <>
+        <BatchNotice outcome={batchOutcome} noun={batchNoun} onClose={() => setBatchOutcome(null)} />
+        <BatchBar count={selection.selected.size} onClear={selection.clear}>
+          {selectedPending.length > 0 ? (
+            <Button
+              variant="secondary"
+              className="!px-2.5 !py-1 text-xs"
+              onClick={() => {
+                setBatchAccountId(accounts?.length === 1 ? accounts[0].id : '')
+                setBatchPayOpen(true)
+              }}
+            >
+              {config.payAction} ({selectedPending.length})
+            </Button>
+          ) : null}
+          {(projects ?? []).length > 0 ? (
+            <Button
+              variant="secondary"
+              className="!px-2.5 !py-1 text-xs"
+              onClick={() => setBatchProjectOpen(true)}
+            >
+              Asignar proyecto
+            </Button>
+          ) : null}
+          <Button variant="secondary" className="!px-2.5 !py-1 text-xs" onClick={exportSelection}>
+            Exportar CSV
+          </Button>
+        </BatchBar>
         <Table
           headers={[
-            'Fecha',
+            <RowCheckbox
+              key="all"
+              checked={selection.allOnPage}
+              onChange={selection.togglePage}
+              label="Seleccionar página"
+            />,
+            <SortableHeader key="f" field="date" label="Fecha" sort={sort} onSort={setSort} />,
             'Concepto',
             config.contactResource === 'customers' ? 'Cliente' : 'Proveedor',
             'Categoría',
             config.kind === 'income' ? 'Entró a' : 'Se pagó con',
             'Estado',
             <span key="m" className="block text-right">
-              Monto
+              <SortableHeader field="amount" label="Monto" sort={sort} onSort={setSort} align="right" />
             </span>,
             '',
           ]}
-          secondary={[3, 4, 5]}
+          secondary={[4, 5, 6]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.noun} />}
         >
           {items.map((item) => (
-            <tr key={item.id} className="hover:bg-surface-2/50">
+            <tr
+              key={item.id}
+              className={`hover:bg-surface-2/50 ${selection.selected.has(item.id) ? 'bg-accent-soft/40' : ''}`}
+            >
+              <td className="w-10 px-4 py-2.5">
+                <RowCheckbox
+                  checked={selection.selected.has(item.id)}
+                  onChange={() => selection.toggle(item.id)}
+                  label={`Seleccionar ${item.description}`}
+                />
+              </td>
               <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(item.date)}</td>
               <td className="px-4 py-2.5 font-medium">
                 {item.description}
@@ -431,7 +620,80 @@ export function OperationsPage({ config }: { config: Config }) {
             </tr>
           ))}
         </Table>
+        </>
       )}
+
+      <Modal
+        title={`${config.payAction} en lote`}
+        open={batchPayOpen}
+        onClose={() => setBatchPayOpen(false)}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void batchPay()
+          }}
+          className="space-y-3"
+        >
+          <p className="text-sm text-muted">
+            Se aplicará a {selectedPending.length} operación
+            {selectedPending.length === 1 ? '' : 'es'} pendiente
+            {selectedPending.length === 1 ? '' : 's'}. Si alguna falla, verás cuál y por qué.
+          </p>
+          <SelectInput
+            label={config.accountLabel}
+            required
+            placeholder="Elige la cuenta"
+            options={(accounts ?? [])
+              .filter((account) => account.active)
+              .map((account) => ({ value: account.id, label: account.name }))}
+            value={batchAccountId}
+            onChange={(event) => setBatchAccountId(event.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setBatchPayOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">{config.payAction}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        title="Asignar proyecto en lote"
+        open={batchProjectOpen}
+        onClose={() => setBatchProjectOpen(false)}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void batchAssignProject()
+          }}
+          className="space-y-3"
+        >
+          <p className="text-sm text-muted">
+            Etiqueta {selection.selected.size} operación
+            {selection.selected.size === 1 ? '' : 'es'}. No cambia la contabilidad: es la
+            dimensión analítica.
+          </p>
+          <SelectInput
+            label="Proyecto"
+            placeholder="Sin proyecto (quitar etiqueta)"
+            options={(projects ?? []).map((project) => ({
+              value: project.id,
+              label: project.name,
+            }))}
+            value={batchProjectId}
+            onChange={(event) => setBatchProjectId(event.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setBatchProjectOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Asignar</Button>
+          </div>
+        </form>
+      </Modal>
 
       <JournalEntryModal
         sourceType={config.kind === 'income' ? 'income' : 'expense'}
