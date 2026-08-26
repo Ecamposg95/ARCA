@@ -13,6 +13,7 @@ import {
   TrendingDown,
   TrendingUp,
   Users,
+  Landmark,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -35,6 +36,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet },
+      { to: '/patrimonio', label: 'Patrimonio', icon: Landmark },
     ],
   },
   {

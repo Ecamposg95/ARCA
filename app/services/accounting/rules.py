@@ -15,8 +15,13 @@ from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.services.accounting.coa import (
     CODE_ACCOUNTS_PAYABLE,
     CODE_ACCOUNTS_RECEIVABLE,
+    CODE_ACCUMULATED_DEPRECIATION,
     CODE_CAPITAL,
     CODE_CASH_BANK,
+    CODE_DEPRECIATION_EXPENSE,
+    CODE_FIXED_ASSETS,
+    CODE_INTEREST_EXPENSE,
+    CODE_LOANS_PAYABLE,
     CODE_VAT_CHARGED_COLLECTED,
     CODE_VAT_CHARGED_PENDING,
     CODE_VAT_CREDITABLE_PAID,
@@ -347,4 +352,138 @@ def transfer_entry(
         source_id=source_id,
         created_by=created_by,
         kind="DIARIO",
+    )
+
+
+def fixed_asset_purchase_entry(
+    db: Session,
+    organization_id: str,
+    description: str,
+    cost: Decimal,
+    date: date_type,
+    source_id: str,
+    created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
+    tax_amount: Decimal = Decimal("0"),
+) -> JournalEntry:
+    """Compra de activo fijo: Cargo 1400 (costo) + IVA acreditable / Abono la cuenta.
+
+    El costo NO pasa por gasto: se queda en el activo y se lleva a resultados
+    mes a mes vía depreciación.
+    """
+    cost = Decimal(cost)
+    tax_amount = Decimal(tax_amount)
+    lines = [LineSpec(CODE_FIXED_ASSETS, debit=cost, description="Activo fijo")]
+    if tax_amount > 0:
+        lines.append(
+            LineSpec(CODE_VAT_CREDITABLE_PAID, debit=tax_amount, description="IVA acreditable")
+        )
+    lines.append(LineSpec(cash_account_code, credit=cost + tax_amount))
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=lines,
+        source_type="fixed_asset",
+        source_id=source_id,
+        created_by=created_by,
+        kind="EGRESO",
+    )
+
+
+def depreciation_entry(
+    db: Session,
+    organization_id: str,
+    description: str,
+    amount: Decimal,
+    date: date_type,
+    source_id: str,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Depreciación del mes: Cargo 5800 / Abono 1490 (acumulada).
+
+    No mueve dinero: reconoce el desgaste. 1490 es contra-activo, así que restar
+    del activo se logra abonando, nunca borrando el costo original.
+    """
+    amount = Decimal(amount)
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=[
+            LineSpec(CODE_DEPRECIATION_EXPENSE, debit=amount),
+            LineSpec(CODE_ACCUMULATED_DEPRECIATION, credit=amount, description="Depreciación acumulada"),
+        ],
+        source_type="depreciation",
+        source_id=source_id,
+        created_by=created_by,
+        kind="DIARIO",
+    )
+
+
+def loan_received_entry(
+    db: Session,
+    organization_id: str,
+    description: str,
+    amount: Decimal,
+    date: date_type,
+    source_id: str,
+    created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
+) -> JournalEntry:
+    """Alta del crédito: Cargo la cuenta donde entró / Abono 2300.
+
+    Recibir un préstamo no es ingreso: es dinero que entra y deuda que nace.
+    """
+    amount = Decimal(amount)
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=[
+            LineSpec(cash_account_code, debit=amount),
+            LineSpec(CODE_LOANS_PAYABLE, credit=amount, description="Préstamo por pagar"),
+        ],
+        source_type="loan",
+        source_id=source_id,
+        created_by=created_by,
+        kind="INGRESO",
+    )
+
+
+def loan_payment_entry(
+    db: Session,
+    organization_id: str,
+    description: str,
+    principal: Decimal,
+    interest: Decimal,
+    date: date_type,
+    source_id: str,
+    created_by: str | None = None,
+    cash_account_code: str = CODE_CASH_BANK,
+) -> JournalEntry:
+    """Pago del crédito: Cargo 2300 (capital) + 5900 (interés) / Abono la cuenta.
+
+    Aquí vive la razón del módulo: sólo el interés es gasto. Tratar el pago
+    completo como gasto infla los costos y deja la deuda inmóvil para siempre.
+    """
+    principal = Decimal(principal)
+    interest = Decimal(interest)
+    lines = [LineSpec(CODE_LOANS_PAYABLE, debit=principal, description="Capital")]
+    if interest > 0:
+        lines.append(LineSpec(CODE_INTEREST_EXPENSE, debit=interest, description="Intereses"))
+    lines.append(LineSpec(cash_account_code, credit=principal + interest))
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=lines,
+        source_type="loan_payment",
+        source_id=source_id,
+        created_by=created_by,
+        kind="EGRESO",
     )

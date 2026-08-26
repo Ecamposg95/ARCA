@@ -215,6 +215,60 @@ export interface CashFlow {
   closing_cash: number
 }
 
+export interface FixedAsset {
+  id: string
+  name: string
+  category: string
+  acquisition_date: string
+  cost: string
+  tax_amount: string
+  salvage_value: string
+  useful_life_months: number
+  accumulated_depreciation: string
+  financial_account_id: string | null
+  vendor_id: string | null
+  status: string
+  disposed_at: string | null
+  notes: string | null
+  created_at: string
+  book_value: string
+  monthly_depreciation: string
+  months_remaining: number
+}
+
+export interface Loan {
+  id: string
+  lender: string
+  description: string
+  principal: string
+  outstanding: string
+  annual_rate: string
+  term_months: number
+  start_date: string
+  payment_day: number
+  financial_account_id: string | null
+  status: string
+  notes: string | null
+  created_at: string
+  monthly_payment: string
+  paid_principal: string
+}
+
+export interface LoanScheduleRow {
+  number: number
+  due_date: string
+  payment: string
+  principal: string
+  interest: string
+  balance: string
+}
+
+export interface LoanSchedule {
+  loan_id: string
+  monthly_payment: string
+  rows: LoanScheduleRow[]
+}
+
 export interface AgingContact {
   contact_id: string
   name: string

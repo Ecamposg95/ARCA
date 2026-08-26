@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AccountingPage } from '@/features/accounting/AccountingPage'
+import { AssetsPage } from '@/features/assets/AssetsPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
@@ -30,6 +31,7 @@ export function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/movimientos" element={<TransactionsPage />} />
             <Route path="/cuentas" element={<AccountsPage />} />
+            <Route path="/patrimonio" element={<AssetsPage />} />
             <Route path="/ingresos" element={<OperationsPage config={INCOME_CONFIG} />} />
             <Route path="/gastos" element={<OperationsPage config={EXPENSE_CONFIG} />} />
             <Route path="/por-cobrar" element={<DebtsPage config={RECEIVABLES_CONFIG} />} />

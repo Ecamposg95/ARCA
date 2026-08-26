@@ -90,3 +90,39 @@ def test_series_covers_the_requested_months(client):
     report = client.get("/api/reports/net-worth?months=6", headers=headers).json()
     assert len(report["series"]) == 6
     assert report["series"][-1]["month"] == date.today().strftime("%Y-%m")
+
+
+def test_depreciation_lowers_net_worth(client):
+    from datetime import timedelta
+
+    body = register(client, initial_cash="100000")
+    headers = auth_headers(body)
+    account = client.get("/api/accounts", headers=headers).json()[0]
+
+    # Un mes ya cerrado, para que la póliza no quede con fecha futura.
+    closed = date.today().replace(day=1) - timedelta(days=1)
+    bought = (closed.replace(day=1) - timedelta(days=1)).replace(day=1)
+
+    client.post(
+        "/api/fixed-assets",
+        headers=headers,
+        json={
+            "name": "Laptop",
+            "acquisition_date": bought.isoformat(),
+            "cost": "36000",
+            "useful_life_months": 36,
+            "financial_account_id": account["id"],
+        },
+    )
+    before = client.get("/api/reports/net-worth", headers=headers).json()
+    # Comprar no cambia el patrimonio: cambias dinero por un activo.
+    assert Decimal(str(before["net_worth"])) == Decimal("100000")
+
+    client.post(
+        "/api/fixed-assets/depreciate",
+        headers=headers,
+        json={"year": closed.year, "month": closed.month},
+    )
+    after = client.get("/api/reports/net-worth", headers=headers).json()
+    # Depreciar sí: el activo vale menos y nada lo compensa.
+    assert Decimal(str(after["net_worth"])) == Decimal("99000")

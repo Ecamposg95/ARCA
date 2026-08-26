@@ -26,6 +26,12 @@ CODE_SALES = "4100"
 CODE_SERVICES = "4200"
 CODE_OPERATING_EXPENSES = "5100"
 CODE_OTHER_EXPENSES = "5700"
+# Patrimonio: lo que se compra para usar años, y lo que se debe a plazos.
+CODE_FIXED_ASSETS = "1400"
+CODE_ACCUMULATED_DEPRECIATION = "1490"  # contra-activo: naturaleza acreedora
+CODE_DEPRECIATION_EXPENSE = "5800"
+CODE_LOANS_PAYABLE = "2300"
+CODE_INTEREST_EXPENSE = "5900"
 
 # (code, name, type, parent_code)
 DEFAULT_CHART = (
@@ -35,9 +41,12 @@ DEFAULT_CHART = (
     ("1190", "IVA acreditable pagado", "ASSET", "1000"),
     ("1191", "IVA acreditable pendiente de pago", "ASSET", "1000"),
     ("1300", "Otros Activos", "ASSET", "1000"),
+    ("1400", "Activo Fijo", "ASSET", "1000"),
+    ("1490", "Depreciación Acumulada", "ASSET", "1000"),
     ("2000", "Pasivo", "LIABILITY", None),
     ("2100", "Cuentas por Pagar", "LIABILITY", "2000"),
     ("2200", "Tarjetas de crédito", "LIABILITY", "2000"),
+    ("2300", "Préstamos por Pagar", "LIABILITY", "2000"),
     ("2190", "IVA trasladado cobrado", "LIABILITY", "2000"),
     ("2191", "IVA trasladado pendiente de cobro", "LIABILITY", "2000"),
     ("3000", "Capital", "EQUITY", None),
@@ -54,6 +63,8 @@ DEFAULT_CHART = (
     ("5500", "Marketing", "EXPENSE", "5000"),
     ("5600", "Transporte", "EXPENSE", "5000"),
     ("5700", "Otros Gastos", "EXPENSE", "5000"),
+    ("5800", "Depreciación", "EXPENSE", "5000"),
+    ("5900", "Intereses", "EXPENSE", "5000"),
 )
 
 
