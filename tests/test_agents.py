@@ -230,3 +230,77 @@ def test_key_management_requires_admin(client, db):
         json={"name": "no debería", "scopes": "READ"},
     )
     assert response.status_code == 403
+
+
+def _propose(client, key_token, ventas, account, summary="Propuesta para polling"):
+    result = client.post(
+        "/api/agent/invoke",
+        headers=_agent_headers(key_token),
+        json={
+            "tool": "propose_income",
+            "arguments": {
+                "date": "2026-08-24",
+                "description": "Ingreso propuesto",
+                "amount": "1000",
+                "category_id": ventas["id"],
+                "financial_account_id": account["id"],
+                "status": "PAID",
+                "summary": summary,
+            },
+        },
+    ).json()
+    assert result["ok"] is True
+    return result["result"]["proposal_id"]
+
+
+def test_agent_can_poll_its_proposal_status(client):
+    """C-2: Cortex necesita saber si su propuesta fue aprobada, por la misma llave."""
+    headers, account, ventas = _setup(client)
+    key = _create_key(client, headers)
+    proposal_id = _propose(client, key["token"], ventas, account)
+
+    status = client.get(
+        f"/api/agent/proposal-status/{proposal_id}", headers=_agent_headers(key["token"])
+    )
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["id"] == proposal_id
+    assert body["status"] == "PROPOSED"
+    assert body["summary"] == "Propuesta para polling"
+    assert body["resolved_at"] is None
+
+    # Tras la aprobación humana, el agente ve el cambio y la fecha de resolución.
+    client.post(f"/api/proposals/{proposal_id}/approve", headers=headers)
+    body = client.get(
+        f"/api/agent/proposal-status/{proposal_id}", headers=_agent_headers(key["token"])
+    ).json()
+    assert body["status"] == "APPROVED"
+    assert body["resolved_at"] is not None
+
+
+def test_proposal_status_is_tenant_isolated(client):
+    headers_a, account_a, ventas_a = _setup(client)
+    key_a = _create_key(client, headers_a)
+    proposal_id = _propose(client, key_a["token"], ventas_a, account_a)
+
+    # Otra organización con su propia llave no puede ver la propuesta ajena.
+    headers_b, _account_b, _ventas_b = _setup(client, email="otra@example.com", business="Otra")
+    key_b = _create_key(client, headers_b)
+    response = client.get(
+        f"/api/agent/proposal-status/{proposal_id}", headers=_agent_headers(key_b["token"])
+    )
+    assert response.status_code == 404
+
+
+def test_read_only_key_can_poll_status(client):
+    """Consultar el estado no es escribir: una llave READ puede hacer polling."""
+    headers, account, ventas = _setup(client)
+    proposer = _create_key(client, headers)
+    proposal_id = _propose(client, proposer["token"], ventas, account)
+
+    reader = _create_key(client, headers, scopes="READ")
+    response = client.get(
+        f"/api/agent/proposal-status/{proposal_id}", headers=_agent_headers(reader["token"])
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "PROPOSED"

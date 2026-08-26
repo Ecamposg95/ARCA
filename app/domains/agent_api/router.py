@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.tools import TOOLS
 from app.database import get_db
-from app.models.agent import AgentActionLog
+from app.models.agent import AgentActionLog, AgentProposal
 from app.security.agent import AgentContext, get_agent_context
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -40,6 +40,36 @@ def list_tools(context: AgentContext = Depends(get_agent_context)):
             for tool in TOOLS.values()
             if tool.scope in context.scopes
         ],
+    }
+
+
+@router.get("/proposal-status/{proposal_id}")
+def proposal_status(
+    proposal_id: str,
+    db: Session = Depends(get_db),
+    context: AgentContext = Depends(get_agent_context),
+):
+    """Polling del agente sobre SU propuesta (C-2 de Cortex).
+
+    Consultar el estado no es escribir, así que basta cualquier llave válida de
+    la organización — pero sólo de la organización: una propuesta ajena es un
+    404 indistinguible de "no existe".
+    """
+    proposal = (
+        db.query(AgentProposal)
+        .filter(
+            AgentProposal.id == proposal_id,
+            AgentProposal.organization_id == context.organization_id,
+        )
+        .first()
+    )
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="La propuesta no existe.")
+    return {
+        "id": proposal.id,
+        "status": proposal.status,
+        "summary": proposal.summary,
+        "resolved_at": proposal.reviewed_at,
     }
 
 
