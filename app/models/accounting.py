@@ -42,7 +42,9 @@ class JournalEntry(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     description = Column(String(500), nullable=False)
     reference = Column(String(100), nullable=True)
     source_type = Column(String(50), nullable=True, index=True)
-    source_id = Column(String(36), nullable=True, index=True)
+    # 64, no 36: las claves de idempotencia de procesos periódicos son
+    # compuestas (`{entidad}:{AAAA-MM}`) y no caben en un UUID pelón.
+    source_id = Column(String(64), nullable=True, index=True)
     status = Column(String(20), nullable=False, default="POSTED")
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
 

@@ -180,3 +180,26 @@ def test_cannot_depreciate_a_month_that_has_not_ended(client):
     # Asentar al 31 con fecha futura escondería el gasto hasta que llegue el día.
     assert response.status_code == 400
     assert "todavía no termina" in response.json()["detail"]
+
+
+def test_the_idempotency_key_fits_in_the_column(client):
+    """SQLite ignora el largo de VARCHAR; PostgreSQL no.
+
+    Esta prueba existe porque la clave `{activo}:{AAAA-MM}` medía 44 caracteres
+    contra una columna de 36: en SQLite pasaba y en producción reventaba.
+    """
+    from app.models.accounting import JournalEntry
+
+    headers, account = _setup(client)
+    _create_asset(client, headers, account)
+    client.post("/api/fixed-assets/depreciate", headers=headers, json={"year": 2026, "month": 3})
+
+    limit = JournalEntry.__table__.c.source_id.type.length
+    entries = client.get(
+        "/api/accounting/journal-entries?source_type=depreciation", headers=headers
+    ).json()["items"]
+    assert entries, "la depreciación debe dejar su póliza"
+    for entry in entries:
+        assert len(entry["source_id"]) <= limit, (
+            f"la clave mide {len(entry['source_id'])} y la columna acepta {limit}"
+        )

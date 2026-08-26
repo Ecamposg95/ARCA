@@ -29,6 +29,18 @@ Spec completa: `docs/TASK_PACK.md`. Decisiones: `docs/superpowers/specs/` y `doc
 11. **Toda póliza lleva folio inmutable** (`Ig-/Eg-/Dr-AAAA-MM-NNNN`) que asigna
     `app/services/accounting/folios.py` bajo lock del contador. Nunca reasignar,
     reutilizar ni reciclar folios: son el índice de los libros del negocio.
+12. **Nunca asentar una póliza con fecha futura.** La depreciación de un mes se
+    corre al cierre; asentarla antes esconde el gasto hasta que llegue ese día y
+    deja el patrimonio inflado. Misma regla para cualquier proceso periódico.
+13. **Lo que se compra para usar años no es gasto del mes.** El costo vive en
+    1400 y llega a resultados vía depreciación contra 1490. Y el pago de un
+    crédito no es gasto: sólo el interés (5900) lo es; el resto baja 2300.
+14. **Los procesos periódicos son idempotentes.** Depreciar dos veces el mismo
+    mes debe no hacer nada, no duplicar. La clave de idempotencia va en
+    `source_id` (`{entidad}:{AAAA-MM}`), no en una bandera aparte.
+15. **Un proyecto es una etiqueta, no una cuenta.** `project_id` nunca cambia a
+    qué cuentas va una operación; existe una prueba de que el ledger no se
+    entera. La rentabilidad se mide sobre subtotales: el IVA no es tuyo.
 
 ## Arquitectura
 

@@ -49,6 +49,8 @@ class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     payment_method = Column(String(20), nullable=True)  # PAYMENT_METHODS
     status = Column(String(20), nullable=False, default="ACTIVE")  # ACTIVE | CANCELLED
     source_type = Column(String(50), nullable=True, index=True)
-    source_id = Column(String(36), nullable=True, index=True)
+    # 64, no 36: las claves de idempotencia de procesos periódicos son
+    # compuestas (`{entidad}:{AAAA-MM}`) y no caben en un UUID pelón.
+    source_id = Column(String(64), nullable=True, index=True)
     transfer_group_id = Column(String(36), nullable=True, index=True)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
