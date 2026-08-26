@@ -36,3 +36,26 @@ def paginate(query, limit: int, offset: int, schema, sum_column=None) -> dict:
             func.coalesce(func.sum(sum_column), 0)
         ).order_by(None).scalar()
     return page
+
+
+def apply_sort(query, sort: str | None, allowed: dict, default: tuple):
+    """Orden por columna con whitelist explícita.
+
+    `sort="-amount"` ordena descendente. Un campo fuera de la whitelist se
+    rechaza con 422: ordenarse por columnas arbitrarias expondría detalles
+    internos y permitiría sondear el modelo. El orden por defecto del recurso
+    se conserva como desempate para que la paginación sea estable.
+    """
+    from fastapi import HTTPException
+
+    if not sort:
+        return query.order_by(*default)
+    descending = sort.startswith("-")
+    field = sort[1:] if descending else sort
+    column = allowed.get(field)
+    if column is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No se puede ordenar por '{field}'. Campos válidos: {', '.join(sorted(allowed))}.",
+        )
+    return query.order_by(column.desc() if descending else column.asc(), *default)

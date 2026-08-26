@@ -14,7 +14,7 @@ from app.domains.receivables.schemas import (
 from app.models.organization import WRITE_ROLES
 from app.models.receivable import Receivable
 from app.models.user import User
-from app.schemas.common import paginate
+from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 
 router = APIRouter(prefix="/receivables", tags=["receivables"])
@@ -34,6 +34,8 @@ def _get_receivable(db: Session, org_id: str, receivable_id: str) -> Receivable:
 @router.get("")
 def list_receivables(
     status: str | None = Query(default=None, pattern="^(OPEN|PARTIAL|PAID|CANCELLED|OVERDUE)$"),
+    q: str | None = Query(default=None, max_length=200),
+    sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -49,7 +51,14 @@ def list_receivables(
         query = query.filter(Receivable.status == status)
     elif status:
         query = query.filter(Receivable.status == status)
-    query = query.order_by(Receivable.due_date.asc(), Receivable.created_at.desc())
+    if q:
+        query = query.filter(Receivable.description.ilike(f"%{q}%"))
+    query = apply_sort(
+        query,
+        sort,
+        {"due_date": Receivable.due_date, "date": Receivable.date, "amount": Receivable.amount},
+        (Receivable.due_date.asc(), Receivable.created_at.desc()),
+    )
     return paginate(query, limit, offset, ReceivableRead)
 
 
