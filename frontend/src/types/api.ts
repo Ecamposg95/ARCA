@@ -215,6 +215,125 @@ export interface CashFlow {
   closing_cash: number
 }
 
+export interface ProjectRow {
+  id: string
+  name: string
+  code: string | null
+  customer_id: string | null
+  description: string | null
+  budget: string | null
+  start_date: string | null
+  end_date: string | null
+  status: string
+  created_at: string
+  revenue: string
+  cost: string
+  margin: string
+  margin_pct: number
+  pending_revenue: string
+  budget_used_pct: number | null
+}
+
+export interface ProjectsResponse {
+  items: ProjectRow[]
+  total: number
+  limit: number
+  offset: number
+  unassigned: { revenue: string; cost: string; margin: string; margin_pct: number }
+}
+
+export interface FixedAsset {
+  id: string
+  name: string
+  category: string
+  acquisition_date: string
+  cost: string
+  tax_amount: string
+  salvage_value: string
+  useful_life_months: number
+  accumulated_depreciation: string
+  financial_account_id: string | null
+  vendor_id: string | null
+  status: string
+  disposed_at: string | null
+  notes: string | null
+  created_at: string
+  book_value: string
+  monthly_depreciation: string
+  months_remaining: number
+}
+
+export interface Loan {
+  id: string
+  lender: string
+  description: string
+  principal: string
+  outstanding: string
+  annual_rate: string
+  term_months: number
+  start_date: string
+  payment_day: number
+  financial_account_id: string | null
+  status: string
+  notes: string | null
+  created_at: string
+  monthly_payment: string
+  paid_principal: string
+}
+
+export interface LoanScheduleRow {
+  number: number
+  due_date: string
+  payment: string
+  principal: string
+  interest: string
+  balance: string
+}
+
+export interface LoanSchedule {
+  loan_id: string
+  monthly_payment: string
+  rows: LoanScheduleRow[]
+}
+
+export interface AgingContact {
+  contact_id: string
+  name: string
+  total: number
+  oldest_days: number
+  /** Un campo por tramo ("0-30", "31-60", "61-90", "+90"). */
+  [bucket: string]: number | string
+}
+
+export interface AgingReport {
+  as_of: string
+  kind: 'receivable' | 'payable'
+  buckets: string[]
+  contacts: AgingContact[]
+  totals: Record<string, number>
+  total: number
+  overdue: number
+  average_days: number
+}
+
+export interface NetWorthPoint {
+  month: string
+  assets: number
+  liabilities: number
+  net_worth: number
+}
+
+export interface NetWorth {
+  as_of: string
+  assets: ReportLine[]
+  liabilities: ReportLine[]
+  total_assets: number
+  total_liabilities: number
+  net_worth: number
+  change_vs_previous_month: number
+  series: NetWorthPoint[]
+}
+
 export interface JournalLine {
   id: string
   account_id: string

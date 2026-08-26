@@ -20,6 +20,8 @@ class Income(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     tax_rate = Column(Numeric(5, 4), nullable=False, default=0)  # 0.1600 = 16%
     tax_amount = Column(Numeric(14, 2), nullable=False, default=0)
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
+    # Dimensión analítica opcional: no toca el ledger.
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True, index=True)
     financial_account_id = Column(String(36), ForeignKey("financial_accounts.id"), nullable=True)
     status = Column(String(20), nullable=False, default="PENDING")  # INCOME_STATUSES
     notes = Column(String(1000), nullable=True)

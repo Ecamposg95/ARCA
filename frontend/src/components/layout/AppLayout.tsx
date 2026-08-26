@@ -13,6 +13,8 @@ import {
   TrendingDown,
   TrendingUp,
   Users,
+  FolderKanban,
+  Landmark,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -35,6 +37,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet },
+      { to: '/patrimonio', label: 'Patrimonio', icon: Landmark },
     ],
   },
   {
@@ -56,6 +59,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
   {
     label: 'Finanzas',
     items: [
+      { to: '/proyectos', label: 'Proyectos', icon: FolderKanban },
       { to: '/reportes', label: 'Reportes', icon: BarChart3 },
       {
         to: '/contabilidad',

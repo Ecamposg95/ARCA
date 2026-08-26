@@ -56,6 +56,13 @@ export function TransactionsPage() {
     return (id: string) => map.get(id) ?? '—'
   }, [accounts])
 
+  const accountNature = useMemo(() => {
+    const map = new Map((accounts ?? []).map((account) => [account.id, account.type]))
+    return (id: string) => map.get(id)
+  }, [accounts])
+
+  const filteredIsCard = accountFilter ? accountNature(accountFilter) === 'CREDIT_CARD' : false
+
   const transferMutation = useMutation({
     mutationFn: async () => {
       await api.post('/transactions/transfer', form)
@@ -131,7 +138,7 @@ export function TransactionsPage() {
             ...(accountFilter
               ? [
                   <span key="s" className="block text-right">
-                    Saldo
+                    {filteredIsCard ? 'Debes' : 'Saldo'}
                   </span>,
                 ]
               : []),
@@ -143,6 +150,7 @@ export function TransactionsPage() {
               label: transaction.transaction_type,
               inflow: false,
             }
+            const isCard = accountNature(transaction.financial_account_id) === 'CREDIT_CARD'
             return (
               <tr key={transaction.id} className="hover:bg-surface-2/50">
                 <td className="whitespace-nowrap px-4 py-2.5 text-muted">{formatDate(transaction.date)}</td>
@@ -152,11 +160,21 @@ export function TransactionsPage() {
                     {accountName(transaction.financial_account_id)}
                   </td>
                 )}
-                <td className="px-4 py-2.5 text-muted">{type.label}</td>
+                <td className="px-4 py-2.5 text-muted">
+                  {isCard ? (type.inflow ? 'Pago de tarjeta' : 'Cargo a tarjeta') : type.label}
+                </td>
                 <td className="px-4 py-2.5 text-right">
                   <span className="figures font-medium">
-                    {/* El signo ya dice la dirección; el color sería redundante. */}
-                    <Money value={type.inflow ? transaction.amount : `-${transaction.amount}`} />
+                    {/* El signo ya dice la dirección; el color sería redundante.
+                        En una tarjeta el dinero no sale: sube lo que debes, así que
+                        el signo sigue a la deuda y no al efectivo. */}
+                    <Money
+                      value={
+                        (isCard ? !type.inflow : type.inflow)
+                          ? transaction.amount
+                          : `-${transaction.amount}`
+                      }
+                    />
                   </span>
                 </td>
                 {accountFilter ? (

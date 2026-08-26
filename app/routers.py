@@ -18,6 +18,9 @@ from app.domains.agent_keys.router import router as agent_keys_router
 from app.domains.proposals.router import router as proposals_router
 from app.domains.dashboard.router import router as dashboard_router
 from app.domains.reports.router import router as reports_router
+from app.domains.fixed_assets.router import router as fixed_assets_router
+from app.domains.loans.router import router as loans_router
+from app.domains.projects.router import router as projects_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -37,3 +40,6 @@ api_router.include_router(agent_keys_router)
 api_router.include_router(proposals_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(reports_router)
+api_router.include_router(fixed_assets_router)
+api_router.include_router(loans_router)
+api_router.include_router(projects_router)

@@ -20,6 +20,8 @@ class Expense(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     tax_rate = Column(Numeric(5, 4), nullable=False, default=0)  # 0.1600 = 16%
     tax_amount = Column(Numeric(14, 2), nullable=False, default=0)
     category_id = Column(String(36), ForeignKey("categories.id"), nullable=False)
+    # Dimensión analítica opcional: no toca el ledger.
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=True, index=True)
     financial_account_id = Column(String(36), ForeignKey("financial_accounts.id"), nullable=True)
     payment_method = Column(String(30), nullable=True)
     reference = Column(String(100), nullable=True)

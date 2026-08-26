@@ -4,15 +4,19 @@ export function Table({
   headers,
   children,
   footer,
+  secondary,
 }: {
   headers: (string | ReactNode)[]
   children: ReactNode
   footer?: ReactNode
+  /** Columnas (índice base 1) que se ocultan en pantallas chicas: en un teléfono
+   *  vale más ver cinco columnas legibles que nueve tras un scroll lateral. */
+  secondary?: number[]
 }) {
   return (
     <div className="rounded-xl border border-border bg-surface shadow-card">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" data-secondary={secondary?.join(' ')}>
           <thead>
             <tr className="border-b border-border text-left">
               {headers.map((header, index) => (

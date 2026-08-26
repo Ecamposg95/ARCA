@@ -41,13 +41,15 @@ INCOME_MIX = (
     ("Consultoría técnica", "Servicios"),
     ("Implementación ERP", "Ventas"),
 )
-# (concepto, categoría, mínimo, máximo, causa IVA)
+# (concepto, categoría, proveedor, mínimo, máximo, causa IVA)
+# El proveedor va amarrado al concepto: "Renta coworking · Google Workspace"
+# se ve descuidado en un proyector, y el público lo nota antes que tú.
 EXPENSE_MIX = (
-    ("Nómina quincenal", "Nómina", 38000, 52000, False),
-    ("Renta coworking", "Renta", 15000, 21000, True),
-    ("Factura AWS", "Software", 4000, 12000, True),
-    ("Publicidad LinkedIn", "Marketing", 2000, 8000, True),
-    ("Honorarios contables", "Honorarios", 3500, 6000, True),
+    ("Nómina quincenal", "Nómina", None, 38000, 52000, False),
+    ("Renta coworking", "Renta", "WeWork Reforma", 15000, 21000, True),
+    ("Factura AWS", "Software", "Amazon Web Services", 4000, 12000, True),
+    ("Publicidad LinkedIn", "Marketing", "Google Workspace", 2000, 8000, True),
+    ("Honorarios contables", "Honorarios", "Despacho Contable Núñez", 3500, 6000, True),
 )
 
 
@@ -123,18 +125,21 @@ def main() -> None:
                 "financial_account_id": bbva["id"],
                 "status": "PAID",
             })
-        for description, category, low, high, taxed in EXPENSE_MIX:
+        for description, category, vendor, low, high, taxed in EXPENSE_MIX:
             for day in (14, 28) if category == "Nómina" else (random.randint(2, 12),):
-                post("/expenses", {
+                payload = {
                     "date": day_of(months_ago, day),
                     "description": description,
                     "amount": str(random.randint(low, high)),
                     "tax_rate": "0.16" if taxed else "0",
                     "category_id": expense_cats[category]["id"],
-                    "vendor_id": vendors[random.choice(VENDORS)]["id"],
                     "financial_account_id": bbva["id"],
                     "status": "PAID",
-                })
+                }
+                # La nómina no tiene proveedor: la paga la empresa a su gente.
+                if vendor:
+                    payload["vendor_id"] = vendors[vendor]["id"]
+                post("/expenses", payload)
 
     # --- Un gasto con tarjeta: crea deuda, no toca el banco (acto 3) ---
     licencias = post("/expenses", {
@@ -183,6 +188,82 @@ def main() -> None:
             "category_id": expense_cats[category]["id"],
         })
 
+    # --- Patrimonio: lo que se compró para usar años y lo que se debe a plazos ---
+    post("/fixed-assets", {
+        "name": "MacBook Pro del equipo de diseño",
+        "category": "EQUIPO_COMPUTO",
+        "acquisition_date": day_of(3, 8),
+        "cost": "58000",
+        "tax_amount": "9280",
+        "useful_life_months": 36,
+        "financial_account_id": bbva["id"],
+    })
+    post("/fixed-assets", {
+        "name": "Camioneta de reparto",
+        "category": "VEHICULOS",
+        "acquisition_date": day_of(3, 3),
+        "cost": "420000",
+        "tax_amount": "67200",
+        "salvage_value": "60000",
+        "useful_life_months": 48,
+        "financial_account_id": bbva["id"],
+    })
+    # Se corren sólo los meses ya cerrados: depreciar el mes en curso asentaría
+    # una póliza con fecha futura y ARCA lo rechaza, con razón.
+    for months_ago in range(2, 0, -1):
+        index = today.year * 12 + (today.month - 1) - months_ago
+        year, month = divmod(index, 12)
+        client.post("/fixed-assets/depreciate", json={"year": year, "month": month + 1})
+
+    prestamo = post("/loans", {
+        "lender": "BBVA",
+        "description": "Crédito para capital de trabajo",
+        "principal": "300000",
+        "annual_rate": "0.22",
+        "term_months": 24,
+        "start_date": day_of(2, 1),
+        "financial_account_id": bbva["id"],
+    })
+    for months_ago in (1, 0):
+        post(f"/loans/{prestamo['id']}/pay", {
+            "amount": str(prestamo["monthly_payment"]),
+            "financial_account_id": bbva["id"],
+            "date": day_of(months_ago, 1),
+        })
+
+    # --- Proyectos: uno que deja dinero y uno que se lo come ---
+    erp = post("/projects", {
+        "name": "ERP fase 2 — Grupo Industrial",
+        "budget": "400000",
+        "customer_id": customers["Grupo Industrial del Norte"]["id"],
+    })
+    portal = post("/projects", {
+        "name": "Portal de clientes — Fintech Pagos",
+        "budget": "180000",
+        "customer_id": customers["Fintech Pagos MX"]["id"],
+    })
+    for project_id, ingreso, costo in ((erp["id"], "232000", "98000"), (portal["id"], "69600", "84000")):
+        post("/income", {
+            "date": day_of(1, 15),
+            "description": "Entrega de proyecto",
+            "amount": ingreso,
+            "tax_rate": "0.16",
+            "category_id": income_cats["Servicios"]["id"],
+            "financial_account_id": bbva["id"],
+            "status": "PAID",
+            "project_id": project_id,
+        })
+        post("/expenses", {
+            "date": day_of(1, 20),
+            "description": "Equipo asignado al proyecto",
+            "amount": costo,
+            "tax_rate": "0",
+            "category_id": expense_cats["Nómina"]["id"],
+            "financial_account_id": bbva["id"],
+            "status": "PAID",
+            "project_id": project_id,
+        })
+
     # --- Llave para el acto del agente ---
     llave = post("/agent-keys", {"name": "Claude Code", "scopes": "READ,PROPOSE"})
 
@@ -210,6 +291,11 @@ def main() -> None:
     polizas = client.get("/accounting/journal-entries", params={"limit": 1}).json()["total"]
     print(f"│ Pólizas           {polizas} (balanza cuadra: "
           f"{balanza['total_debit'] == balanza['total_credit']})")
+    print("│")
+    activos = client.get("/fixed-assets/summary").json()
+    prestamos = client.get("/loans/summary").json()
+    print(f"│ Activos (valor)   {activos['book_value']}")
+    print(f"│ Deuda de créditos {prestamos['outstanding']}")
     print("│")
     print("│ Pólizas que se citan en vivo:")
     print(f"│   Tarjeta AMEX (acto 3)  {folio_de('expense', licencias['id'])}")

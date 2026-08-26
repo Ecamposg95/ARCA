@@ -92,6 +92,7 @@ export function OperationsPage({ config }: { config: Config }) {
     description: '',
     amount: '',
     category_id: '',
+    project_id: '',
     contact_id: '',
     financial_account_id: '',
     tax_rate: defaultTaxRate,
@@ -99,16 +100,39 @@ export function OperationsPage({ config }: { config: Config }) {
     notes: '',
   })
 
+  // Un filtro nuevo debe volver a la primera página: si no, la lista sale vacía
+  // sin explicación cuando el resultado cabe en menos páginas que el offset.
+  const [filters, setFiltersState] = useState({ q: '', start: '', end: '', project_id: '' })
+  const setFilters = (next: Partial<typeof filters>) => {
+    setFiltersState({ ...filters, ...next })
+    setOffset(0)
+  }
+  const hasFilters = Boolean(filters.q || filters.start || filters.end || filters.project_id)
+
   const { data: accounts } = useAccounts()
+  // Sólo los proyectos abiertos: etiquetar contra uno cerrado ensucia el reporte.
+  const { data: projects } = useQuery({
+    queryKey: ['projects', 'ACTIVE'],
+    queryFn: async () =>
+      (await api.get<{ items: { id: string; name: string }[] }>('/projects?status=ACTIVE')).data
+        .items,
+  })
   const { data: categories } = useCategories(config.categoryKind)
   const { data: contacts } = useContacts(config.contactResource)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter, offset],
+    queryKey: [config.kind, statusFilter, filters, offset],
     queryFn: async () =>
       (
         await api.get<Page<Operation>>(config.endpoint, {
-          params: { ...(statusFilter ? { status: statusFilter } : {}), offset },
+          params: {
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(filters.q ? { q: filters.q } : {}),
+            ...(filters.start ? { start: filters.start } : {}),
+            ...(filters.end ? { end: filters.end } : {}),
+            ...(filters.project_id ? { project_id: filters.project_id } : {}),
+            offset,
+          },
         })
       ).data,
   })
@@ -122,6 +146,12 @@ export function OperationsPage({ config }: { config: Config }) {
     const map = new Map((contacts ?? []).map((contact) => [contact.id, contact.name]))
     return (id: string | null) => (id ? (map.get(id) ?? '—') : '—')
   }, [contacts])
+
+  const accountLabel = useMemo(() => {
+    const map = new Map((accounts ?? []).map((account) => [account.id, account.name]))
+    // Sin cuenta significa que el dinero todavía no se mueve, no que falte un dato.
+    return (id: string | null) => (id ? (map.get(id) ?? '—') : 'Sin pagar')
+  }, [accounts])
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: [config.kind] })
@@ -140,6 +170,7 @@ export function OperationsPage({ config }: { config: Config }) {
         status: form.paid ? 'PAID' : 'PENDING',
       }
       if (form.contact_id) payload[config.contactField] = form.contact_id
+      if (form.project_id) payload.project_id = form.project_id
       if (form.financial_account_id) payload.financial_account_id = form.financial_account_id
       if (form.notes) payload.notes = form.notes
       await api.post(config.endpoint, payload)
@@ -175,6 +206,7 @@ export function OperationsPage({ config }: { config: Config }) {
       description: '',
       amount: '',
       category_id: '',
+      project_id: '',
       contact_id: '',
       financial_account_id: '',
       tax_rate: defaultTaxRate,
@@ -221,16 +253,86 @@ export function OperationsPage({ config }: { config: Config }) {
             </button>
           ))}
         </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <input
+            type="search"
+            placeholder="Buscar por concepto…"
+            value={filters.q}
+            onChange={(event) => setFilters({ q: event.target.value })}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
+          />
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            <span>Del</span>
+            <input
+              type="date"
+              value={filters.start}
+              onChange={(event) => setFilters({ start: event.target.value })}
+              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+            />
+            <span>al</span>
+            <input
+              type="date"
+              value={filters.end}
+              onChange={(event) => setFilters({ end: event.target.value })}
+              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+            />
+          </div>
+          {(projects ?? []).length > 0 ? (
+            <select
+              value={filters.project_id}
+              onChange={(event) => setFilters({ project_id: event.target.value })}
+              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+            >
+              <option value="">Todos los proyectos</option>
+              {(projects ?? []).map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {hasFilters ? (
+            <button
+              type="button"
+              onClick={() => {
+                setFiltersState({ q: '', start: '', end: '', project_id: '' })
+                setOffset(0)
+              }}
+              className="text-xs text-muted underline hover:text-ink"
+            >
+              Limpiar filtros
+            </button>
+          ) : null}
+        </div>
       </PageHeader>
 
       {isLoading ? (
         <div className="h-48 animate-pulse rounded-xl bg-surface-2" />
       ) : items.length === 0 ? (
-        <EmptyState
-          title={config.emptyTitle}
-          message={config.emptyMessage}
-          action={<Button onClick={() => setModalOpen(true)}>{config.newLabel}</Button>}
-        />
+        hasFilters ? (
+          <EmptyState
+            title="Nada coincide con lo que buscas"
+            message="Prueba con otro concepto o amplía el rango de fechas."
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFiltersState({ q: '', start: '', end: '', project_id: '' })
+                  setOffset(0)
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title={config.emptyTitle}
+            message={config.emptyMessage}
+            action={<Button onClick={() => setModalOpen(true)}>{config.newLabel}</Button>}
+          />
+        )
       ) : (
         <Table
           headers={[
@@ -238,12 +340,14 @@ export function OperationsPage({ config }: { config: Config }) {
             'Concepto',
             config.contactResource === 'customers' ? 'Cliente' : 'Proveedor',
             'Categoría',
+            config.kind === 'income' ? 'Entró a' : 'Se pagó con',
             'Estado',
             <span key="m" className="block text-right">
               Monto
             </span>,
             '',
           ]}
+          secondary={[3, 4, 5]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.noun} />}
         >
           {items.map((item) => (
@@ -254,6 +358,10 @@ export function OperationsPage({ config }: { config: Config }) {
                 {contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id)}
               </td>
               <td className="px-4 py-2.5 text-muted">{categoryName(item.category_id)}</td>
+              {/* Con qué se movió el dinero: es la pregunta que da origen a ARCA. */}
+              <td className="whitespace-nowrap px-4 py-2.5 text-muted">
+                {accountLabel(item.financial_account_id)}
+              </td>
               <td className="px-4 py-2.5">
                 <StatusBadge status={item.status} paidLabel={config.paidLabel} />
               </td>
@@ -373,6 +481,18 @@ export function OperationsPage({ config }: { config: Config }) {
               onChange={(event) => setForm({ ...form, contact_id: event.target.value })}
             />
           </div>
+          {(projects ?? []).length > 0 ? (
+            <SelectInput
+              label="Proyecto (opcional)"
+              placeholder="Sin proyecto"
+              options={(projects ?? []).map((project) => ({
+                value: project.id,
+                label: project.name,
+              }))}
+              value={form.project_id}
+              onChange={(event) => setForm({ ...form, project_id: event.target.value })}
+            />
+          ) : null}
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

@@ -15,6 +15,7 @@ class ExpenseCreate(BaseModel):
     amount: Decimal = Field(gt=0, allow_inf_nan=False)  # TOTAL con impuesto
     tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     category_id: str
+    project_id: str | None = None
     financial_account_id: str | None = None
     payment_method: str | None = Field(default=None, max_length=30)
     reference: str | None = Field(default=None, max_length=100)
@@ -43,6 +44,7 @@ class ExpenseRead(BaseModel):
     tax_rate: Decimal
     tax_amount: Decimal
     category_id: str
+    project_id: str | None = None
     financial_account_id: str | None
     payment_method: str | None
     reference: str | None

@@ -275,3 +275,157 @@ def cash_projection(db: Session, organization_id: str, days: int = 90) -> dict:
         "shortfall_date": shortfall,
         "points": points,
     }
+
+
+# Tramos de antigüedad medidos desde el vencimiento. "Por vencer" es lo que
+# todavía no es exigible: mezclarlo con lo vencido esconde el problema real.
+AGING_BUCKETS = (
+    ("Por vencer", 0),
+    ("1-30", 30),
+    ("31-60", 60),
+    ("61-90", 90),
+    ("+90", None),
+)
+
+
+def aging_report(db: Session, organization_id: str, kind: str = "receivable") -> dict:
+    """Antigüedad de saldos por contraparte, más los días promedio de cobro.
+
+    `kind` es "receivable" (quién te debe) o "payable" (a quién le debes). Los
+    tramos se miden desde el vencimiento: lo que aún no vence cae en 0-30 con
+    días 0, porque todavía no es antigüedad.
+    """
+    from app.models.contact import Customer, Vendor
+    from app.models.payable import Payable
+    from app.models.receivable import Receivable
+
+    if kind == "payable":
+        model, contact_model, contact_field = Payable, Vendor, Payable.vendor_id
+    else:
+        model, contact_model, contact_field = Receivable, Customer, Receivable.customer_id
+
+    today = date_type.today()
+
+    rows = (
+        db.query(
+            contact_field,
+            contact_model.name,
+            model.due_date,
+            model.date,
+            model.amount,
+            model.amount_paid,
+        )
+        .join(contact_model, contact_model.id == contact_field)
+        .filter(
+            model.organization_id == organization_id,
+            model.status.in_(("OPEN", "PARTIAL")),
+        )
+        .all()
+    )
+
+    by_contact: dict[str, dict] = {}
+    totals = {label: Decimal("0") for label, _limit in AGING_BUCKETS}
+    grand_total = Decimal("0")
+    overdue_total = Decimal("0")
+    # Para el DSO: suma ponderada de (días de antigüedad × saldo).
+    weighted_days = Decimal("0")
+
+    for contact_id, contact_name, due_date, _issued, amount, paid in rows:
+        balance = Decimal(amount) - Decimal(paid)
+        if balance <= 0:
+            continue
+
+        days_late = max((today - due_date).days, 0)
+        label = next(
+            name for name, limit in AGING_BUCKETS if limit is None or days_late <= limit
+        )
+
+        entry = by_contact.setdefault(
+            contact_id,
+            {
+                "contact_id": contact_id,
+                "name": contact_name,
+                "total": Decimal("0"),
+                "oldest_days": 0,
+                **{name: Decimal("0") for name, _limit in AGING_BUCKETS},
+            },
+        )
+        entry[label] += balance
+        entry["total"] += balance
+        entry["oldest_days"] = max(entry["oldest_days"], days_late)
+
+        totals[label] += balance
+        grand_total += balance
+        weighted_days += Decimal(days_late) * balance
+        if days_late > 0:
+            overdue_total += balance
+
+    contacts = sorted(by_contact.values(), key=lambda item: item["total"], reverse=True)
+    average_days = int(weighted_days / grand_total) if grand_total > 0 else 0
+
+    return {
+        "as_of": today,
+        "kind": kind,
+        "buckets": [name for name, _limit in AGING_BUCKETS],
+        "contacts": contacts,
+        "totals": totals,
+        "total": grand_total,
+        "overdue": overdue_total,
+        # Días promedio ponderados por saldo: cuánto tarda en promedio tu dinero.
+        "average_days": average_days,
+    }
+
+
+def net_worth(db: Session, organization_id: str, months: int = 12) -> dict:
+    """Patrimonio neto: lo que tienes menos lo que debes, y cómo ha evolucionado.
+
+    Es el Balance General dicho en el idioma del dueño. Los saldos se toman del
+    libro al cierre de cada mes, así que cuadran con la contabilidad por
+    construcción — no son una tabla paralela.
+    """
+    from calendar import monthrange
+
+    today = date_type.today()
+
+    def month_end(offset: int) -> date_type:
+        index = today.year * 12 + (today.month - 1) - offset
+        year, month = divmod(index, 12)
+        month += 1
+        last_day = monthrange(year, month)[1]
+        # El mes en curso se corta hoy: proyectar al día 31 inventaría saldos.
+        return min(date_type(year, month, last_day), today)
+
+    def snapshot(as_of: date_type) -> tuple[Decimal, Decimal]:
+        assets = account_type_balance(db, organization_id, "ASSET", end=as_of)
+        liabilities = account_type_balance(db, organization_id, "LIABILITY", end=as_of)
+        return assets, liabilities
+
+    series = []
+    for offset in range(months - 1, -1, -1):
+        as_of = month_end(offset)
+        assets, liabilities = snapshot(as_of)
+        series.append(
+            {
+                "month": as_of.strftime("%Y-%m"),
+                "assets": assets,
+                "liabilities": liabilities,
+                "net_worth": assets - liabilities,
+            }
+        )
+
+    current = balance_sheet(db, organization_id, today)
+    net = Decimal(current["total_assets"]) - Decimal(current["total_liabilities"])
+
+    previous = series[-2]["net_worth"] if len(series) > 1 else Decimal("0")
+    change = net - Decimal(previous)
+
+    return {
+        "as_of": today,
+        "assets": current["assets"],
+        "liabilities": current["liabilities"],
+        "total_assets": current["total_assets"],
+        "total_liabilities": current["total_liabilities"],
+        "net_worth": net,
+        "change_vs_previous_month": change,
+        "series": series,
+    }
