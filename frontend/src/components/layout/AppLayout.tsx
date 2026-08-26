@@ -13,6 +13,7 @@ import {
   TrendingDown,
   TrendingUp,
   Users,
+  FolderKanban,
   Landmark,
   Wallet,
   type LucideIcon,
@@ -58,6 +59,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
   {
     label: 'Finanzas',
     items: [
+      { to: '/proyectos', label: 'Proyectos', icon: FolderKanban },
       { to: '/reportes', label: 'Reportes', icon: BarChart3 },
       {
         to: '/contabilidad',

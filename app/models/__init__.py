@@ -16,6 +16,7 @@ from app.models.income import Income  # noqa: F401
 from app.models.loan import Loan, LoanPayment  # noqa: F401
 from app.models.organization import Organization, OrganizationMember  # noqa: F401
 from app.models.payable import Payable  # noqa: F401
+from app.models.project import Project  # noqa: F401
 from app.models.receivable import Receivable  # noqa: F401
 from app.models.transaction import FinancialTransaction  # noqa: F401
 from app.models.user import User  # noqa: F401

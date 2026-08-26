@@ -15,6 +15,7 @@ class ReceivableCreate(BaseModel):
     date: date_type | None = None  # emisión; default hoy
     due_date: date_type
     category_id: str
+    project_id: str | None = None
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -42,6 +43,7 @@ class ReceivableRead(BaseModel):
     date: date_type
     due_date: date_type
     category_id: str
+    project_id: str | None = None
     status: str
     notes: str | None
     created_at: datetime

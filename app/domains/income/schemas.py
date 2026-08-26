@@ -15,6 +15,7 @@ class IncomeCreate(BaseModel):
     amount: Decimal = Field(gt=0, allow_inf_nan=False)  # TOTAL con impuesto
     tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     category_id: str
+    project_id: str | None = None
     financial_account_id: str | None = None
     status: Literal["PENDING", "PAID"] = "PENDING"
     notes: str | None = Field(default=None, max_length=1000)
@@ -41,6 +42,7 @@ class IncomeRead(BaseModel):
     tax_rate: Decimal
     tax_amount: Decimal
     category_id: str
+    project_id: str | None = None
     financial_account_id: str | None
     status: str
     notes: str | None

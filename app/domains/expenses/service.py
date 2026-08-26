@@ -61,6 +61,7 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
         tax_rate=tax.tax_rate,
         tax_amount=tax.tax_amount,
         category_id=payload.category_id,
+        project_id=payload.project_id,
         financial_account_id=payload.financial_account_id,
         payment_method=payload.payment_method,
         reference=payload.reference,

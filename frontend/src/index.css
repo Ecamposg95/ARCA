@@ -117,3 +117,32 @@ body {
     display: none;
   }
 }
+
+/* Impresión: el reporte en papel es lo que se manda al banco o al contador,
+   así que sale sin navegación, sin botones y sobre fondo blanco. */
+@media print {
+  aside,
+  header,
+  footer,
+  nav,
+  button,
+  a[download] {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .shadow-card {
+    box-shadow: none !important;
+  }
+  table {
+    break-inside: auto;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}

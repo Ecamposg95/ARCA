@@ -31,6 +31,9 @@ def list_expenses(
     status: str | None = Query(default=None, pattern="^(PENDING|PAID|CANCELLED)$"),
     start: date_type | None = None,
     end: date_type | None = None,
+    q: str | None = Query(default=None, max_length=200),
+    category_id: str | None = None,
+    project_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -43,6 +46,13 @@ def list_expenses(
         query = query.filter(Expense.date >= start)
     if end:
         query = query.filter(Expense.date <= end)
+    if q:
+        # Búsqueda simple sobre el concepto: es como la gente recuerda una operación.
+        query = query.filter(Expense.description.ilike(f"%{q}%"))
+    if category_id:
+        query = query.filter(Expense.category_id == category_id)
+    if project_id:
+        query = query.filter(Expense.project_id == project_id)
     query = query.order_by(Expense.date.desc(), Expense.created_at.desc())
     return paginate(query, limit, offset, ExpenseRead, sum_column=Expense.amount)
 

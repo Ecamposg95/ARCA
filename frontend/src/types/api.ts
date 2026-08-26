@@ -215,6 +215,33 @@ export interface CashFlow {
   closing_cash: number
 }
 
+export interface ProjectRow {
+  id: string
+  name: string
+  code: string | null
+  customer_id: string | null
+  description: string | null
+  budget: string | null
+  start_date: string | null
+  end_date: string | null
+  status: string
+  created_at: string
+  revenue: string
+  cost: string
+  margin: string
+  margin_pct: number
+  pending_revenue: string
+  budget_used_pct: number | null
+}
+
+export interface ProjectsResponse {
+  items: ProjectRow[]
+  total: number
+  limit: number
+  offset: number
+  unassigned: { revenue: string; cost: string; margin: string; margin_pct: number }
+}
+
 export interface FixedAsset {
   id: string
   name: string

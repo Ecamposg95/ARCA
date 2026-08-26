@@ -73,6 +73,13 @@ function DeltaSinceLastMonth({ value }: { value: number | string }) {
   )
 }
 
+/** Qué reporte sabe exportarse y con qué nombre lo pide el backend. */
+const CSV_REPORTS: Partial<Record<Tab, string>> = {
+  pl: 'profit-loss',
+  balance: 'balance-sheet',
+  cartera: 'aging',
+}
+
 const TAB_KEYS: Tab[] = ['pl', 'balance', 'flow', 'iva', 'cartera', 'patrimonio']
 
 export function ReportsPage() {
@@ -127,7 +134,30 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reportes" description="Lo que dicen tus números, directo del libro contable.">
+      <PageHeader
+        title="Reportes"
+        description="Lo que dicen tus números, directo del libro contable."
+        actions={
+          CSV_REPORTS[tab] ? (
+            <div className="flex gap-2">
+              <a
+                href={`/api/reports/${CSV_REPORTS[tab]}/csv?start=${start}&end=${end}`}
+                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
+                download
+              >
+                Descargar Excel
+              </a>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
+              >
+                Imprimir o PDF
+              </button>
+            </div>
+          ) : null
+        }
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
             {tabs.map((item) => (

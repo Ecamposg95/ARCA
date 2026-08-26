@@ -7,6 +7,7 @@ import { TAX_RATES } from '@/lib/taxes'
 import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
+import { TeamCard } from '@/features/settings/TeamCard'
 import { useAuthStore } from '@/stores/authStore'
 import type { AgentKey, Organization } from '@/types/api'
 
@@ -84,6 +85,7 @@ export function SettingsPage() {
         </form>
       </Card>
 
+      <TeamCard />
       <AgentKeysSection />
     </div>
   )

@@ -69,6 +69,7 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
         date=issue_date,
         due_date=payload.due_date,
         category_id=payload.category_id,
+        project_id=payload.project_id,
         notes=payload.notes,
         created_by=created_by,
     )
