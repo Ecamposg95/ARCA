@@ -44,15 +44,17 @@ Checklist, en este orden. Toma cinco minutos.
 | Dato | Valor |
 |---|---|
 | Empresa | Atlas Software Consulting |
-| Disponible | $1,122,103 |
+| Correo | `demo08261139@atlas.mx` / `demoforo2026` |
+| Disponible | $1,007,009 |
 | Deuda en tarjetas | $34,800 |
 | Por cobrar | $139,200 (vencido $52,200) |
 | Por pagar | $15,080 |
-| Proyección a 90 días | $1,246,223 |
-| Pólizas en el libro | 44, balanza cuadrada |
-| Resultado del mes | $208,659 (el mes anterior fue $267,180) |
+| Proyección a 90 días | $1,131,129 |
+| Pólizas en el libro | 57, balanza cuadrada |
+| Activos fijos | $459,778 en libros |
+| Deuda de créditos | $279,689 |
 | Póliza de la tarjeta | `Eg-2026-08-0007` |
-| Factura F-0087 | `Dr-2026-08-0004` (registro) e `Ig-2026-08-0003` (cobro parcial) |
+| Factura F-0087 | `Dr-2026-08-0004` (registro) e `Ig-2026-08-0004` (cobro parcial) |
 
 Los montos son reproducibles: el script usa una semilla fija. Si un número no coincide con esta tabla, volviste a sembrar y cambió algo — vuelve a leer la salida del script antes de citar cifras.
 
@@ -98,7 +100,7 @@ Señala los totales de la balanza: cargos y abonos iguales.
 
 **En pantalla:** Inicio.
 
-> "Esta consultora factura alrededor de 380 mil al mes. Miren cómo está contada la información: **Disponible, un millón ciento veintidós mil. Deuda en tarjetas, treinta y cuatro mil ochocientos.** No dice 'activo circulante'. Dice cuánto tienes y cuánto debes."
+> "Esta consultora factura alrededor de 380 mil al mes. Miren cómo está contada la información: **Disponible, un millón siete mil. Deuda en tarjetas, treinta y cuatro mil ochocientos.** No dice 'activo circulante'. Dice cuánto tienes y cuánto debes."
 
 Baja al panel de cartera.
 
@@ -106,7 +108,7 @@ Baja al panel de cartera.
 
 Baja a *Lo que viene · próximos 90 días*.
 
-> "Y esta es la pregunta que de verdad quita el sueño: ¿me va a alcanzar? Aquí no hay pronóstico ni modelo predictivo: hay compromisos con fecha. Lo que ya facturaste, lo que ya te comprometiste a pagar, cada uno en su día de vencimiento. **Hoy tienes 1.12 millones; con lo comprometido, en 90 días quedarías con 1.24.** Si en algún momento el saldo cruzara a cero, te diría exactamente qué día."
+> "Y esta es la pregunta que de verdad quita el sueño: ¿me va a alcanzar? Aquí no hay pronóstico ni modelo predictivo: hay compromisos con fecha. Lo que ya facturaste, lo que ya te comprometiste a pagar, cada uno en su día de vencimiento. **Hoy tienes un millón siete mil; con lo comprometido, en 90 días quedarías con 1.13 millones.** Si en algún momento el saldo cruzara a cero, te diría exactamente qué día."
 
 **La frase que ancla el acto:**
 
@@ -132,7 +134,7 @@ Vuelve al tablero y señala *Deuda en tarjetas: $34,800*.
 
 ### Golpe 2 — El IVA se causa cuando el dinero se mueve
 
-**En pantalla:** Por cobrar → factura F-0087, $174,000, cobrada a la mitad. Abre **Póliza**. Verás dos: la del registro de la factura (`Dr-2026-08-0004`) y la del cobro parcial (`Ig-2026-08-0003`). Habla de la segunda.
+**En pantalla:** Por cobrar → factura F-0087, $174,000, cobrada a la mitad. Abre **Póliza**. Verás dos: la del registro de la factura (`Dr-2026-08-0004`) y la del cobro parcial (`Ig-2026-08-0004`). Habla de la segunda.
 
 > "Esta factura es de ciento setenta y cuatro mil, con veinticuatro mil de IVA. Me pagaron la mitad: ochenta y siete mil. Vean qué pasó con el impuesto: **de los veinticuatro mil, se movieron exactamente doce mil** de 'IVA trasladado pendiente de cobro' a 'IVA trasladado cobrado'."
 
@@ -142,7 +144,7 @@ Vuelve al tablero y señala *Deuda en tarjetas: $34,800*.
 
 **En pantalla:** Contabilidad → Balanza de comprobación.
 
-> "Cuarenta y cuatro pólizas. Cargos y abonos, iguales al centavo. Cada una nació de una operación que un empresario entendería: cobré, pagué, facturé. **Nadie escribió una póliza a mano en toda esta demostración**, y la contabilidad está completa."
+> "Cincuenta y siete pólizas. Cargos y abonos, iguales al centavo. Cada una nació de una operación que un empresario entendería: cobré, pagué, facturé. **Nadie escribió una póliza a mano en toda esta demostración**, y la contabilidad está completa."
 
 **Plan B:** si el modal de la póliza no abre, ve a Contabilidad y busca el folio `Eg-2026-08-0007` en el libro diario. Es la misma póliza, dos clics más lejos.
 
@@ -204,11 +206,11 @@ Frase para cubrir cualquiera de los tres, sin disimular:
 
 Mientras corre:
 
-> "Todo lo que vieron se construyó en dos días, y no es un prototipo. Son **94 pruebas automatizadas**, ocho migraciones de base de datos, 56 endpoints, casi once mil líneas entre backend y frontend."
+> "Todo lo que vieron se construyó en dos días, y no es un prototipo. Son **150 pruebas automatizadas**, once migraciones de base de datos, más de 70 endpoints, y catorce mil líneas entre backend y frontend."
 
 Cuando termina en verde:
 
-> "Noventa y cuatro en verde."
+> "Ciento cincuenta en verde."
 
 > "Y quiero mostrarles la que más orgullo me da. Cuando descubrimos que las tarjetas de crédito estaban contadas como si fueran efectivo, **no borramos la base de datos**: escribimos una migración que corrige los saldos históricos, la ensayamos contra datos que ya existían, y la subimos. Los datos anteriores siguen ahí y ahora están bien."
 
@@ -219,6 +221,43 @@ Cuando termina en verde:
 > Esto es lo que quería decirles: **una plataforma financiera completa, con contabilidad formal, abierta a agentes, se puede construir en días.** No porque el problema sea fácil, sino porque así trabajamos en Atlas. Si su empresa tiene un problema de este tamaño, ya saben cómo se ve la respuesta."
 
 **Plan B:** si la suite falla o tarda, no la corras en vivo — ten una captura de la última corrida en verde. Nunca corras pruebas en escenario sin haberlas corrido cinco minutos antes.
+
+---
+
+## Si tienes más tiempo · dos actos opcionales
+
+El guion de 15 minutos no los incluye. Van aquí porque en una sesión de 20 o en
+una reunión uno a uno son los que más preguntas provocan.
+
+### Patrimonio · 2 minutos
+
+**En pantalla:** Patrimonio → Activos fijos.
+
+> "Una camioneta de 420 mil no es gasto de marzo. Se usa cuatro años, y ARCA la
+> lleva a resultados poco a poco: **nueve mil ciento once pesos al mes** entre
+> los dos activos. Aquí dice lo que costó, lo que llevas depreciado y **lo que
+> vale hoy**."
+
+Cambia a Préstamos, abre **Tabla**.
+
+> "Y aquí está la que más gente se equivoca: el pago de un crédito **no es
+> gasto**. De estos quince mil quinientos, cinco mil quinientos son intereses y
+> diez mil bajan la deuda. Miren cómo el interés va cayendo mes con mes mientras
+> la cuota sigue igual. Si tratas el pago completo como gasto, tu resultado está
+> mal y tu deuda nunca baja en los libros."
+
+### Proyectos · 1 minuto
+
+**En pantalla:** Proyectos.
+
+> "Dos trabajos del mismo trimestre. Este dejó **51% de margen**. Este otro
+> **perdió 40%**. Misma empresa, mismo equipo. Sin esta pantalla, los dos se
+> mezclan en el estado de resultados y el mes se ve bien."
+
+Señala el panel de abajo.
+
+> "Y esto es honestidad del sistema: dice cuánta parte del negocio **todavía no
+> se mide** por proyecto."
 
 ---
 
