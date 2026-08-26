@@ -30,6 +30,12 @@ export function RegisterPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // El momento wow del §30: la empresa nace CON contabilidad, y se enseña.
+  const [born, setBorn] = useState<{
+    accounts: number | null
+    folio: string | null
+    balanced: boolean | null
+  } | null>(null)
 
   function update(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -49,7 +55,24 @@ export function RegisterPage() {
       if (form.initial_cash) payload.initial_cash = form.initial_cash
       const { data } = await api.post<AuthResponse>('/auth/register', payload)
       setSession(data)
-      navigate('/')
+      // Antes de aterrizar en un tablero vacío, un vistazo a lo que acaba de
+      // nacer por debajo. Si algo falla, se entra directo: el wow es opcional.
+      try {
+        const [accounts, entries, balance] = await Promise.all([
+          api.get<unknown[]>('/accounting/accounts'),
+          api.get<{ items: { folio: string }[] }>('/accounting/journal-entries', {
+            params: { limit: 1 },
+          }),
+          api.get<{ total_debit: string; total_credit: string }>('/accounting/trial-balance'),
+        ])
+        setBorn({
+          accounts: accounts.data.length,
+          folio: entries.data.items[0]?.folio ?? null,
+          balanced: Number(balance.data.total_debit) === Number(balance.data.total_credit),
+        })
+      } catch {
+        navigate('/')
+      }
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -131,6 +154,48 @@ export function RegisterPage() {
 
   const current = steps[step]
   const isLast = step === steps.length - 1
+
+  if (born) {
+    return (
+      <AuthShell>
+        <div className="text-center">
+          <p className="figures text-[10px] uppercase tracking-[0.2em] text-accent">
+            {form.business_name}
+          </p>
+          <h1 className="mt-2 font-display text-xl font-bold tracking-tight">
+            Tu contabilidad ya existe
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            No llenaste un solo campo contable, y aun así:
+          </p>
+        </div>
+        <ul className="mt-5 space-y-2.5 text-sm">
+          <li className="flex items-center justify-between rounded-lg border border-border bg-surface-2/50 px-4 py-2.5">
+            <span>Catálogo de cuentas listo</span>
+            <span className="figures font-semibold">{born.accounts} cuentas</span>
+          </li>
+          {born.folio ? (
+            <li className="flex items-center justify-between rounded-lg border border-border bg-surface-2/50 px-4 py-2.5">
+              <span>Póliza de apertura</span>
+              <span className="figures font-semibold">{born.folio}</span>
+            </li>
+          ) : null}
+          {born.balanced ? (
+            <li className="flex items-center justify-between rounded-lg border border-border bg-surface-2/50 px-4 py-2.5">
+              <span>Balanza de comprobación</span>
+              <span className="font-medium text-pos">cargos = abonos ✓</span>
+            </li>
+          ) : null}
+        </ul>
+        <p className="mt-4 text-center text-xs text-muted">
+          Cada operación que registres generará su póliza de partida doble, sola.
+        </p>
+        <Button className="mt-5 h-11 w-full hover:shadow-accent" onClick={() => navigate('/')}>
+          Entrar a mi tablero
+        </Button>
+      </AuthShell>
+    )
+  }
 
   return (
     <AuthShell
