@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, LogOut, Menu, Plus, Settings } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, Plus, Settings, Search } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { useAuthStore } from '@/stores/authStore'
@@ -31,9 +31,11 @@ const MENU_ITEM =
 export function AppHeader({
   quickActions,
   onOpenNav,
+  onOpenPalette,
 }: {
   quickActions: { to: string; label: string }[]
   onOpenNav: () => void
+  onOpenPalette: () => void
 }) {
   const navigate = useNavigate()
   const { user, organization, logout } = useAuthStore()
@@ -61,6 +63,19 @@ export function AppHeader({
       </button>
 
       <div className="min-w-0 flex-1 truncate text-sm font-semibold">{organization?.name}</div>
+
+      {/* La paleta existe aunque nadie sepa el atajo: el botón la descubre. */}
+      <button
+        type="button"
+        onClick={onOpenPalette}
+        className="hidden items-center gap-2 rounded-lg border border-border bg-surface-2/60 px-3 py-1.5 text-xs text-muted transition-colors hover:text-ink sm:flex"
+      >
+        <Search className="h-3.5 w-3.5" />
+        Buscar o crear
+        <kbd className="figures rounded border border-border bg-surface px-1.5 text-[10px]">
+          Ctrl K
+        </kbd>
+      </button>
 
       <div className="relative" ref={quickRef}>
         <Button className="shrink-0 !px-3 !py-1.5" onClick={() => setQuickOpen((open) => !open)}>

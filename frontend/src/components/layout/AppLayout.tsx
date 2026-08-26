@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { ArcaMark } from '@/components/ui/ArcaMark'
+import { CommandPalette } from '@/components/ui/CommandPalette'
 import { AppFooter } from '@/components/layout/AppFooter'
 import { AppHeader } from '@/components/layout/AppHeader'
 
@@ -85,6 +86,19 @@ const QUICK_ACTIONS = [
 
 export function AppLayout() {
   const [navOpen, setNavOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  // ⌘K / Ctrl+K abre la paleta desde cualquier pantalla.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setPaletteOpen((current) => !current)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const { data: pendingProposals } = useQuery({
     queryKey: ['proposals-count'],
@@ -171,9 +185,15 @@ export function AppLayout() {
 
       </aside>
 
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
       {/* Encabezado y pie fijos; sólo el contenido central se desplaza. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AppHeader quickActions={QUICK_ACTIONS} onOpenNav={() => setNavOpen(true)} />
+        <AppHeader
+          quickActions={QUICK_ACTIONS}
+          onOpenNav={() => setNavOpen(true)}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
             <Outlet />
