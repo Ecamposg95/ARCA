@@ -41,6 +41,17 @@ Spec completa: `docs/TASK_PACK.md`. Decisiones: `docs/superpowers/specs/` y `doc
 15. **Un proyecto es una etiqueta, no una cuenta.** `project_id` nunca cambia a
     qué cuentas va una operación; existe una prueba de que el ledger no se
     entera. La rentabilidad se mide sobre subtotales: el IVA no es tuyo.
+16. **Un mes cerrado no acepta pólizas.** El candado se valida dentro de
+    `post_journal_entry()`, nunca en los routers: es el único punto por el que
+    pasa toda la contabilidad. Reabrir exige un motivo y queda registrado.
+17. **Deshacer es revertir, nunca borrar ni editar.** Se emite la póliza espejo
+    y el movimiento inverso (`REVERSAL_IN`/`REVERSAL_OUT`), y el original queda.
+    Una operación ya revertida no se revierte dos veces.
+18. **Lo retenido no es tuyo.** ISR e IVA retenidos salen del pago al proveedor
+    y viven en 2400/2410 hasta enterarse al SAT. El gasto sigue siendo el monto
+    completo: retener no abarata el servicio.
+19. **Las reglas fiscales se calculan en el backend.** El aviso de deducibilidad
+    viaja en el schema; la UI lo muestra, no lo deduce.
 
 ## Arquitectura
 
