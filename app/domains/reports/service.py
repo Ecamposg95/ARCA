@@ -295,7 +295,7 @@ def _average_days_as_of(
     model,
     collection_type: str,
     as_of: date_type,
-) -> int:
+) -> int | None:
     """Antigüedad promedio como estaba la cartera en `as_of`.
 
     Se reconstruye desde los movimientos: el saldo de entonces es el monto menos
@@ -317,7 +317,8 @@ def _average_days_as_of(
         .all()
     )
     if not rows:
-        return 0
+        # Sin cartera entonces no hay base: None, que no es lo mismo que 0 días.
+        return None
 
     collected = dict(
         db.query(
@@ -348,7 +349,7 @@ def _average_days_as_of(
         weighted += Decimal(days_late) * balance
         total += balance
 
-    return int(weighted / total) if total > 0 else 0
+    return int(weighted / total) if total > 0 else None
 
 
 def aging_report(db: Session, organization_id: str, kind: str = "receivable") -> dict:

@@ -6,7 +6,7 @@ import { api } from '@/api/client'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, Table } from '@/components/ui/Table'
-import { formatCompact, formatMonth, formatMoney, monthStart, today } from '@/lib/format'
+import { formatCompact, formatDate, formatMonth, formatMoney, monthStart, today } from '@/lib/format'
 import type {
   AgingReport,
   BalanceSheet,
@@ -34,7 +34,56 @@ function rangeForPeriod(period: string): { start: string; end: string } {
   return { start: monthStart(), end: today() }
 }
 
-function ReportSection({ title, lines, total, totalLabel }: { title: string; lines: ReportLine[]; total: number; totalLabel: string }) {
+/** Variación contra el periodo anterior de la misma duración. Sin base previa
+ *  no se inventa un porcentaje: la línea se marca como nueva. */
+function LineDelta({
+  current,
+  previous,
+  goodWhenUp,
+}: {
+  current: number
+  previous: number | undefined
+  goodWhenUp: boolean
+}) {
+  // Un código ausente en el periodo anterior significa cero, no "sin dato".
+  const base = previous ?? 0
+  if (base === 0) {
+    return current !== 0 ? (
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted">nuevo</span>
+    ) : null
+  }
+  const change = ((current - base) / Math.abs(base)) * 100
+  if (!Number.isFinite(change) || Math.abs(change) < 0.5) return null
+  const up = change >= 0
+  const good = goodWhenUp ? up : !up
+  return (
+    <span
+      className={`figures text-[11px] font-medium ${good ? 'text-pos' : 'text-neg'}`}
+      title={`Periodo anterior: ${formatMoney(base)}`}
+    >
+      {up ? '▲' : '▼'} {Math.abs(change).toFixed(0)}%
+    </span>
+  )
+}
+
+function ReportSection({
+  title,
+  lines,
+  total,
+  totalLabel,
+  previous,
+  previousTotal,
+  goodWhenUp = true,
+}: {
+  title: string
+  lines: ReportLine[]
+  total: number
+  totalLabel: string
+  /** Importes del periodo anterior por código de cuenta, para el delta por línea. */
+  previous?: Map<string, number>
+  previousTotal?: number
+  goodWhenUp?: boolean
+}) {
   return (
     <div>
       <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">{title}</h3>
@@ -43,19 +92,33 @@ function ReportSection({ title, lines, total, totalLabel }: { title: string; lin
           <p className="py-2 text-sm text-muted">Sin movimientos en el periodo.</p>
         ) : (
           lines.map((line) => (
-            <div key={line.code} className="flex items-center justify-between py-1.5 text-sm">
+            <div key={line.code} className="flex items-center justify-between gap-3 py-1.5 text-sm">
               <span>
                 <span className="figures mr-2 text-xs text-muted">{line.code}</span>
                 {line.name}
               </span>
-              <span className="figures">{formatMoney(line.amount)}</span>
+              <span className="flex items-baseline gap-2.5">
+                {previous ? (
+                  <LineDelta
+                    current={line.amount}
+                    previous={previous.get(line.code)}
+                    goodWhenUp={goodWhenUp}
+                  />
+                ) : null}
+                <span className="figures">{formatMoney(line.amount)}</span>
+              </span>
             </div>
           ))
         )}
       </div>
       <div className="mt-2 flex items-center justify-between border-t-2 border-ink/70 pt-2 text-sm font-semibold">
         <span>{totalLabel}</span>
-        <Money value={total} />
+        <span className="flex items-baseline gap-2.5">
+          {previous && previousTotal !== undefined ? (
+            <LineDelta current={total} previous={previousTotal} goodWhenUp={goodWhenUp} />
+          ) : null}
+          <Money value={total} />
+        </span>
       </div>
     </div>
   )
@@ -69,6 +132,35 @@ function DeltaSinceLastMonth({ value }: { value: number | string }) {
   return (
     <span className={`figures text-sm font-medium ${up ? 'text-pos' : 'text-neg'}`}>
       {up ? '▲' : '▼'} {formatMoney(Math.abs(amount))} desde el mes pasado
+    </span>
+  )
+}
+
+/** Delta del DSO: en cobranza, bajar días es bueno; en pagos el dato se
+ *  muestra neutro — pagar más lento no es una virtud que celebrar. */
+function DsoDelta({
+  current,
+  previous,
+  kind,
+}: {
+  current: number
+  previous: number | null
+  kind: 'receivable' | 'payable'
+}) {
+  // null = hace un mes no había cartera; 0 = existía y no llevaba atraso.
+  if (previous === null) {
+    return <span className="text-xs text-muted">sin cartera hace un mes</span>
+  }
+  const change = current - previous
+  if (change === 0) {
+    return <span className="text-xs text-muted">igual que hace un mes</span>
+  }
+  const down = change < 0
+  const tone =
+    kind === 'receivable' ? (down ? 'text-pos' : 'text-neg') : 'text-muted'
+  return (
+    <span className={`figures text-sm font-semibold ${tone}`}>
+      {down ? '▼' : '▲'} {Math.abs(change)} {Math.abs(change) === 1 ? 'día' : 'días'} vs hace un mes
     </span>
   )
 }
@@ -89,11 +181,38 @@ export function ReportsPage() {
   const tab: Tab = requested && TAB_KEYS.includes(requested) ? requested : 'pl'
   const setTab = (next: Tab) => setSearchParams(next === 'pl' ? {} : { vista: next })
   const [period, setPeriod] = useState('current')
-  const { start, end } = rangeForPeriod(period)
+  const [customRange, setCustomRange] = useState({ start: monthStart(), end: today() })
+  const { start, end } =
+    period === 'custom' && customRange.start && customRange.end
+      ? customRange
+      : rangeForPeriod(period)
+
+  // El periodo anterior de la misma duración, pegado al inicio del actual:
+  // comparar contra un tramo de otro tamaño diría mentiras con porcentajes.
+  const previousRange = (() => {
+    const startDate = new Date(`${start}T00:00:00`)
+    const endDate = new Date(`${end}T00:00:00`)
+    const days = Math.max(Math.round((endDate.getTime() - startDate.getTime()) / 86400000), 0)
+    const prevEnd = new Date(startDate.getTime() - 86400000)
+    const prevStart = new Date(prevEnd.getTime() - days * 86400000)
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { start: iso(prevStart), end: iso(prevEnd) }
+  })()
 
   const profitLossQuery = useQuery({
     queryKey: ['reports', 'pl', start, end],
     queryFn: async () => (await api.get<ProfitLoss>(`/reports/profit-loss?start=${start}&end=${end}`)).data,
+    enabled: tab === 'pl',
+  })
+  const previousProfitLossQuery = useQuery({
+    queryKey: ['reports', 'pl-prev', previousRange.start, previousRange.end],
+    queryFn: async () =>
+      (
+        await api.get<ProfitLoss>(
+          `/reports/profit-loss?start=${previousRange.start}&end=${previousRange.end}`,
+        )
+      ).data,
     enabled: tab === 'pl',
   })
   const balanceQuery = useQuery({
@@ -122,6 +241,17 @@ export function ReportsPage() {
     queryFn: async () => (await api.get<NetWorth>('/reports/net-worth?months=12')).data,
     enabled: tab === 'patrimonio',
   })
+
+  const previousByCode = previousProfitLossQuery.data
+    ? {
+        revenue: new Map(
+          previousProfitLossQuery.data.revenue.map((line) => [line.code, line.amount]),
+        ),
+        expenses: new Map(
+          previousProfitLossQuery.data.expenses.map((line) => [line.code, line.amount]),
+        ),
+      }
+    : undefined
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'pl', label: 'Estado de resultados' },
@@ -174,33 +304,69 @@ export function ReportsPage() {
             ))}
           </div>
           {tab !== 'balance' ? (
-            <select
-              value={period}
-              onChange={(event) => setPeriod(event.target.value)}
-              className="rounded border border-border bg-surface px-3 py-1.5 text-sm"
-              aria-label="Periodo"
-            >
-              <option value="current">Este mes</option>
-              <option value="prev">Mes anterior</option>
-              <option value="year">Este año</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+                className="rounded border border-border bg-surface px-3 py-1.5 text-sm"
+                aria-label="Periodo"
+              >
+                <option value="current">Este mes</option>
+                <option value="prev">Mes anterior</option>
+                <option value="year">Este año</option>
+                <option value="custom">Rango personalizado</option>
+              </select>
+              {period === 'custom' ? (
+                <div className="flex items-center gap-1.5 text-xs text-muted">
+                  <span>Del</span>
+                  <input
+                    type="date"
+                    value={customRange.start}
+                    max={customRange.end}
+                    onChange={(event) =>
+                      setCustomRange({ ...customRange, start: event.target.value })
+                    }
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+                  />
+                  <span>al</span>
+                  <input
+                    type="date"
+                    value={customRange.end}
+                    min={customRange.start}
+                    onChange={(event) =>
+                      setCustomRange({ ...customRange, end: event.target.value })
+                    }
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+                  />
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </PageHeader>
 
       {tab === 'pl' && profitLossQuery.data ? (
         <Card className="max-w-2xl space-y-6">
+          <p className="text-xs text-muted">
+            Comparado contra el periodo anterior de la misma duración (
+            {formatDate(previousRange.start)} – {formatDate(previousRange.end)}).
+          </p>
           <ReportSection
             title="Ingresos"
             lines={profitLossQuery.data.revenue}
             total={profitLossQuery.data.total_revenue}
             totalLabel="Total de ingresos"
+            previous={previousByCode?.revenue}
+            previousTotal={previousProfitLossQuery.data?.total_revenue}
           />
           <ReportSection
             title="Gastos"
             lines={profitLossQuery.data.expenses}
             total={profitLossQuery.data.total_expenses}
             totalLabel="Total de gastos"
+            previous={previousByCode?.expenses}
+            previousTotal={previousProfitLossQuery.data?.total_expenses}
+            goodWhenUp={false}
           />
           <div className="flex items-center justify-between rounded-lg bg-accent-soft px-4 py-3">
             <span className="font-display font-semibold">
@@ -334,7 +500,28 @@ export function ReportsPage() {
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-5">
+            {/* La métrica estrella: cuánto tarda tu dinero. Con comparación,
+                porque un número solo no dice si vas mejor o peor. */}
+            <Card className="lg:col-span-3">
+              <p className="text-xs uppercase tracking-wider text-muted">
+                {agingKind === 'receivable' ? 'Te pagan en' : 'Pagas en'}
+              </p>
+              <div className="mt-1 flex flex-wrap items-baseline gap-3">
+                <p className="figures text-4xl font-bold tracking-tight">
+                  {agingQuery.data.average_days}
+                  <span className="ml-1.5 text-base font-normal text-muted">días</span>
+                </p>
+                <DsoDelta
+                  current={agingQuery.data.average_days}
+                  previous={agingQuery.data.previous_average_days}
+                  kind={agingKind}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                Antigüedad promedio ponderada por saldo, comparada con hace 30 días.
+              </p>
+            </Card>
             <Card>
               <p className="text-xs uppercase tracking-wider text-muted">Saldo total</p>
               <Money value={agingQuery.data.total} size="lg" />
@@ -346,15 +533,6 @@ export function ReportsPage() {
                 size="lg"
                 tone={Number(agingQuery.data.overdue) > 0 ? 'neg' : 'ink'}
               />
-            </Card>
-            <Card>
-              <p className="text-xs uppercase tracking-wider text-muted">
-                Antigüedad promedio
-              </p>
-              <p className="figures text-2xl font-semibold">
-                {agingQuery.data.average_days}
-                <span className="ml-1 text-sm font-normal text-muted">días</span>
-              </p>
             </Card>
           </div>
 

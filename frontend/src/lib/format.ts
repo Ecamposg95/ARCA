@@ -40,6 +40,15 @@ export function formatDate(iso: string): string {
   })
 }
 
+/** "12 ago" — etiqueta corta de día para ejes de gráficas semanales. */
+export function formatShortDay(iso: string): string {
+  const [year, month, day] = iso.split('T')[0].split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 export function formatMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split('-').map(Number)
   return new Date(year, month - 1, 1).toLocaleDateString('es-MX', { month: 'short' })

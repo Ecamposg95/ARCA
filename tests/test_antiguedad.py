@@ -166,7 +166,8 @@ def test_recent_receivables_do_not_exist_in_the_previous_snapshot(client):
         },
     )
     report = client.get("/api/reports/aging", headers=headers).json()
-    assert report["previous_average_days"] == 0
+    # Hace un mes no había cartera: sin base no se inventa un cero.
+    assert report["previous_average_days"] is None
 
 
 def test_collections_after_the_snapshot_do_not_shrink_the_previous_balance(client):
