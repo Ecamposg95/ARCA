@@ -11,14 +11,14 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md'
 }) {
   return (
-    <div className="flex w-fit gap-1 rounded-lg border border-border bg-surface p-1">
+    <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-1">
       {options.map((option) => (
         <button
           key={option.key}
           type="button"
           onClick={() => onChange(option.key)}
           aria-pressed={value === option.key}
-          className={`rounded-md transition-colors ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${
+          className={`whitespace-nowrap rounded-md transition-colors ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${
             value === option.key ? 'bg-accent font-medium text-on-accent' : 'text-muted hover:text-ink'
           }`}
         >

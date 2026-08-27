@@ -289,13 +289,15 @@ export function ReportsPage() {
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+          {/* max-w-full + scroll: con seis pestañas, en un teléfono "Cartera" y
+              "Patrimonio" quedaban fuera del viewport sin forma de llegar. */}
+          <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-1">
             {tabs.map((item) => (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => setTab(item.key)}
-                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${
                   tab === item.key ? 'bg-accent text-white font-medium' : 'text-muted hover:text-ink'
                 }`}
               >
