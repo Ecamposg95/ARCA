@@ -44,7 +44,7 @@ Checklist, en este orden. Toma cinco minutos.
 | Dato | Valor |
 |---|---|
 | Empresa | Atlas Software Consulting |
-| Correo | `demo08270624@atlas.mx` / `demoforo2026` |
+| Correo | `demo08270644@atlas.mx` / `demoforo2026` |
 | Disponible | $1,007,009 |
 | Deuda en tarjetas | $34,800 |
 | Por cobrar | $139,200 (vencido $52,200) |

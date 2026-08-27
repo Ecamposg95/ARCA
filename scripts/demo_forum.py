@@ -264,6 +264,27 @@ def main() -> None:
             "project_id": project_id,
         })
 
+    # --- Recurrentes: reglas listas SIN generar, para que las cifras del guion
+    # no se muevan y la bandeja muestre el aviso "tienes N por generar" ---
+    post("/recurring", {
+        "kind": "EXPENSE",
+        "description": "Renta coworking WeWork",
+        "amount": "18560",
+        "tax_rate": "0.16",
+        "category_id": expense_cats["Renta"]["id"],
+        "financial_account_id": bbva["id"],
+        "day_of_month": 1,
+    })
+    post("/recurring", {
+        "kind": "EXPENSE",
+        "description": "Nómina quincenal",
+        "amount": "48000",
+        "tax_rate": "0",
+        "category_id": expense_cats["Nómina"]["id"],
+        "financial_account_id": bbva["id"],
+        "day_of_month": 15,
+    })
+
     # --- Llave para el acto del agente ---
     llave = post("/agent-keys", {"name": "Claude Code", "scopes": "READ,PROPOSE"})
 
@@ -296,6 +317,11 @@ def main() -> None:
     prestamos = client.get("/loans/summary").json()
     print(f"│ Activos (valor)   {activos['book_value']}")
     print(f"│ Deuda de créditos {prestamos['outstanding']}")
+    print("│")
+    pendientes = client.get(
+        "/recurring/pending", params={"year": today.year, "month": today.month}
+    ).json()
+    print(f"│ Recurrentes       {pendientes.get('pending', 0)} regla(s) por generar este mes")
     print("│")
     print("│ Pólizas que se citan en vivo:")
     print(f"│   Tarjeta AMEX (acto 3)  {folio_de('expense', licencias['id'])}")
