@@ -31,7 +31,8 @@ class AgentKey(Base, UUIDPKMixin, TenantMixin, AuditMixin):
 class AgentProposal(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     __tablename__ = "agent_proposals"
 
-    agent_key_id = Column(String(36), ForeignKey("agent_keys.id"), nullable=False, index=True)
+    # Nullable: los borradores recurrentes los propone ARCA mismo, sin llave.
+    agent_key_id = Column(String(36), ForeignKey("agent_keys.id"), nullable=True, index=True)
     kind = Column(String(20), nullable=False)  # PROPOSAL_KINDS
     payload = Column(JSON, nullable=False)
     summary = Column(String(300), nullable=False)
@@ -41,6 +42,9 @@ class AgentProposal(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     rejection_reason = Column(String(500), nullable=True)
     result_id = Column(String(36), nullable=True)
+    # Clave de idempotencia para propuestas generadas por el sistema:
+    # `recurring:{regla}:{AAAA-MM}`. Un mes no se propone dos veces.
+    origin = Column(String(64), nullable=True, index=True)
 
 
 class AgentActionLog(Base, UUIDPKMixin, TenantMixin, AuditMixin):

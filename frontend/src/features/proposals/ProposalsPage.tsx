@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
@@ -7,6 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { formatDate, formatMoney } from '@/lib/format'
 import { useAccounts, useCategories } from '@/lib/hooks'
+import { RecurringPanel, usePendingRecurring } from '@/features/proposals/RecurringPanel'
 import type { Page, Proposal } from '@/types/api'
 
 const KIND_LABELS: Record<string, string> = {
@@ -95,8 +97,15 @@ function PayloadDetails({
 }
 
 export function ProposalsPage() {
+  // La pestaña vive en la URL, como en Reportes: compartible y sobrevive F5.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('vista') === 'recurrentes' ? 'recurrentes' : 'bandeja'
+  const setTab = (next: string) =>
+    setSearchParams(next === 'bandeja' ? {} : { vista: next }, { replace: true })
+
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('PROPOSED')
+  const pendingRecurring = usePendingRecurring()
   const { data: accounts } = useAccounts()
   const { data: incomeCategories } = useCategories('INCOME')
   const { data: expenseCategories } = useCategories('EXPENSE')
@@ -151,8 +160,40 @@ export function ProposalsPage() {
 
   const items = data?.items ?? []
 
+  const tabs = (
+    <div className="mb-4 flex gap-2">
+      {[
+        { key: 'bandeja', label: 'Bandeja' },
+        { key: 'recurrentes', label: 'Recurrentes' },
+      ].map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => setTab(item.key)}
+          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+            tab === item.key
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-border bg-surface text-muted hover:text-ink'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (tab === 'recurrentes') {
+    return (
+      <div>
+        {tabs}
+        <RecurringPanel />
+      </div>
+    )
+  }
+
   return (
     <div>
+      {tabs}
       <PageHeader
         title="Propuestas"
         description="Operaciones sugeridas por tus agentes. Nada se registra sin tu aprobación."
@@ -178,6 +219,22 @@ export function ProposalsPage() {
           ))}
         </div>
       </PageHeader>
+
+      {(pendingRecurring.data ?? 0) > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-2/60 px-4 py-2.5 text-sm">
+          <span>
+            Tienes <span className="figures font-semibold">{pendingRecurring.data}</span>{' '}
+            operación(es) recurrente(s) sin generar este mes.
+          </span>
+          <button
+            type="button"
+            onClick={() => setTab('recurrentes')}
+            className="text-xs font-medium text-accent underline"
+          >
+            Ir a Recurrentes
+          </button>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="h-48 animate-pulse rounded-xl bg-surface-2" />
