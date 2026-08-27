@@ -18,6 +18,7 @@ export interface Command {
 const NAVIGATE: Command[] = [
   { label: 'Inicio', hint: 'Ir a', to: '/' },
   { label: 'Movimientos', hint: 'Ir a', to: '/movimientos' },
+  { label: 'Análisis', hint: 'Ir a', to: '/analisis', keywords: 'terminal graficas series runway efectivo' },
   { label: 'Cuentas de dinero', hint: 'Ir a', to: '/cuentas', keywords: 'bancos tarjetas' },
   { label: 'Patrimonio', hint: 'Ir a', to: '/patrimonio', keywords: 'activos prestamos creditos' },
   { label: 'Ingresos', hint: 'Ir a', to: '/ingresos', keywords: 'ventas' },

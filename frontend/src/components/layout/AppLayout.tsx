@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
+  Activity,
   ArrowLeftRight,
   BarChart3,
   BookOpen,
@@ -32,7 +33,13 @@ interface NavItem {
 }
 
 const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
-  { label: null, items: [{ to: '/', label: 'Inicio', icon: LayoutDashboard }] },
+  {
+    label: null,
+    items: [
+      { to: '/', label: 'Inicio', icon: LayoutDashboard },
+      { to: '/analisis', label: 'Análisis', icon: Activity },
+    ],
+  },
   {
     label: 'Dinero',
     items: [
