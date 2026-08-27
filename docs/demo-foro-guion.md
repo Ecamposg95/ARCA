@@ -246,6 +246,16 @@ Cambia a Préstamos, abre **Tabla**.
 > la cuota sigue igual. Si tratas el pago completo como gasto, tu resultado está
 > mal y tu deuda nunca baja en los libros."
 
+### Recurrentes · 1 minuto
+
+**En pantalla:** Propuestas. La bandeja avisa: *"Tienes 2 operaciones recurrentes sin generar este mes"*.
+
+> "La renta y la nómina se pagan igual cada mes. ARCA las conoce y las propone sola — miren."
+
+Clic en **Generar**. Los borradores caen a la bandeja firmados **"ARCA · Recurrentes"**, con todo el detalle. Aprueba la renta.
+
+> "Nadie capturó nada. ARCA propuso, yo aprobé, y la póliza ya existe. La misma regla de oro que con los agentes externos: **el sistema propone, el humano decide**."
+
 ### Proyectos · 1 minuto
 
 **En pantalla:** Proyectos.
