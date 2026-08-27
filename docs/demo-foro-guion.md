@@ -246,6 +246,27 @@ Cambia a Préstamos, abre **Tabla**.
 > la cuota sigue igual. Si tratas el pago completo como gasto, tu resultado está
 > mal y tu deuda nunca baja en los libros."
 
+### El equipo de agentes · 3 minutos ⭐
+
+**En pantalla:** la terminal. Corre:
+
+```bash
+python scripts/demo_agentes.py --url https://arca-production-d769.up.railway.app \
+    --email <correo del escenario>
+```
+
+> "Tres especialistas van a leer esta empresa al mismo tiempo: un agente financiero, uno contable y uno patrimonial. Cada uno con su propia llave y sus propios permisos."
+
+La consola imprime los tres análisis con números reales: el financiero encuentra la factura vencida y calcula el recargo de mora; el contable verifica que la balanza cuadra al centavo y provisiona el cierre; el patrimonial lee el activo fijo y propone su mantenimiento.
+
+**Cambia a Propuestas.** Tres tarjetas, tres firmas distintas, cada una con su evidencia escrita.
+
+> "El financiero encontró la mora. El contable cuidó el cierre. El patrimonial cuidó la camioneta. **Ninguno escribió en la contabilidad**: los tres proponen, y la decisión es de una persona. Así se ve un equipo de agentes trabajando sobre libros que cuadran — y ARCA no pagó un centavo de inferencia: el razonamiento corre fuera, la gobernanza vive dentro."
+
+Aprueba una, rechaza otra en vivo. La aprobada genera su póliza al instante.
+
+**Antes del demo:** ensaya una corrida y **rechaza** las propuestas del ensayo (y revoca las llaves `Agente *` en Configuración) para que la bandeja arranque limpia.
+
 ### Recurrentes · 1 minuto
 
 **En pantalla:** Propuestas. La bandeja avisa: *"Tienes 2 operaciones recurrentes sin generar este mes"*.
