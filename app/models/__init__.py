@@ -19,6 +19,7 @@ from app.models.payable import Payable  # noqa: F401
 from app.models.period import PeriodLock  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.receivable import Receivable  # noqa: F401
+from app.models.recurring import RecurringRule  # noqa: F401
 from app.models.transaction import FinancialTransaction  # noqa: F401
 from app.models.user import User  # noqa: F401
 
