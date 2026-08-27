@@ -208,3 +208,21 @@ body {
   background: hsl(var(--accent));
   color: hsl(var(--on-accent));
 }
+
+/* ── Misión (teatro agéntico) ────────────────────────────────────────────────
+   El pulso del avatar activo y la entrada de líneas del feed. Con motion
+   reducido, la regla global de animaciones ya los aquieta. */
+@keyframes mission-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+.mission-pulse {
+  animation: mission-pulse 1.6s ease-in-out infinite;
+}
+@keyframes mission-feed-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mission-feed-in {
+  animation: mission-feed-in 0.35s ease-out both;
+}

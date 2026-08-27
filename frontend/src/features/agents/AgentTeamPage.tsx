@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { MissionPanel } from '@/features/agents/MissionPanel'
 
 const ICONS: Record<string, LucideIcon> = {
   cfo: Compass,
@@ -146,6 +147,7 @@ function AgentCard({ agentId, monthlyCost }: { agentId: string; monthlyCost: str
 
 export function AgentTeamPage() {
   const [monthlyCost, setMonthlyCost] = useState('35000')
+  const [view, setView] = useState<'equipo' | 'mision'>('equipo')
 
   const roster = useQuery({
     queryKey: ['agent-team'],
@@ -172,13 +174,37 @@ export function AgentTeamPage() {
             <span className="figures">/mes</span>
           </label>
         }
-      />
+      >
+        <div className="flex gap-2">
+          {[
+            { key: 'equipo' as const, label: 'El equipo' },
+            { key: 'mision' as const, label: '▶ Misión en vivo' },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setView(item.key)}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                view === item.key
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-border bg-surface text-muted hover:text-ink'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </PageHeader>
 
+      {view === 'mision' ? (
+        <MissionPanel />
+      ) : (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {(roster.data ?? []).map((agent) => (
           <AgentCard key={agent.id} agentId={agent.id} monthlyCost={monthlyCost} />
         ))}
       </div>
+      )}
 
       <p className="mt-6 max-w-3xl text-xs leading-relaxed text-muted">
         Cada cifra sale del libro contable — los mismos servicios que alimentan Reportes y el

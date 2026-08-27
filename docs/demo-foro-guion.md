@@ -248,7 +248,11 @@ Cambia a Préstamos, abre **Tabla**.
 
 ### El equipo de agentes · 3 minutos ⭐
 
-**En pantalla:** la terminal. Corre:
+**La versión visual (recomendada):** abre **Agentes → ▶ Misión en vivo** y lanza la misión. Los cinco agentes se encienden por turnos, se pasan la estafeta en el feed (con los números REALES del libro interpolados), y a los ~15 segundos la misión se detiene en la compuerta ámbar: **"Requiere aprobación humana"**. Aprueba en vivo. El brief ejecutivo final sintetiza los cinco headlines.
+
+> "Miren la coreografía: leer, razonar, pasar la estafeta… y detenerse. Un equipo de agentes que sabe dónde termina su autoridad. La decisión fue mía, no de ellos."
+
+**La versión de terminal** (si prefieren consola): corre:
 
 ```bash
 python scripts/demo_agentes.py --url https://arca-production-d769.up.railway.app \
