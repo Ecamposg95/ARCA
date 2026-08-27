@@ -153,3 +153,21 @@ def export_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{name}.csv"'},
     )
+
+
+@router.get("/cash-series")
+def cash_series(
+    days: int = Query(default=90, ge=7, le=366),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    return service.cash_series(db, org_id, days)
+
+
+@router.get("/category-series")
+def category_series(
+    months: int = Query(default=6, ge=2, le=24),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    return service.category_series(db, org_id, months)

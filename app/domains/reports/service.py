@@ -500,3 +500,193 @@ def net_worth(db: Session, organization_id: str, months: int = 12) -> dict:
         "change_vs_previous_month": change,
         "series": series,
     }
+
+
+def cash_series(db: Session, organization_id: str, days: int = 90) -> dict:
+    """La historia diaria del efectivo, reconstruida hacia atrás desde hoy.
+
+    Se parte del saldo ACTUAL de las cuentas de activo —la cifra que el usuario
+    puede verificar a ojo en su tablero— y se desanda con los movimientos por
+    día. Así el último punto siempre cuadra con la realidad, y cualquier error
+    quedaría en el pasado remoto, no en el número que importa.
+
+    Las tarjetas no participan: son deuda, y mezclarlas dibujaría una curva de
+    "efectivo" que nadie tiene.
+    """
+    from datetime import timedelta
+
+    from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
+    from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+
+    today = date_type.today()
+    start = today - timedelta(days=days - 1)
+
+    accounts = (
+        db.query(FinancialAccount)
+        .filter(
+            FinancialAccount.organization_id == organization_id,
+            FinancialAccount.deleted_at.is_(None),
+            FinancialAccount.active.is_(True),
+            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+        )
+        .order_by(FinancialAccount.created_at)
+        .all()
+    )
+    account_ids = [account.id for account in accounts]
+
+    # Un solo query agrupado por (cuenta, día): alimenta la curva global y las
+    # sparklines por cuenta sin N consultas.
+    rows = (
+        db.query(
+            FinancialTransaction.financial_account_id,
+            FinancialTransaction.date,
+            FinancialTransaction.transaction_type,
+            func.coalesce(func.sum(FinancialTransaction.amount), 0),
+        )
+        .filter(
+            FinancialTransaction.organization_id == organization_id,
+            FinancialTransaction.financial_account_id.in_(account_ids or [""]),
+            FinancialTransaction.date >= start,
+        )
+        .group_by(
+            FinancialTransaction.financial_account_id,
+            FinancialTransaction.date,
+            FinancialTransaction.transaction_type,
+        )
+        .all()
+    )
+
+    per_account_delta: dict[str, dict[date_type, Decimal]] = {aid: {} for aid in account_ids}
+    inflows_by_day: dict[date_type, Decimal] = {}
+    outflows_by_day: dict[date_type, Decimal] = {}
+    for account_id, day, tx_type, amount in rows:
+        amount = Decimal(amount)
+        signed = amount if tx_type in INFLOW_TYPES else -amount
+        per_account_delta[account_id][day] = (
+            per_account_delta[account_id].get(day, Decimal("0")) + signed
+        )
+        if tx_type in INFLOW_TYPES:
+            inflows_by_day[day] = inflows_by_day.get(day, Decimal("0")) + amount
+        else:
+            outflows_by_day[day] = outflows_by_day.get(day, Decimal("0")) + amount
+
+    day_list = [start + timedelta(days=offset) for offset in range(days)]
+
+    def walk_back(current: Decimal, deltas: dict[date_type, Decimal]) -> list[Decimal]:
+        balances: list[Decimal] = []
+        running = current
+        for day in reversed(day_list):
+            balances.append(running)
+            running -= deltas.get(day, Decimal("0"))
+        balances.reverse()
+        return balances
+
+    total_now = sum((Decimal(a.current_balance) for a in accounts), Decimal("0"))
+    total_deltas: dict[date_type, Decimal] = {}
+    for deltas in per_account_delta.values():
+        for day, value in deltas.items():
+            total_deltas[day] = total_deltas.get(day, Decimal("0")) + value
+    balances = walk_back(total_now, total_deltas)
+
+    points = [
+        {
+            "date": day,
+            "balance": balance,
+            "inflow": inflows_by_day.get(day, Decimal("0")),
+            "outflow": outflows_by_day.get(day, Decimal("0")),
+        }
+        for day, balance in zip(day_list, balances, strict=False)
+    ]
+
+    account_rows = []
+    for account in accounts:
+        series = walk_back(Decimal(account.current_balance), per_account_delta[account.id])
+        account_rows.append(
+            {
+                "id": account.id,
+                "name": account.name,
+                "type": account.type,
+                "balance": Decimal(account.current_balance),
+                "series": series,
+                "change": series[-1] - series[0],
+            }
+        )
+
+    # Runway: cuántos meses aguanta el efectivo a la quema neta de los últimos
+    # 90 días. Con flujo positivo no hay cuenta regresiva que inventar.
+    burn_window = min(days, 90)
+    window_start = today - timedelta(days=burn_window - 1)
+    net = sum(
+        (
+            (p["inflow"] - p["outflow"])
+            for p in points
+            if p["date"] >= window_start
+        ),
+        Decimal("0"),
+    )
+    avg_monthly_burn = None
+    runway_months = None
+    if net < 0:
+        avg_monthly_burn = (-net) * Decimal("30") / Decimal(burn_window)
+        if avg_monthly_burn > 0:
+            runway_months = total_now / avg_monthly_burn
+
+    return {
+        "start": start,
+        "end": today,
+        "points": points,
+        "accounts": account_rows,
+        "avg_monthly_burn": avg_monthly_burn,
+        "runway_months": (
+            runway_months.quantize(Decimal("0.1")) if runway_months is not None else None
+        ),
+    }
+
+
+def category_series(db: Session, organization_id: str, months: int = 6) -> dict:
+    """Gasto pagado por categoría y mes, SIN IVA — consistente con el P&L."""
+    from app.models.category import Category
+    from app.models.expense import Expense
+
+    today = date_type.today()
+    index = today.year * 12 + (today.month - 1) - (months - 1)
+    year, month = divmod(index, 12)
+    start = date_type(year, month + 1, 1)
+
+    month_expr = (
+        func.strftime("%Y-%m", Expense.date)
+        if db.bind.dialect.name == "sqlite"
+        else func.to_char(Expense.date, "YYYY-MM")
+    ).label("month")
+    rows = (
+        db.query(
+            Category.name,
+            month_expr,
+            func.coalesce(func.sum(Expense.subtotal), 0),
+        )
+        .join(Category, Category.id == Expense.category_id)
+        .filter(
+            Expense.organization_id == organization_id,
+            Expense.status == "PAID",
+            Expense.date >= start,
+        )
+        .group_by(Category.name, month_expr)
+        .all()
+    )
+
+    month_keys = []
+    for offset in range(months):
+        idx = start.year * 12 + (start.month - 1) + offset
+        y, m = divmod(idx, 12)
+        month_keys.append(f"{y:04d}-{m + 1:02d}")
+
+    categories = sorted({name for name, _month, _amount in rows})
+    by_month: dict[str, dict] = {key: {"month": key} for key in month_keys}
+    for name, month_key, amount in rows:
+        if month_key in by_month:
+            by_month[month_key][name] = Decimal(amount)
+    for key in month_keys:
+        for name in categories:
+            by_month[key].setdefault(name, Decimal("0"))
+
+    return {"categories": categories, "points": [by_month[key] for key in month_keys]}

@@ -28,6 +28,10 @@ const DashboardPage = lazyRoute(
   () => import('@/features/dashboard/DashboardPage'),
   (m) => m.DashboardPage,
 )
+const AnalysisPage = lazyRoute(
+  () => import('@/features/analysis/AnalysisPage'),
+  (m) => m.AnalysisPage,
+)
 const TransactionsPage = lazyRoute(
   () => import('@/features/transactions/TransactionsPage'),
   (m) => m.TransactionsPage,
@@ -123,6 +127,7 @@ export function App() {
             <Route element={<AppLayout />}>
               <Route element={<SuspenseOutlet />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/analisis" element={<AnalysisPage />} />
               <Route path="/movimientos" element={<TransactionsPage />} />
               <Route path="/cuentas" element={<AccountsPage />} />
               <Route path="/patrimonio" element={<AssetsPage />} />
