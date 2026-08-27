@@ -112,7 +112,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/30 px-4 pt-[12vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 pt-[6vh] sm:pt-[12vh]"
       onMouseDown={onClose}
       role="dialog"
       aria-modal="true"
