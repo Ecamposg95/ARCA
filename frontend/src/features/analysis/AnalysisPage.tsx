@@ -18,6 +18,7 @@ import {
   ComposedChart,
   Line,
   ReferenceDot,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -86,27 +87,65 @@ interface Candle {
   up: boolean
 }
 
-/** Velas semanales desde la serie diaria: apertura, cierre, máximo y mínimo
- *  del efectivo. Verde si la semana cerró arriba de donde abrió. */
-function toCandles(points: SeriesPoint[]): Candle[] {
+type CandlePeriod = 'D' | 'S' | 'M'
+
+/** Velas desde la serie diaria de fin de día. La apertura de cada vela es el
+ *  CIERRE de la anterior — la única apertura honesta cuando no hay intradía —
+ *  y máximo/mínimo salen de los saldos reales del periodo (nunca inventados). */
+function toCandles(points: SeriesPoint[], period: CandlePeriod): Candle[] {
+  if (points.length === 0) return []
+  const chunks: SeriesPoint[][] = []
+  if (period === 'M') {
+    // Meses de calendario: la vela de agosto ES agosto, no "30 días desde hoy".
+    let current: SeriesPoint[] = []
+    let month = points[0].date.slice(0, 7)
+    for (const point of points) {
+      if (point.date.slice(0, 7) !== month) {
+        chunks.push(current)
+        current = []
+        month = point.date.slice(0, 7)
+      }
+      current.push(point)
+    }
+    if (current.length) chunks.push(current)
+  } else {
+    const size = period === 'D' ? 1 : 7
+    for (let i = 0; i < points.length; i += size) chunks.push(points.slice(i, i + size))
+  }
+
   const candles: Candle[] = []
-  for (let i = 0; i < points.length; i += 7) {
-    const chunk = points.slice(i, i + 7)
+  let previousClose: number | null = null
+  for (const chunk of chunks) {
     const values = chunk.map((p) => Number(p.balance))
-    const open = values[0]
+    const open = previousClose ?? values[0]
     const close = values[values.length - 1]
+    const high = Math.max(open, ...values)
+    const low = Math.min(open, ...values)
     candles.push({
       date: chunk[chunk.length - 1].date,
       open,
       close,
-      high: Math.max(...values),
-      low: Math.min(...values),
-      range: [Math.min(...values), Math.max(...values)],
+      high,
+      low,
+      range: [low, high],
       volume: chunk.reduce((sum, p) => sum + Number(p.inflow) + Number(p.outflow), 0),
       up: close >= open,
     })
+    previousClose = close
   }
   return candles
+}
+
+/** Media móvil simple sobre la serie diaria; null hasta juntar la ventana. */
+function movingAverage(values: number[], window: number): (number | null)[] {
+  const result: (number | null)[] = []
+  let sum = 0
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i]
+    if (i >= window) sum -= values[i - window]
+    result.push(i >= window - 1 ? sum / window : null)
+  }
+  return result
 }
 
 /** El cuerpo y la mecha de la vela, dibujados dentro del rango [low, high]
@@ -249,7 +288,7 @@ function CandleTooltip({ active, payload }: { active?: boolean; payload?: { payl
   const candle = payload[0].payload
   return (
     <div style={tooltipBox} className="figures">
-      <div className="mb-1 font-semibold">Semana al {formatDate(candle.date)}</div>
+      <div className="mb-1 font-semibold">Al {formatDate(candle.date)}</div>
       <div>Abre {formatMoney(candle.open)}</div>
       <div style={{ color: candle.up ? MKT.up : MKT.down }}>Cierra {formatMoney(candle.close)}</div>
       <div style={{ color: 'var(--color-muted)' }}>
@@ -262,7 +301,8 @@ function CandleTooltip({ active, payload }: { active?: boolean; payload?: { payl
 
 export function AnalysisPage() {
   const [days, setDays] = useState(90)
-  const [mode, setMode] = useState<'curva' | 'velas'>('curva')
+  const [mode, setMode] = useState<'curva' | 'velas'>('velas')
+  const [candlePeriod, setCandlePeriod] = useState<CandlePeriod>('D')
 
   const seriesQuery = useQuery({
     queryKey: ['analysis', 'cash-series', days],
@@ -324,7 +364,20 @@ export function AnalysisPage() {
     return [...past, ...future]
   }, [series, projectionQuery.data])
 
-  const candles = useMemo(() => (series ? toCandles(series.points) : []), [series])
+  const candles = useMemo(() => {
+    if (!series) return []
+    const base = toCandles(series.points, candlePeriod)
+    // Las medias se calculan sobre los DÍAS y se leen en la fecha de la vela:
+    // una MA7 de velas mensuales no significaría nada.
+    const daily = series.points.map((p) => Number(p.balance))
+    const ma7 = movingAverage(daily, 7)
+    const ma30 = movingAverage(daily, 30)
+    const byDate = new Map(series.points.map((p, i) => [p.date, i]))
+    return base.map((candle) => {
+      const index = byDate.get(candle.date) ?? -1
+      return { ...candle, ma7: index >= 0 ? ma7[index] : null, ma30: index >= 0 ? ma30[index] : null }
+    })
+  }, [series, candlePeriod])
 
   const shortfall = projectionQuery.data?.shortfall_date ?? null
   const shortfallPoint = shortfall ? chartData.find((p) => p.date === shortfall) : null
@@ -413,6 +466,26 @@ export function AnalysisPage() {
           <PanelTitle
             right={
               <div className="flex items-center gap-2">
+                {mode === 'velas' ? (
+                  <div className="flex gap-1">
+                    {(['D', 'S', 'M'] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setCandlePeriod(option)}
+                        title={option === 'D' ? 'Velas diarias' : option === 'S' ? 'Velas semanales' : 'Velas mensuales'}
+                        className={`figures rounded px-1.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                          candlePeriod === option
+                            ? 'bg-surface-2 text-ink'
+                            : 'text-muted hover:text-ink'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                    <span className="mx-1 self-center text-border">│</span>
+                  </div>
+                ) : null}
                 <div className="flex overflow-hidden rounded border border-border">
                   {(['curva', 'velas'] as const).map((option) => (
                     <button
@@ -447,6 +520,13 @@ export function AnalysisPage() {
             }
           >
             Efectivo
+            {mode === 'velas' ? (
+              <span className="ml-3 normal-case tracking-normal">
+                <span style={{ color: '#f0b90b' }}>MA7</span>
+                <span className="mx-1">·</span>
+                <span style={{ color: '#7c6bd6' }}>MA30</span>
+              </span>
+            ) : null}
             {rangeStats ? (
               <span className="ml-3 normal-case tracking-normal">
                 <span style={{ color: MKT.up }}>Máx {formatCompact(rangeStats.high)}</span>
@@ -488,12 +568,78 @@ export function AnalysisPage() {
                     content={<CandleTooltip />}
                     cursor={{ fill: 'var(--color-border)', fillOpacity: 0.25 }}
                   />
+                  {/* Máximo y mínimo del rango: las líneas que todo trader busca. */}
+                  {rangeStats ? (
+                    <ReferenceLine
+                      yAxisId="cash"
+                      y={rangeStats.high}
+                      stroke={MKT.up}
+                      strokeDasharray="2 4"
+                      strokeOpacity={0.5}
+                    />
+                  ) : null}
+                  {rangeStats && rangeStats.low > 0 ? (
+                    <ReferenceLine
+                      yAxisId="cash"
+                      y={rangeStats.low}
+                      stroke={MKT.down}
+                      strokeDasharray="2 4"
+                      strokeOpacity={0.5}
+                    />
+                  ) : null}
+                  {/* La última cotización: dónde está tu efectivo AHORA. */}
+                  {series ? (
+                    <ReferenceLine
+                      yAxisId="cash"
+                      y={Number(series.points[series.points.length - 1].balance)}
+                      stroke="var(--color-ink)"
+                      strokeDasharray="4 3"
+                      strokeOpacity={0.55}
+                      label={{
+                        value: formatCompact(
+                          Number(series.points[series.points.length - 1].balance),
+                        ),
+                        position: 'right',
+                        fontSize: 10,
+                        fill: 'var(--color-ink)',
+                      }}
+                    />
+                  ) : null}
                   <Bar yAxisId="vol" dataKey="volume" isAnimationActive={false} fillOpacity={0.45}>
                     {candles.map((candle) => (
                       <Cell key={candle.date} fill={candle.up ? MKT.up : MKT.down} />
                     ))}
                   </Bar>
                   <Bar yAxisId="cash" dataKey="range" shape={<CandleShape />} isAnimationActive={false} />
+                  {/* Medias móviles de 7 y 30 días, calculadas sobre los días reales. */}
+                  <Line
+                    yAxisId="cash"
+                    type="monotone"
+                    dataKey="ma7"
+                    stroke="#f0b90b"
+                    strokeWidth={1.2}
+                    dot={false}
+                    isAnimationActive={false}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="cash"
+                    type="monotone"
+                    dataKey="ma30"
+                    stroke="#7c6bd6"
+                    strokeWidth={1.2}
+                    dot={false}
+                    isAnimationActive={false}
+                    connectNulls
+                  />
+                  <Brush
+                    dataKey="date"
+                    height={24}
+                    travellerWidth={8}
+                    stroke="var(--color-muted)"
+                    fill="var(--color-surface)"
+                    tickFormatter={(value: string) => formatDate(value).replace(' 2026', '')}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
@@ -575,7 +721,7 @@ export function AnalysisPage() {
           </div>
           <p className="mt-2 text-[11px] text-muted">
             {mode === 'velas'
-              ? 'Cada vela es una semana de tu efectivo: abre, cierra, máximo y mínimo. Verde si terminó arriba de donde empezó.'
+              ? 'Cada vela abre donde cerró la anterior — la única apertura honesta en una serie de fin de día. Verde si el periodo terminó arriba. MA7/MA30: promedio móvil de 7 y 30 días.'
               : 'Línea sólida: tu efectivo, día a día, desde el libro. Punteada: compromisos ya registrados en su fecha — no es un pronóstico.'}
             {shortfall ? (
               <span className="ml-1 font-medium text-neg">
