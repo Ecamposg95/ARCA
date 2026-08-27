@@ -44,7 +44,7 @@ Checklist, en este orden. Toma cinco minutos.
 | Dato | Valor |
 |---|---|
 | Empresa | Atlas Software Consulting |
-| Correo | `demo08261139@atlas.mx` / `demoforo2026` |
+| Correo | `demo08270624@atlas.mx` / `demoforo2026` |
 | Disponible | $1,007,009 |
 | Deuda en tarjetas | $34,800 |
 | Por cobrar | $139,200 (vencido $52,200) |
@@ -78,11 +78,11 @@ Los montos son reproducibles: el script usa una semilla fija. Si un número no c
 
 > "Voy a fundar una empresa delante de ustedes. Nombre, giro, y con cuánto dinero empieza. Nada más."
 
-Envía. Entra al tablero vacío. Después ve directo a **Contabilidad**.
+Envía. **La pantalla lo dice sola**: "Tu contabilidad ya existe — no llenaste un solo campo contable, y aun así: 32 cuentas, póliza de apertura `Dr-2026-08-0001`, cargos = abonos ✓". Déjala respirar tres segundos: es el producto haciendo tu trabajo de presentador.
 
-> "No llené un solo campo contable. Y esta empresa que tiene doce segundos de vida ya tiene un catálogo de 25 cuentas, sus categorías de ingreso y gasto, y una póliza de apertura —`Dr-2026-08-0001`— con su balanza cuadrada."
+> "No llené un solo campo contable. Y esta empresa que tiene doce segundos de vida ya tiene catálogo, categorías y su póliza de apertura con la balanza cuadrada."
 
-Señala los totales de la balanza: cargos y abonos iguales.
+Entra al tablero y, si quieres rematar, abre **Contabilidad**: el libro diario ya muestra la póliza de apertura seleccionada a la derecha.
 
 > "Esto no es cosmético. Es el punto de partida de una contabilidad formal, y se creó solo porque el sistema sabe qué significa 'fundar una empresa'."
 
@@ -134,7 +134,7 @@ Vuelve al tablero y señala *Deuda en tarjetas: $34,800*.
 
 ### Golpe 2 — El IVA se causa cuando el dinero se mueve
 
-**En pantalla:** Por cobrar → factura F-0087, $174,000, cobrada a la mitad. Abre **Póliza**. Verás dos: la del registro de la factura (`Dr-2026-08-0004`) y la del cobro parcial (`Ig-2026-08-0004`). Habla de la segunda.
+**En pantalla:** Por cobrar → clic en el concepto de la factura F-0087 ($174,000, cobrada a la mitad). El panel lateral muestra los días al vencimiento, **el cobro de $87,000 en su historial**, y las dos pólizas: la del registro (`Dr-2026-08-0004`) y la del cobro parcial (`Ig-2026-08-0004`). Habla de la segunda.
 
 > "Esta factura es de ciento setenta y cuatro mil, con veinticuatro mil de IVA. Me pagaron la mitad: ochenta y siete mil. Vean qué pasó con el impuesto: **de los veinticuatro mil, se movieron exactamente doce mil** de 'IVA trasladado pendiente de cobro' a 'IVA trasladado cobrado'."
 
@@ -142,7 +142,7 @@ Vuelve al tablero y señala *Deuda en tarjetas: $34,800*.
 
 ### Golpe 3 — Todo cuadra
 
-**En pantalla:** Contabilidad → Balanza de comprobación.
+**En pantalla:** Contabilidad. El libro diario es lista + póliza lado a lado: baja con ↑↓ tres o cuatro pólizas para que se vea que TODAS cuadran, y cierra en la **Balanza**.
 
 > "Cincuenta y siete pólizas. Cargos y abonos, iguales al centavo. Cada una nació de una operación que un empresario entendería: cobré, pagué, facturé. **Nadie escribió una póliza a mano en toda esta demostración**, y la contabilidad está completa."
 
@@ -206,11 +206,11 @@ Frase para cubrir cualquiera de los tres, sin disimular:
 
 Mientras corre:
 
-> "Todo lo que vieron se construyó en dos días, y no es un prototipo. Son **150 pruebas automatizadas**, once migraciones de base de datos, más de 70 endpoints, y catorce mil líneas entre backend y frontend."
+> "Todo lo que vieron se construyó en dos días, y no es un prototipo. Son **205 pruebas automatizadas**, doce migraciones de base de datos, más de 80 endpoints — y del otro lado **Atlas Cortex con 1,650 pruebas**: dos productos que se hablan."
 
 Cuando termina en verde:
 
-> "Ciento cincuenta en verde."
+> "Doscientas cinco en verde."
 
 > "Y quiero mostrarles la que más orgullo me da. Cuando descubrimos que las tarjetas de crédito estaban contadas como si fueran efectivo, **no borramos la base de datos**: escribimos una migración que corrige los saldos históricos, la ensayamos contra datos que ya existían, y la subimos. Los datos anteriores siguen ahí y ahora están bien."
 
