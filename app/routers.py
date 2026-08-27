@@ -22,6 +22,7 @@ from app.domains.fixed_assets.router import router as fixed_assets_router
 from app.domains.loans.router import router as loans_router
 from app.domains.projects.router import router as projects_router
 from app.domains.periods.router import router as periods_router
+from app.domains.agent_team.router import router as agent_team_router
 from app.domains.recurring.router import router as recurring_router
 
 api_router = APIRouter()
@@ -46,4 +47,5 @@ api_router.include_router(fixed_assets_router)
 api_router.include_router(loans_router)
 api_router.include_router(projects_router)
 api_router.include_router(periods_router)
+api_router.include_router(agent_team_router)
 api_router.include_router(recurring_router)
