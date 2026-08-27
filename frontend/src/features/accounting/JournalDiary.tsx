@@ -211,7 +211,7 @@ export function JournalDiary({
       {selected && drawerOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-black/45"
             onClick={() => setDrawerOpen(false)}
             aria-hidden
           />

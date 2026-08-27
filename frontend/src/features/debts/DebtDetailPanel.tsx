@@ -80,7 +80,7 @@ export function DebtDetailPanel({
 
   return (
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden />
       <aside
         role="dialog"
         aria-label={`Detalle de ${debt.description}`}

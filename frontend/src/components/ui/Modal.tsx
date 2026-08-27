@@ -20,7 +20,7 @@ export function Modal({ title, open, onClose, children }: Props) {
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 p-4 pt-[8vh]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 pt-[8vh]" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"

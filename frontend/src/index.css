@@ -22,6 +22,16 @@
   --warn: 42 55% 49%; /* #c29938 */
 }
 
+/* Alias en formato color: recharts y estilos inline no pueden usar las
+   tripletas HSL de Tailwind. Sin esto, var(--color-surface) no existe y los
+   tooltips caen al blanco default — ilegible en oscuro. */
+:root {
+  --color-surface: hsl(var(--surface));
+  --color-border: hsl(var(--border));
+  --color-muted: hsl(var(--muted));
+  --color-ink: hsl(var(--ink));
+}
+
 .dark {
   --bg: 202 30% 7%; /* #0d1418 */
   --surface: 206 26% 11%; /* #141c22 */
@@ -144,5 +154,28 @@ body {
   }
   tr {
     break-inside: avoid;
+  }
+}
+
+
+/* Objetivos táctiles (regla Atlas, tomada de Cortex): sólo en punteros gruesos.
+   El escritorio queda idéntico al píxel. 44px es el mínimo cómodo de Apple y
+   Google; los botones chicos de fila (!py-1 text-xs) son los que más lo
+   necesitan — min-height gana sobre su padding sin tocar su tipografía. */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  select,
+  input[type='text'],
+  input[type='search'],
+  input[type='number'],
+  input[type='email'],
+  input[type='password'],
+  input[type='date'] {
+    min-height: 44px;
+  }
+  input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
   }
 }
