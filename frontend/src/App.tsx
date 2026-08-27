@@ -28,6 +28,10 @@ const DashboardPage = lazyRoute(
   () => import('@/features/dashboard/DashboardPage'),
   (m) => m.DashboardPage,
 )
+const AgentTeamPage = lazyRoute(
+  () => import('@/features/agents/AgentTeamPage'),
+  (m) => m.AgentTeamPage,
+)
 const AnalysisPage = lazyRoute(
   () => import('@/features/analysis/AnalysisPage'),
   (m) => m.AnalysisPage,
@@ -128,6 +132,7 @@ export function App() {
               <Route element={<SuspenseOutlet />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/analisis" element={<AnalysisPage />} />
+              <Route path="/agentes" element={<AgentTeamPage />} />
               <Route path="/movimientos" element={<TransactionsPage />} />
               <Route path="/cuentas" element={<AccountsPage />} />
               <Route path="/patrimonio" element={<AssetsPage />} />

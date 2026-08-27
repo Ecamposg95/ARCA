@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
+  Bot,
   ArrowLeftRight,
   BarChart3,
   BookOpen,
@@ -38,6 +39,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Inicio', icon: LayoutDashboard },
       { to: '/analisis', label: 'Análisis', icon: Activity },
+      { to: '/agentes', label: 'Agentes', icon: Bot },
     ],
   },
   {
