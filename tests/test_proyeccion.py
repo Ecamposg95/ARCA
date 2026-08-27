@@ -119,3 +119,22 @@ def test_partial_collection_only_projects_the_balance(client):
     # Ya entraron 8,000 (están en el efectivo); sólo faltan 12,000 por cobrar.
     assert Decimal(str(report["expected_inflows"])) == Decimal("12000")
     assert Decimal(str(report["opening_cash"])) == Decimal("58000")
+
+
+def test_projection_points_name_their_commitment(client):
+    headers, ventas, _renta, customer, _vendor = _setup(client)
+    today = date.today()
+    client.post(
+        "/api/receivables",
+        headers=headers,
+        json={
+            "customer_id": customer["id"],
+            "description": "Factura F-0099",
+            "amount": "10000",
+            "due_date": (today + timedelta(days=10)).isoformat(),
+            "category_id": ventas["id"],
+        },
+    )
+    points = client.get("/api/reports/cash-projection", headers=headers).json()["points"]
+    # El primer punto es "hoy" (sin concepto); los compromisos dicen cuál son.
+    assert points[1]["description"] == "Factura F-0099"

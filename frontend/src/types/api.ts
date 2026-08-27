@@ -412,5 +412,5 @@ export interface CashProjection {
   expected_outflows: number
   projected_cash: number
   shortfall_date: string | null
-  points: { date: string; balance: number; change: number }[]
+  points: { date: string; balance: number; change: number; description?: string }[]
 }

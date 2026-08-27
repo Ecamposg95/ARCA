@@ -255,7 +255,7 @@ def cash_projection(db: Session, organization_id: str, days: int = 90) -> dict:
     inflows = Decimal("0")
     outflows = Decimal("0")
 
-    for when, change, _description in movements:
+    for when, change, description in movements:
         balance += change
         if change > 0:
             inflows += change
@@ -263,7 +263,11 @@ def cash_projection(db: Session, organization_id: str, days: int = 90) -> dict:
             outflows += -change
         if shortfall is None and balance < 0:
             shortfall = when
-        points.append({"date": when, "balance": balance, "change": change})
+        # El concepto viaja con el punto: la agenda de compromisos del terminal
+        # necesita decir QUÉ vence, no sólo cuánto queda.
+        points.append(
+            {"date": when, "balance": balance, "change": change, "description": description}
+        )
 
     return {
         "start": today,

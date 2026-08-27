@@ -179,3 +179,32 @@ body {
     height: 20px;
   }
 }
+
+/* ── Modo terminal (página Análisis) ─────────────────────────────────────────
+   Superficie deliberadamente oscura EN AMBOS temas, como un terminal de
+   trading: negro azulado profundo, paneles apenas separados del fondo y verde/
+   rojo de mercado para dirección. Los tokens se redefinen en el scope para que
+   todo lo que viva dentro (tablas, botones, tooltips) caiga solo en el look. */
+.terminal {
+  --bg: 220 24% 4%;
+  --surface: 219 20% 7%;
+  --surface-2: 218 17% 10%;
+  --ink: 210 25% 95%;
+  --muted: 214 12% 55%;
+  --border: 217 15% 14%;
+  --accent: 186 58% 45%;
+  --on-accent: 0 0% 100%;
+  --accent-soft: 189 40% 12%;
+  --pos: 152 68% 43%; /* #0ecb81 verde mercado */
+  --neg: 352 91% 62%; /* #f6465d rojo mercado */
+  --warn: 42 60% 55%;
+  --color-surface: hsl(219 20% 7%);
+  --color-border: hsl(217 15% 14%);
+  --color-muted: hsl(214 12% 55%);
+  --color-ink: hsl(210 25% 95%);
+  color: hsl(var(--ink));
+}
+.terminal ::selection {
+  background: hsl(var(--accent));
+  color: hsl(var(--on-accent));
+}
