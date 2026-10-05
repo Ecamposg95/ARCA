@@ -1,6 +1,6 @@
 # MVP STATUS — ARCA
 
-_Actualizado: 2026-08-24 (M2)_
+_Actualizado: 2026-10-05 (portal de despacho)_
 
 ## Done
 
@@ -24,15 +24,14 @@ _Actualizado: 2026-08-24 (M2)_
 - Instrumentos con naturaleza: tarjetas de crédito contabilizadas como pasivo (2200) con límite y crédito disponible, pago de tarjeta que no duplica el gasto, método de pago normalizado en cada movimiento.
 - Folios de póliza (convención mexicana Ingreso/Egreso/Diario, serie por organización y mes) con contador transaccional y respaldo de asientos históricos.
 - **A0 Fundación agéntica** (ADR-005): llaves de agente por organización (`ak_…`, sha256, scopes, revocables), catálogo de 18 herramientas (14 lectura + 4 propose), `/api/agent/tools` + `/api/agent/invoke` con auditoría total, bandeja de propuestas con aprobación humana que ejecuta los services reales, UI (Configuración→Agentes, página Propuestas con badge). 64 tests.
+- **Portal de despacho** (spec 2026-10-05): cartera del usuario en `GET /api/portfolio` con semáforo (mes sin cerrar, vencidos por pagar, propuestas pendientes), alta de otra empresa en `POST /api/organizations`, selector de empresa en el encabezado, página "Mis empresas" (`/despacho`), rol real desde `/api/me`. Demo: `scripts/demo_despacho.py`.
 
 ## Next
 
 - A2 MCP server (exponer el catálogo vía MCP autenticado con AgentKey) o A1 ARCA CFO (chat con Claude; requiere ANTHROPIC_API_KEY) — orden a decidir.
 - A3 Magic Inbox (documento → propuesta con evidencia).
-- M3/M4 restantes: aging detallado de cartera, tendencias, selector multi-empresa en UI.
+- M3/M4 restantes: aging detallado de cartera, tendencias.
 - Reversal journal entries para cancelar operaciones pagadas (parciales incluidas).
-- Selector de organización multi-empresa en UI (el backend ya lo soporta vía X-Organization-ID).
-- Rol real desde /api/me en el frontend (hoy asume OWNER para navegación).
 
 ## Blocked
 

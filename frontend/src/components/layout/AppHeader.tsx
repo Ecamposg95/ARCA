@@ -1,29 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, LogOut, Menu, Plus, Settings, Search } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { useDismiss } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
-
-/** Cierra el menú al hacer clic fuera o con Escape. */
-function useDismiss(onDismiss: () => void) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function onClick(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) onDismiss()
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onDismiss()
-    }
-    document.addEventListener('mousedown', onClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [onDismiss])
-  return ref
-}
 
 const MENU_ITEM =
   'flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2'
@@ -38,7 +20,7 @@ export function AppHeader({
   onOpenPalette: () => void
 }) {
   const navigate = useNavigate()
-  const { user, organization, logout } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const [quickOpen, setQuickOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
 
@@ -62,7 +44,7 @@ export function AppHeader({
         <Menu className="h-5 w-5" />
       </button>
 
-      <div className="min-w-0 flex-1 truncate text-sm font-semibold">{organization?.name}</div>
+      <CompanySwitcher />
 
       {/* La paleta existe aunque nadie sepa el atajo: el botón la descubre. */}
       <button

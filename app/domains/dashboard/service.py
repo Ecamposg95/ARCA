@@ -15,7 +15,7 @@ from app.models.transaction import INFLOW_TYPES, FinancialTransaction
 from app.services.accounting.engine import account_type_balance
 
 
-def _outstanding(db: Session, organization_id: str, model, overdue_only: bool = False) -> Decimal:
+def outstanding(db: Session, organization_id: str, model, overdue_only: bool = False) -> Decimal:
     """Saldo pendiente (amount - amount_paid) de cuentas abiertas o parciales."""
     query = db.query(
         func.coalesce(func.sum(model.amount), 0),
@@ -28,6 +28,25 @@ def _outstanding(db: Session, organization_id: str, model, overdue_only: bool = 
         query = query.filter(model.due_date < date.today())
     total, paid = query.one()
     return Decimal(total or 0) - Decimal(paid or 0)
+
+
+def available_cash(db: Session, organization_id: str) -> Decimal:
+    """Efectivo disponible: sólo instrumentos de activo.
+
+    Sumar el saldo de una tarjeta restaría deuda al efectivo y diría que tienes
+    menos dinero del que tienes.
+    """
+    cash = (
+        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
+        .filter(
+            FinancialAccount.organization_id == organization_id,
+            FinancialAccount.deleted_at.is_(None),
+            FinancialAccount.active.is_(True),
+            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+        )
+        .scalar()
+    )
+    return Decimal(cash or 0)
 
 
 def _month_start(day: date) -> date:
@@ -145,18 +164,7 @@ def summary(db: Session, organization_id: str) -> dict:
     today = date.today()
     month_start = _month_start(today)
 
-    # Sólo instrumentos de activo: sumar el saldo de una tarjeta restaría deuda
-    # al efectivo disponible y diría que tienes menos dinero del que tienes.
-    cash = (
-        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
-        .filter(
-            FinancialAccount.organization_id == organization_id,
-            FinancialAccount.deleted_at.is_(None),
-            FinancialAccount.active.is_(True),
-            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
-        )
-        .scalar()
-    )
+    cash = available_cash(db, organization_id)
 
     card_debt = (
         db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
@@ -238,7 +246,7 @@ def summary(db: Session, organization_id: str) -> dict:
     )
 
     return {
-        "cash": Decimal(cash or 0),
+        "cash": cash,
         "card_debt": Decimal(card_debt or 0),
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,
@@ -247,9 +255,9 @@ def summary(db: Session, organization_id: str) -> dict:
         "previous_expenses": previous_expenses,
         "previous_profit": previous_revenue - previous_expenses,
         "previous_period_end": previous_end,
-        "receivables": _outstanding(db, organization_id, Receivable),
-        "overdue_receivables": _outstanding(db, organization_id, Receivable, overdue_only=True),
-        "payables": _outstanding(db, organization_id, Payable),
+        "receivables": outstanding(db, organization_id, Receivable),
+        "overdue_receivables": outstanding(db, organization_id, Receivable, overdue_only=True),
+        "payables": outstanding(db, organization_id, Payable),
         "cash_flow": [
             {"month": m, "inflows": flow[m]["inflows"], "outflows": flow[m]["outflows"]} for m in months
         ],

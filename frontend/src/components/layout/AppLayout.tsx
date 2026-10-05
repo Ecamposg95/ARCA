@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   BookOpen,
+  Briefcase,
   Building2,
   CalendarClock,
   HandCoins,
@@ -21,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/api/client'
+import { useActiveRole, useCompanies } from '@/lib/companies'
 import { ArcaMark } from '@/components/ui/ArcaMark'
 import { CommandPalette } from '@/components/ui/CommandPalette'
 import { AppFooter } from '@/components/layout/AppFooter'
@@ -40,6 +42,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/', label: 'Inicio', icon: LayoutDashboard },
       { to: '/analisis', label: 'Análisis', icon: Activity },
       { to: '/agentes', label: 'Agentes', icon: Bot },
+      { to: '/despacho', label: 'Mis empresas', icon: Briefcase },
     ],
   },
   {
@@ -115,9 +118,10 @@ export function AppLayout() {
     refetchInterval: 60_000,
   })
 
-  // MVP: el rol se infiere del registro (OWNER). Cuando haya multiusuario real,
-  // vendrá de /api/me; la autoridad siempre es el backend.
-  const role = 'OWNER'
+  // Mantiene al día las empresas y el rol del usuario. La autoridad siempre es
+  // el backend: el rol aquí sólo decide qué navegación se enseña.
+  useCompanies()
+  const role = useActiveRole()
 
   return (
     <div className="flex h-full">
@@ -155,7 +159,7 @@ export function AppLayout() {
                 </div>
               ) : null}
               {section.items
-                .filter((item) => !item.roles || item.roles.includes(role))
+                .filter((item) => !item.roles || (role !== null && item.roles.includes(role)))
                 .map((item) => {
                   const Icon = item.icon
                   return (

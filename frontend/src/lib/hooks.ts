@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import type { Category, Contact, FinancialAccount, Page } from '@/types/api'
@@ -21,4 +22,24 @@ export function useContacts(resource: 'customers' | 'vendors') {
     queryKey: [resource, 'all'],
     queryFn: async () => (await api.get<Page<Contact>>(`/${resource}?limit=200`)).data.items,
   })
+}
+
+/** Cierra un menú al hacer clic fuera o con Escape. */
+export function useDismiss(onDismiss: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function onClick(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) onDismiss()
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onDismiss()
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [onDismiss])
+  return ref
 }
