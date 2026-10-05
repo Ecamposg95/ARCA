@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   BookOpen,
+  Briefcase,
   Building2,
   CalendarClock,
   HandCoins,
@@ -41,6 +42,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/', label: 'Inicio', icon: LayoutDashboard },
       { to: '/analisis', label: 'Análisis', icon: Activity },
       { to: '/agentes', label: 'Agentes', icon: Bot },
+      { to: '/despacho', label: 'Mis empresas', icon: Briefcase },
     ],
   },
   {

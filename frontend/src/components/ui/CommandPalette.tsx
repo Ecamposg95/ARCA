@@ -20,6 +20,7 @@ const NAVIGATE: Command[] = [
   { label: 'Movimientos', hint: 'Ir a', to: '/movimientos' },
   { label: 'Análisis', hint: 'Ir a', to: '/analisis', keywords: 'terminal graficas series runway efectivo velas' },
   { label: 'Agentes', hint: 'Ir a', to: '/agentes', keywords: 'cfo treasury collections forecast equipo brief' },
+  { label: 'Mis empresas', hint: 'Ir a', to: '/despacho', keywords: 'despacho cartera clientes cambiar empresa contador' },
   { label: 'Cuentas de dinero', hint: 'Ir a', to: '/cuentas', keywords: 'bancos tarjetas' },
   { label: 'Patrimonio', hint: 'Ir a', to: '/patrimonio', keywords: 'activos prestamos creditos' },
   { label: 'Ingresos', hint: 'Ir a', to: '/ingresos', keywords: 'ventas' },
