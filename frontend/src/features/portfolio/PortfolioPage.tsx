@@ -129,14 +129,13 @@ export function PortfolioPage() {
           headers={[
             'Empresa',
             'Estado',
-            'Tu rol',
             right('Caja'),
             right('Por cobrar'),
             right('Vencido por pagar'),
             'Último cierre',
             right('Propuestas'),
           ]}
-          secondary={[3, 5, 7, 8]}
+          secondary={[4, 5, 6, 7]}
         >
           {items.map((item) => {
             const status = STATUS[item.status]
@@ -160,10 +159,12 @@ export function PortfolioPage() {
                   >
                     {item.name}
                   </button>
-                  {item.organization_id === active?.id ? (
-                    <span className="ml-2 text-xs text-muted">(abierta)</span>
-                  ) : null}
-                  <div className="figures mt-0.5 text-xs text-muted">{item.tax_id ?? 'Sin RFC'}</div>
+                  <div className="mt-0.5 text-xs text-muted">
+                    <span className="figures">{item.tax_id ?? 'Sin RFC'}</span>
+                    {' · '}
+                    {ROLE_LABELS[item.role] ?? item.role}
+                    {item.organization_id === active?.id ? ' · abierta' : null}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -177,9 +178,6 @@ export function PortfolioPage() {
                       {reason}
                     </div>
                   ))}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted">
-                  {ROLE_LABELS[item.role] ?? item.role}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Money value={item.cash} size="sm" />
