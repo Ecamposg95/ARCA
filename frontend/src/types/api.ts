@@ -381,6 +381,8 @@ export interface LedgerAccount {
   type: string
   parent_id: string | null
   active: boolean
+  /** Número de la misma cuenta en el CONTPAQi del contador, o null. */
+  contpaqi_code: string | null
 }
 
 export interface TrialBalanceRow {
