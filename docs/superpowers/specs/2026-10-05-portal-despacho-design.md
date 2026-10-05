@@ -44,7 +44,9 @@ No usa `X-Organization-ID`: depende de `get_current_user` y recorre únicamente
 las membresías de ese usuario. Ninguna consulta acepta un `organization_id` que
 venga del cliente.
 
-Respuesta con la paginación estándar `{items,total,limit,offset}`. Cada item:
+Respuesta con el sobre estándar `{items,total,limit,offset}`, sin paginar
+(igual que la lista de miembros), ordenada por urgencia: rojo, ámbar, verde y
+luego por nombre. Cada item:
 
 | Campo | Tipo | Origen |
 |---|---|---|
@@ -102,13 +104,17 @@ contable, categorías, cuenta "Caja") y hace commit. Quien la crea queda como
 - `AppLayout` deja de asumir `OWNER`: el rol sale de la membresía de la empresa
   activa. El backend sigue siendo la autoridad; esto sólo decide qué navegación
   se muestra.
-- Cambiar de empresa actualiza `authStore.organization` y **vacía la caché de
-  TanStack Query** (`queryClient.clear()`), para que nunca se pinte una cifra de
-  la empresa anterior.
+- Cambiar de empresa actualiza `authStore.organization` y **reinicia la caché de
+  TanStack Query** (`queryClient.resetQueries()`, que además vuelve a pedir lo
+  que esté en pantalla), para que nunca se pinte una cifra de la empresa
+  anterior.
+- Si la empresa activa guardada en el navegador ya no está entre las del
+  usuario (lo sacaron del equipo), se activa la primera que sí tenga.
 
 ### Selector de empresa
 
-En el encabezado de la barra lateral. Muestra la empresa activa; al abrirlo
+En el encabezado superior (`AppHeader`), donde hoy va el nombre de la empresa:
+la barra lateral sólo navega. Muestra la empresa activa; al abrirlo
 lista las demás y un enlace "Ver todas" a `/despacho`. Con una sola empresa se
 muestra el nombre sin desplegable.
 
@@ -131,18 +137,18 @@ semáforo con la semántica pos/warn/neg (no con el acento teal), copy en españ
 
 ## Demo
 
-`scripts/demo_despacho.py` siembra un usuario contador con cuatro empresas
-cliente, una por estado:
+`scripts/demo_despacho.py` siembra un usuario contador con cuatro empresas, una
+por estado:
 
 | Empresa | Estado | Causa sembrada |
 |---|---|---|
-| A | verde | mes anterior cerrado, sin pendientes |
+| A, el propio despacho | verde | mes anterior cerrado, sin pendientes |
 | B | ámbar | mes anterior sin cerrar |
 | C | rojo | cuentas por pagar vencidas |
 | D | ámbar | propuestas de agentes por revisar |
 
-En una de ellas el contador entra con rol `ACCOUNTANT` invitado por el dueño
-(modelo 1); en las otras es `OWNER` (modelo 2). Las cuatro llevan operaciones
+En D el contador entra con rol `ACCOUNTANT` invitado por la dueña (modelo 1);
+B y C las dio de alta él y es `OWNER` (modelo 2). Las cuatro llevan operaciones
 fechadas en el mes anterior, para que el cierre de mes sea exigible. El script
 imprime las credenciales. Como hoy es antes del día 17, B queda en ámbar; después del 17
 pasaría a rojo, y el guion lo debe tener en cuenta.
