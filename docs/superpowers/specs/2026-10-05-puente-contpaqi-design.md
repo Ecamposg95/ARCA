@@ -1,7 +1,8 @@
 # Puente a CONTPAQi — exportar las pólizas del mes
 
-> Sub-proyecto 2 de 7 del frente "ARCA para firmas contables". Borrador del
-> 2026-10-05, pendiente de aprobación.
+> Sub-proyecto 2 de 7 del frente "ARCA para firmas contables". Aprobado en
+> conversación el 2026-10-05, sobre la referencia pública del formato (sin
+> muestra del CONTPAQi del contador).
 
 ## Para qué
 
@@ -83,14 +84,15 @@ en CONTPAQi.
   fecha y folio. Las pólizas de reversa se exportan como cualquier otra: en
   CONTPAQi la cancelación también es una póliza.
 - Tipo: `INGRESO` → 1, `EGRESO` → 2, `DIARIO` → 3.
-- Folio: el consecutivo del folio de ARCA (`Ig-2026-09-0007` → `7`). El folio
-  completo de ARCA viaja en la Referencia de cada movimiento para rastrear.
+- Folio: el consecutivo del folio de ARCA (`Ig-2026-09-0007` → `7`). En la
+  Referencia de cada movimiento viaja el folio de ARCA sin el año
+  (`Ig-09-0007`, que cabe en los 10 caracteres del campo) para rastrear.
 - Importe con dos decimales, desde `Decimal`, sin pasar por `float`.
 - Textos recortados al ancho del campo y sin saltos de línea; lo que
   Windows-1252 no pueda representar se sustituye por `?`.
 - Antes de escribir, cada póliza se revalida: cargos = abonos. Si alguna no
-  cuadra, el export falla completo con el folio; nunca se entrega un archivo a
-  medias.
+  cuadra, el export falla completo (409) con el folio; nunca se entrega un
+  archivo a medias.
 - Un mes sin pólizas responde 404 con "No hay pólizas en ese mes."
 - Nombre del archivo: `polizas-contpaqi-AAAA-MM.txt`.
 
@@ -100,10 +102,14 @@ avisar antes de descargar.
 
 ### Interfaz
 
-En Contabilidad → Libro diario, botón "Exportar a CONTPAQi": elige el mes,
-muestra el resumen del preview ("42 pólizas · 118 movimientos · 3 cuentas sin
-equivalente") y descarga. El aviso de cuentas sin equivalente enlaza al
-catálogo.
+En Contabilidad → Cierre de periodo, cada mes con pólizas tiene un botón
+"CONTPAQi": esa tabla ya lista los meses con su número de pólizas, y exportar
+es parte de cerrar el mes. Abre un resumen del preview ("42 pólizas · 118
+movimientos", y las cuentas sin equivalente con enlace al catálogo) y descarga.
+
+La descarga usa la sesión del usuario (petición con token y archivo en
+memoria). El enlace directo que hoy usa "Descargar Excel" en Reportes no manda
+el token y responde 401 en producción; se corrige con el mismo mecanismo.
 
 ### Código
 
