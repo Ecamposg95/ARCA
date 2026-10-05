@@ -414,3 +414,34 @@ export interface CashProjection {
   shortfall_date: string | null
   points: { date: string; balance: number; change: number; description?: string }[]
 }
+
+export interface Membership {
+  organization_id: string
+  role: string
+}
+
+export interface MeResponse {
+  user: User
+  memberships: Membership[]
+  organizations: Organization[]
+}
+
+export type PortfolioStatus = 'red' | 'amber' | 'green'
+
+/** Una fila de la cartera: una empresa del usuario y lo que tiene pendiente. */
+export interface PortfolioItem {
+  organization_id: string
+  name: string
+  tax_id: string | null
+  business_type: string | null
+  role: string
+  cash: string
+  receivable: string
+  payable_overdue: string
+  /** "AAAA-MM" del último mes cerrado, o null si nunca ha cerrado uno. */
+  last_closed_period: string | null
+  previous_month_closed: boolean
+  pending_proposals: number
+  status: PortfolioStatus
+  reasons: string[]
+}

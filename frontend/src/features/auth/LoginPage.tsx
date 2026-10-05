@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
+import { loadCompanies } from '@/lib/companies'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/Field'
@@ -23,7 +24,16 @@ export function LoginPage() {
     try {
       const { data } = await api.post<AuthResponse>('/auth/login', { email, password })
       setSession(data)
-      navigate('/')
+      // Quien lleva varias empresas llega a su cartera; con una sola, a su
+      // tablero. Si /me falla se entra directo: la cartera es un atajo.
+      let home = '/'
+      try {
+        const me = await loadCompanies()
+        if (me.organizations.length > 1) home = '/despacho'
+      } catch {
+        // se entra al tablero de la empresa que devolvió el login
+      }
+      navigate(home)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
