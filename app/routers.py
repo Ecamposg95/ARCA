@@ -24,6 +24,7 @@ from app.domains.projects.router import router as projects_router
 from app.domains.periods.router import router as periods_router
 from app.domains.agent_team.router import router as agent_team_router
 from app.domains.recurring.router import router as recurring_router
+from app.domains.portfolio.router import router as portfolio_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -49,3 +50,4 @@ api_router.include_router(projects_router)
 api_router.include_router(periods_router)
 api_router.include_router(agent_team_router)
 api_router.include_router(recurring_router)
+api_router.include_router(portfolio_router)
