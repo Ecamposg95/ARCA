@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -17,6 +17,7 @@ from app.models.organization import (
 from app.models.user import User
 from app.security.passwords import hash_password
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services.onboarding import provision_organization
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
@@ -27,6 +28,45 @@ class OrganizationUpdate(BaseModel):
     tax_id: str | None = Field(default=None, max_length=20)
     business_type: str | None = Field(default=None, max_length=50)
     default_tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+
+
+class OrganizationCreate(BaseModel):
+    business_name: str = Field(min_length=1, max_length=255)
+    business_type: str | None = Field(default=None, max_length=50)
+    tax_id: str | None = Field(default=None, max_length=20)
+    initial_cash: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)
+
+    @field_validator("business_name")
+    @classmethod
+    def _name_is_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Escribe el nombre de la empresa.")
+        return value
+
+
+@router.post("", response_model=OrganizationRead, status_code=201)
+def create_organization(
+    payload: OrganizationCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Otra empresa para quien ya tiene sesión: el contador da de alta a un cliente.
+
+    Mismo arranque que el registro (catálogo, categorías, "Caja"); quien la crea
+    queda como dueño.
+    """
+    organization = provision_organization(
+        db,
+        user,
+        business_name=payload.business_name,
+        business_type=payload.business_type,
+        initial_cash=payload.initial_cash,
+    )
+    organization.tax_id = (payload.tax_id or "").strip().upper() or None
+    db.commit()
+    db.refresh(organization)
+    return OrganizationRead.model_validate(organization)
 
 
 @router.get("/current", response_model=OrganizationRead)
