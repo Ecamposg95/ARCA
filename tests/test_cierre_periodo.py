@@ -150,3 +150,36 @@ def test_periods_are_isolated_by_organization(client):
     headers_b, account_b, ventas_b = _setup(client, email="otra@example.com")
     # La otra empresa no heredó el candado.
     assert _income(client, headers_b, account_b, ventas_b, date(year, month, 15)).status_code == 201
+
+
+def test_a_reopened_month_can_be_closed_again(client):
+    headers, account, ventas = _setup(client)
+    year, month = _closed_month()
+    period = {"year": year, "month": month}
+    client.post("/api/periods/close", headers=headers, json=period)
+    reopened = client.post(
+        "/api/periods/reopen", headers=headers, json={**period, "reason": "Faltó una factura"}
+    )
+    assert reopened.status_code == 200, reopened.text
+
+    closed_again = client.post("/api/periods/close", headers=headers, json=period)
+    assert closed_again.status_code == 200, closed_again.text
+
+    # Vuelve a proteger el mes, y un segundo cierre encima sigue rechazándose.
+    assert _income(client, headers, account, ventas, date(year, month, 15)).status_code == 400
+    assert client.post("/api/periods/close", headers=headers, json=period).status_code == 400
+
+
+def test_reclosing_keeps_the_trace_of_the_reopening(client, db):
+    from app.models.period import PeriodLock
+
+    headers, _account, _ventas = _setup(client)
+    year, month = _closed_month()
+    period = {"year": year, "month": month}
+    client.post("/api/periods/close", headers=headers, json=period)
+    client.post("/api/periods/reopen", headers=headers, json={**period, "reason": "Faltó una factura"})
+    client.post("/api/periods/close", headers=headers, json=period)
+
+    lock = db.query(PeriodLock).filter(PeriodLock.year == year, PeriodLock.month == month).one()
+    assert lock.reopened_at is None
+    assert "Faltó una factura" in lock.notes

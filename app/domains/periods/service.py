@@ -51,14 +51,28 @@ def close_period(
     if is_closed(db, organization_id, year, month):
         raise ValueError("Ese mes ya está cerrado.")
 
-    lock = PeriodLock(
-        organization_id=organization_id,
-        year=year,
-        month=month,
-        closed_by=user_id,
-        notes=notes,
+    # Un mes reabierto conserva su renglón (la llave única es empresa+año+mes):
+    # volver a cerrarlo lo reutiliza, y la reapertura queda escrita en las notas
+    # para no perder quién movió un mes ya declarado ni por qué.
+    lock = (
+        db.query(PeriodLock)
+        .filter(
+            PeriodLock.organization_id == organization_id,
+            PeriodLock.year == year,
+            PeriodLock.month == month,
+        )
+        .first()
     )
-    db.add(lock)
+    if lock is None:
+        lock = PeriodLock(organization_id=organization_id, year=year, month=month, notes=notes)
+        db.add(lock)
+    else:
+        trace = f"Reabierto el {lock.reopened_at:%Y-%m-%d}: {lock.reopen_reason}"
+        lock.notes = "\n".join(part for part in (lock.notes, trace, notes) if part)[-1000:]
+        lock.reopened_at = None
+        lock.reopened_by = None
+        lock.reopen_reason = None
+    lock.closed_by = user_id
     db.commit()
     db.refresh(lock)
     return lock
