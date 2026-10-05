@@ -25,6 +25,7 @@ _Actualizado: 2026-10-05 (portal de despacho)_
 - Folios de póliza (convención mexicana Ingreso/Egreso/Diario, serie por organización y mes) con contador transaccional y respaldo de asientos históricos.
 - **A0 Fundación agéntica** (ADR-005): llaves de agente por organización (`ak_…`, sha256, scopes, revocables), catálogo de 18 herramientas (14 lectura + 4 propose), `/api/agent/tools` + `/api/agent/invoke` con auditoría total, bandeja de propuestas con aprobación humana que ejecuta los services reales, UI (Configuración→Agentes, página Propuestas con badge). 64 tests.
 - **Portal de despacho** (spec 2026-10-05): cartera del usuario en `GET /api/portfolio` con semáforo (mes sin cerrar, vencidos por pagar, propuestas pendientes), alta de otra empresa en `POST /api/organizations`, selector de empresa en el encabezado, página "Mis empresas" (`/despacho`), rol real desde `/api/me`. Demo: `scripts/demo_despacho.py`.
+- **Puente a CONTPAQi** (spec 2026-10-05): cuenta equivalente por cuenta (`accounts.contpaqi_code`, editable en el catálogo), exportación de las pólizas del mes en el layout de "Cargado de pólizas" (`GET /api/accounting/contpaqi`, vista previa en `/contpaqi/preview`), botón por mes en Cierre de periodo. **Formato de referencia, sin verificar contra un CONTPAQi real**: falta calcarlo de un "bajado de pólizas". "Descargar Excel" de Reportes ya descarga con sesión (respondía 401).
 
 ## Next
 
