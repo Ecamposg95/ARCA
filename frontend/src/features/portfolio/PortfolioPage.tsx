@@ -70,6 +70,10 @@ export function PortfolioPage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['portfolio'],
     queryFn: async () => (await api.get<Page<PortfolioItem>>('/portfolio')).data.items,
+    // Sin caché: se vuelve aquí justo después de cerrar un mes o pagar un
+    // vencido dentro de una empresa, y el semáforo viejo sería mentira.
+    staleTime: 0,
+    gcTime: 0,
   })
 
   const create = useMutation({

@@ -31,7 +31,14 @@ export function SettingsPage() {
       return (await api.patch<Organization>('/organizations/current', payload)).data
     },
     onSuccess: (updated) => {
-      useAuthStore.setState({ organization: updated })
+      useAuthStore.setState((state) => ({
+        organization: updated,
+        // También en la lista de empresas: de ahí sale el selector, y cambiar
+        // de empresa y volver restauraría los datos viejos.
+        organizations: state.organizations.map((company) =>
+          company.id === updated.id ? updated : company,
+        ),
+      }))
       setError(null)
       setMessage('Cambios guardados.')
     },
