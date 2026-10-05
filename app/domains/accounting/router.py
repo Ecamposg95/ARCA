@@ -4,14 +4,16 @@ import re
 from datetime import date as date_type
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES
 from app.security.deps import get_current_org_id, require_role
+from app.services.accounting.contpaqi import ENCODING, UnbalancedVoucher, render
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 
 router = APIRouter(
@@ -164,3 +166,48 @@ def trial_balance(
         "total_debit": sum((row["debit"] for row in rows), Decimal("0")),
         "total_credit": sum((row["credit"] for row in rows), Decimal("0")),
     }
+
+
+@router.get("/contpaqi/preview")
+def contpaqi_preview(
+    year: int = Query(ge=2000, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Qué saldría en el archivo, para avisar antes de descargar."""
+    vouchers, unmapped = service.month_vouchers(db, org_id, year, month)
+    return {
+        "year": year,
+        "month": month,
+        "entries": len(vouchers),
+        "movements": sum(
+            1 for voucher in vouchers for m in voucher.movements if m.debit > 0 or m.credit > 0
+        ),
+        "unmapped_accounts": unmapped,
+    }
+
+
+@router.get("/contpaqi")
+def contpaqi_export(
+    year: int = Query(ge=2000, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Las pólizas del mes en el layout de "Cargado de pólizas" de CONTPAQi."""
+    vouchers, _unmapped = service.month_vouchers(db, org_id, year, month)
+    if not vouchers:
+        raise HTTPException(status_code=404, detail="No hay pólizas en ese mes.")
+    try:
+        content = render(vouchers)
+    except UnbalancedVoucher as error:
+        # Nunca un archivo a medias: una póliza descuadrada detiene todo.
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return Response(
+        content=content.encode(ENCODING),
+        media_type="text/plain; charset=windows-1252",
+        headers={
+            "Content-Disposition": f'attachment; filename="polizas-contpaqi-{year}-{month:02d}.txt"'
+        },
+    )
