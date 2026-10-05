@@ -1,3 +1,4 @@
+import { downloadErrorMessage, downloadFile } from '@/lib/download'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -270,13 +271,18 @@ export function ReportsPage() {
         actions={
           CSV_REPORTS[tab] ? (
             <div className="flex gap-2">
-              <a
-                href={`/api/reports/${CSV_REPORTS[tab]}/csv?start=${start}&end=${end}`}
+              <button
+                type="button"
+                onClick={() => {
+                  // Con la sesión del usuario: el enlace directo respondía 401.
+                  downloadFile(`/reports/${CSV_REPORTS[tab]}/csv`, { start, end }, 'reporte.csv').catch(
+                    async (err) => window.alert(await downloadErrorMessage(err)),
+                  )
+                }}
                 className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
-                download
               >
                 Descargar Excel
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => window.print()}

@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
+import { ContpaqiCodeCell } from '@/features/accounting/ContpaqiCodeCell'
 import { JournalDiary } from '@/features/accounting/JournalDiary'
 import { PeriodsPanel } from '@/features/accounting/PeriodsPanel'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -202,7 +203,7 @@ export function AccountingPage() {
       ) : null}
 
       {tab === 'catalogo' ? (
-        <Table headers={['Código', 'Cuenta', 'Tipo']}>
+        <Table headers={['Código', 'Cuenta', 'Tipo', 'Cuenta en CONTPAQi']}>
           {(accountsQuery.data ?? []).map((account) => (
             <tr key={account.id} className={account.parent_id ? '' : 'bg-surface-2/40 font-medium'}>
               <td className="figures px-4 py-2">{account.code}</td>
@@ -210,6 +211,10 @@ export function AccountingPage() {
               {/* El tipo sólo en la cuenta mayor: repetirlo en cada hija es ruido. */}
               <td className="px-4 py-2 text-muted">
                 {account.parent_id ? '' : (ACCOUNT_TYPE_LABELS[account.type] ?? account.type)}
+              </td>
+              {/* Sólo las cuentas que reciben movimientos necesitan equivalente. */}
+              <td className="px-4 py-1.5">
+                {account.parent_id ? <ContpaqiCodeCell account={account} /> : null}
               </td>
             </tr>
           ))}

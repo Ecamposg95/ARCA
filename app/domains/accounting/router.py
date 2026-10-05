@@ -1,16 +1,19 @@
 """Sección Contabilidad (task pack §25) — solo OWNER / ADMIN / ACCOUNTANT."""
 
+import re
 from datetime import date as date_type
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES
 from app.security.deps import get_current_org_id, require_role
+from app.services.accounting.contpaqi import ENCODING, ExportError, render
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 
 router = APIRouter(
@@ -29,6 +32,7 @@ class AccountRead(BaseModel):
     type: str
     parent_id: str | None
     active: bool
+    contpaqi_code: str | None
 
 
 class JournalLineRead(BaseModel):
@@ -68,6 +72,42 @@ def list_accounts(
         .all()
     )
     return [AccountRead.model_validate(account) for account in accounts]
+
+
+class AccountUpdate(BaseModel):
+    contpaqi_code: str | None = None
+
+
+@router.patch("/accounts/{account_id}", response_model=AccountRead)
+def update_account(
+    account_id: str,
+    payload: AccountUpdate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Por ahora lo único editable de una cuenta es su equivalente en CONTPAQi."""
+    account = (
+        db.query(Account)
+        .filter(Account.id == account_id, Account.organization_id == org_id)
+        .first()
+    )
+    if account is None:
+        raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
+
+    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+    code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
+    if code and not (code.isascii() and code.isalnum()):
+        raise HTTPException(
+            status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones."
+        )
+    if len(code) > 30:
+        raise HTTPException(
+            status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
+        )
+    account.contpaqi_code = code or None
+    db.commit()
+    db.refresh(account)
+    return AccountRead.model_validate(account)
 
 
 @router.get("/journal-entries")
@@ -126,3 +166,48 @@ def trial_balance(
         "total_debit": sum((row["debit"] for row in rows), Decimal("0")),
         "total_credit": sum((row["credit"] for row in rows), Decimal("0")),
     }
+
+
+@router.get("/contpaqi/preview")
+def contpaqi_preview(
+    year: int = Query(ge=2000, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Qué saldría en el archivo, para avisar antes de descargar."""
+    vouchers, unmapped = service.month_vouchers(db, org_id, year, month)
+    return {
+        "year": year,
+        "month": month,
+        "entries": len(vouchers),
+        "movements": sum(
+            1 for voucher in vouchers for m in voucher.movements if m.debit > 0 or m.credit > 0
+        ),
+        "unmapped_accounts": unmapped,
+    }
+
+
+@router.get("/contpaqi")
+def contpaqi_export(
+    year: int = Query(ge=2000, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Las pólizas del mes en el layout de "Cargado de pólizas" de CONTPAQi."""
+    vouchers, _unmapped = service.month_vouchers(db, org_id, year, month)
+    if not vouchers:
+        raise HTTPException(status_code=404, detail="No hay pólizas en ese mes.")
+    try:
+        content = render(vouchers)
+    except ExportError as error:
+        # Nunca un archivo a medias ni con un dato recortado: se detiene todo.
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return Response(
+        content=content.encode(ENCODING),
+        media_type="text/plain; charset=windows-1252",
+        headers={
+            "Content-Disposition": f'attachment; filename="polizas-contpaqi-{year}-{month:02d}.txt"'
+        },
+    )
