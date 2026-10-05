@@ -1,9 +1,10 @@
 """Sección Contabilidad (task pack §25) — solo OWNER / ADMIN / ACCOUNTANT."""
 
+import re
 from datetime import date as date_type
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -29,6 +30,7 @@ class AccountRead(BaseModel):
     type: str
     parent_id: str | None
     active: bool
+    contpaqi_code: str | None
 
 
 class JournalLineRead(BaseModel):
@@ -68,6 +70,42 @@ def list_accounts(
         .all()
     )
     return [AccountRead.model_validate(account) for account in accounts]
+
+
+class AccountUpdate(BaseModel):
+    contpaqi_code: str | None = None
+
+
+@router.patch("/accounts/{account_id}", response_model=AccountRead)
+def update_account(
+    account_id: str,
+    payload: AccountUpdate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Por ahora lo único editable de una cuenta es su equivalente en CONTPAQi."""
+    account = (
+        db.query(Account)
+        .filter(Account.id == account_id, Account.organization_id == org_id)
+        .first()
+    )
+    if account is None:
+        raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
+
+    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+    code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
+    if code and not (code.isascii() and code.isalnum()):
+        raise HTTPException(
+            status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones."
+        )
+    if len(code) > 30:
+        raise HTTPException(
+            status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
+        )
+    account.contpaqi_code = code or None
+    db.commit()
+    db.refresh(account)
+    return AccountRead.model_validate(account)
 
 
 @router.get("/journal-entries")

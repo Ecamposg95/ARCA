@@ -29,6 +29,9 @@ class Account(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     parent_id = Column(String(36), ForeignKey("accounts.id"), nullable=True)
     active = Column(Boolean, nullable=False, default=True)
     system = Column(Boolean, nullable=False, default=False)
+    # Número de la misma cuenta en el CONTPAQi del contador (sin guiones). Con
+    # esto las pólizas exportadas caen en SU catálogo, no en el de ARCA.
+    contpaqi_code = Column(String(30), nullable=True)
 
 
 class JournalEntry(Base, UUIDPKMixin, TenantMixin, AuditMixin):
