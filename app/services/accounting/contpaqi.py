@@ -32,6 +32,9 @@ class Field:
     name: str
     width: int
     align: str = "left"  # left | right
+    # Sólo el texto libre se puede recortar. Un identificador recortado (cuenta,
+    # folio, importe) sería OTRO dato válido a la vista: mejor detener el export.
+    truncate: bool = False
 
 
 HEADER_LAYOUT = (
@@ -41,7 +44,7 @@ HEADER_LAYOUT = (
     Field("folio", 9, "right"),
     Field("clase", 1),
     Field("diario", 10),
-    Field("concept", 100),
+    Field("concept", 100, truncate=True),
     Field("origin", 2, "right"),
     Field("printed", 1),
     Field("adjust", 1),
@@ -54,7 +57,7 @@ MOVEMENT_LAYOUT = (
     Field("amount", 20),
     Field("diario", 10),
     Field("foreign", 20),
-    Field("concept", 100),
+    Field("concept", 100, truncate=True),
 )
 
 
@@ -83,8 +86,16 @@ class Voucher:
     movements: tuple[Movement, ...]
 
 
-class UnbalancedVoucher(ValueError):
-    """Una póliza que no cuadra detiene el export completo."""
+class ExportError(ValueError):
+    """Algo impide entregar un archivo fiel: el export se detiene completo."""
+
+
+class UnbalancedVoucher(ExportError):
+    """Una póliza que no cuadra."""
+
+
+class FieldOverflow(ExportError):
+    """Un identificador que no cabe en su campo."""
 
 
 def _text(value: str | None) -> str:
@@ -96,21 +107,42 @@ def _text(value: str | None) -> str:
 def _line(layout: tuple[Field, ...], values: dict[str, str]) -> str:
     cells = []
     for field in layout:
-        value = _text(values[field.name])[: field.width]
+        value = _text(values[field.name])
+        if len(value) > field.width:
+            if not field.truncate:
+                raise FieldOverflow(
+                    f"«{value}» no cabe en los {field.width} caracteres del campo "
+                    f"{field.name} del layout de CONTPAQi."
+                )
+            value = value[: field.width]
         cells.append(value.rjust(field.width) if field.align == "right" else value.ljust(field.width))
     return " ".join(cells)
 
 
-def _folio_number(folio: str) -> str:
+def folio_consecutive(folio: str) -> int:
     """Ig-2026-09-0007 → 7: CONTPAQi quiere el consecutivo, no el folio completo."""
     match = re.search(r"(\d+)$", folio)
-    return str(int(match.group(1))) if match else "0"
+    return int(match.group(1)) if match else 0
+
+
+_REFERENCE_WIDTH = next(field.width for field in MOVEMENT_LAYOUT if field.name == "reference")
 
 
 def _reference(folio: str) -> str:
-    """El folio de ARCA sin el año, para que quepa en 10: Ig-2026-09-0007 → Ig-09-0007."""
+    """El folio de ARCA en la Referencia, para rastrear cada movimiento.
+
+    Sin el año, para que quepa: Ig-2026-09-0007 → Ig-09-0007. Pasado el 9999 ya
+    no cabe con guiones y se compacta (Ig0910000) en vez de recortarse: recortado
+    sería la referencia de OTRA póliza. Si ni así cabe, va en blanco.
+    """
     parts = folio.split("-")
-    return "-".join((parts[0], *parts[2:])) if len(parts) == 4 else folio
+    if len(parts) == 4:
+        prefix, _year, month, _number = parts
+        number = folio_consecutive(folio)
+        for candidate in (f"{prefix}-{month}-{number:04d}", f"{prefix}{month}{number}"):
+            if len(candidate) <= _REFERENCE_WIDTH:
+                return candidate
+    return ""
 
 
 def render(vouchers: Iterable[Voucher]) -> str:
@@ -129,7 +161,7 @@ def render(vouchers: Iterable[Voucher]) -> str:
                     "mark": "P",
                     "date": voucher.date.strftime("%Y%m%d"),
                     "kind": KIND_CODES.get(voucher.kind, KIND_CODES["DIARIO"]),
-                    "folio": _folio_number(voucher.folio),
+                    "folio": str(folio_consecutive(voucher.folio)),
                     "clase": "1",
                     "diario": "0",
                     "concept": voucher.concept,

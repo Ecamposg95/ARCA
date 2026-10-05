@@ -13,7 +13,7 @@ from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES
 from app.security.deps import get_current_org_id, require_role
-from app.services.accounting.contpaqi import ENCODING, UnbalancedVoucher, render
+from app.services.accounting.contpaqi import ENCODING, ExportError, render
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 
 router = APIRouter(
@@ -201,8 +201,8 @@ def contpaqi_export(
         raise HTTPException(status_code=404, detail="No hay pólizas en ese mes.")
     try:
         content = render(vouchers)
-    except UnbalancedVoucher as error:
-        # Nunca un archivo a medias: una póliza descuadrada detiene todo.
+    except ExportError as error:
+        # Nunca un archivo a medias ni con un dato recortado: se detiene todo.
         raise HTTPException(status_code=409, detail=str(error)) from error
     return Response(
         content=content.encode(ENCODING),

@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from app.models.accounting import JournalEntry, JournalEntryLine
+from app.models.accounting import FolioCounter, JournalEntry, JournalEntryLine
 from app.services.accounting.contpaqi import ENCODING, HEADER_WIDTH, MOVEMENT_WIDTH
 from tests.helpers import auth_headers, register
 
@@ -192,3 +192,27 @@ def test_a_viewer_cannot_export(client):
         ).json()
     )
     assert _export(client, viewer).status_code == 403
+
+
+def test_vouchers_go_out_in_folio_order_past_9999(client, db):
+    headers, account, category = _setup(client)
+    _income(client, headers, account, category)  # Ig …-0001
+    counter = db.query(FolioCounter).filter(FolioCounter.kind == "INGRESO").one()
+    counter.next_number = 9999
+    db.flush()
+    _income(client, headers, account, category)  # 9999
+    _income(client, headers, account, category)  # 10000
+
+    text = _export(client, headers).content.decode(ENCODING)
+    ingresos = [
+        (int(line[17:26]), following[34:44].strip())
+        for line, following in zip(text.split("\r\n"), text.split("\r\n")[1:], strict=False)
+        if line.startswith("P ") and line[12:16].strip() == "1"
+    ]
+    month = f"{TODAY.month:02d}"
+    # Orden numérico (no alfabético) y cada póliza con una referencia propia.
+    assert ingresos == [
+        (1, f"Ig-{month}-0001"),
+        (9999, f"Ig-{month}-9999"),
+        (10000, f"Ig{month}10000"),
+    ]

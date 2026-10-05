@@ -8,6 +8,7 @@ import pytest
 from app.services.accounting.contpaqi import (
     ENCODING,
     HEADER_WIDTH,
+    FieldOverflow,
     MOVEMENT_WIDTH,
     Movement,
     UnbalancedVoucher,
@@ -125,3 +126,30 @@ def test_a_movement_without_amount_is_skipped():
 
 def test_no_vouchers_renders_an_empty_file():
     assert render([]) == ""
+
+
+def _reference_of(folio: str) -> str:
+    return _lines(render([_voucher(folio=folio)]))[1][34:44].strip()
+
+
+def test_a_folio_above_9999_keeps_a_reference_of_its_own():
+    # Recortada a 10, "Ig-10-10000" sería "Ig-10-1000": la referencia de OTRA póliza.
+    assert _reference_of("Ig-2026-10-1000") == "Ig-10-1000"
+    assert _reference_of("Ig-2026-10-10000") == "Ig1010000"
+    assert _reference_of("Ig-2026-10-10001") == "Ig1010001"
+
+
+def test_a_reference_that_cannot_fit_is_left_blank_rather_than_cut():
+    assert _reference_of("Ig-2026-10-12345678") == ""
+    assert _reference_of("folio-historico-raro") == ""
+
+
+def test_an_identifier_that_does_not_fit_stops_the_export_instead_of_being_cut():
+    too_long = _voucher(
+        movements=(
+            Movement("1" * 31, Decimal("100"), Decimal("0"), "x"),
+            Movement("4100", Decimal("0"), Decimal("100"), "x"),
+        )
+    )
+    with pytest.raises(FieldOverflow):
+        render([too_long])

@@ -8,7 +8,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
-from app.services.accounting.contpaqi import Movement, Voucher
+from app.services.accounting.contpaqi import Movement, Voucher, folio_consecutive
 
 
 def month_vouchers(
@@ -27,11 +27,13 @@ def month_vouchers(
             JournalEntry.date >= start,
             JournalEntry.date <= end,
         )
-        .order_by(JournalEntry.date, JournalEntry.folio)
         .all()
     )
     if not entries:
         return [], []
+    # Por fecha, tipo y consecutivo NUMÉRICO: ordenar por el texto del folio
+    # pondría la póliza 10000 antes que la 9999.
+    entries.sort(key=lambda e: (e.date, e.kind, folio_consecutive(e.folio), e.folio))
 
     rows = (
         db.query(JournalEntryLine, Account)
