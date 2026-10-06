@@ -13,6 +13,7 @@ import { TextInput } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { ContpaqiExport } from '@/features/accounting/ContpaqiExport'
+import { SatExport } from '@/features/accounting/SatExport'
 import { formatMoney } from '@/lib/format'
 
 interface Period {
@@ -40,6 +41,7 @@ export function PeriodsPanel() {
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState<Period | null>(null)
+  const [satPeriod, setSatPeriod] = useState<Period | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['periods'],
@@ -116,13 +118,22 @@ export function PeriodsPanel() {
             </td>
             <td className="whitespace-nowrap px-4 py-2.5 text-right">
               {period.entries > 0 ? (
-                <Button
-                  variant="ghost"
-                  className="mr-1 !px-2 !py-1 text-xs"
-                  onClick={() => setExporting(period)}
-                >
-                  CONTPAQi
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    className="mr-1 !px-2 !py-1 text-xs"
+                    onClick={() => setExporting(period)}
+                  >
+                    CONTPAQi
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="mr-1 !px-2 !py-1 text-xs"
+                    onClick={() => setSatPeriod(period)}
+                  >
+                    SAT
+                  </Button>
+                </>
               ) : null}
               {period.closed ? (
                 <Button
@@ -160,6 +171,12 @@ export function PeriodsPanel() {
         period={exporting}
         title={exporting ? monthName(exporting.label) : ''}
         onClose={() => setExporting(null)}
+      />
+
+      <SatExport
+        period={satPeriod}
+        title={satPeriod ? monthName(satPeriod.label) : ''}
+        onClose={() => setSatPeriod(null)}
       />
 
       <Modal
