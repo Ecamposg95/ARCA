@@ -14,6 +14,7 @@ from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES
 from app.security.deps import get_current_org_id, require_role
 from app.services.accounting.contpaqi import ENCODING, ExportError, render
+from app.services.accounting.sat import sat_code_names, sat_codes
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 
 router = APIRouter(
@@ -33,6 +34,7 @@ class AccountRead(BaseModel):
     parent_id: str | None
     active: bool
     contpaqi_code: str | None
+    sat_code: str | None
 
 
 class JournalLineRead(BaseModel):
@@ -76,6 +78,7 @@ def list_accounts(
 
 class AccountUpdate(BaseModel):
     contpaqi_code: str | None = None
+    sat_code: str | None = None
 
 
 @router.patch("/accounts/{account_id}", response_model=AccountRead)
@@ -85,7 +88,8 @@ def update_account(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    """Por ahora lo único editable de una cuenta es su equivalente en CONTPAQi."""
+    """Lo editable de una cuenta: su equivalente en CONTPAQi y su código agrupador.
+    Sólo cambia lo que viene en el cuerpo; un campo ausente no borra nada."""
     account = (
         db.query(Account)
         .filter(Account.id == account_id, Account.organization_id == org_id)
@@ -94,20 +98,37 @@ def update_account(
     if account is None:
         raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
 
-    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
-    code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
-    if code and not (code.isascii() and code.isalnum()):
-        raise HTTPException(
-            status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones."
-        )
-    if len(code) > 30:
-        raise HTTPException(
-            status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
-        )
-    account.contpaqi_code = code or None
+    if "contpaqi_code" in payload.model_fields_set:
+        # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+        code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
+        if code and not (code.isascii() and code.isalnum()):
+            raise HTTPException(
+                status_code=400,
+                detail="El número de cuenta sólo puede llevar letras, números y guiones.",
+            )
+        if len(code) > 30:
+            raise HTTPException(
+                status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
+            )
+        account.contpaqi_code = code or None
+
+    if "sat_code" in payload.model_fields_set:
+        sat_code = (payload.sat_code or "").strip()
+        if sat_code and sat_code not in sat_code_names():
+            raise HTTPException(
+                status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT."
+            )
+        account.sat_code = sat_code or None
+
     db.commit()
     db.refresh(account)
     return AccountRead.model_validate(account)
+
+
+@router.get("/sat/codes")
+def list_sat_codes():
+    """La lista oficial del Anexo 24, para el selector del catálogo."""
+    return sat_codes()
 
 
 @router.get("/journal-entries")

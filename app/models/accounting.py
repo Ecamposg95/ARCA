@@ -32,6 +32,8 @@ class Account(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     # Número de la misma cuenta en el CONTPAQi del contador (sin guiones). Con
     # esto las pólizas exportadas caen en SU catálogo, no en el de ARCA.
     contpaqi_code = Column(String(30), nullable=True)
+    # Código agrupador del SAT (Anexo 24): cómo clasifica el fisco esta cuenta.
+    sat_code = Column(String(10), nullable=True)
 
 
 class JournalEntry(Base, UUIDPKMixin, TenantMixin, AuditMixin):

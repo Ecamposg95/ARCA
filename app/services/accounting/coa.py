@@ -8,6 +8,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.models.accounting import Account
+from app.services.accounting.sat import DEFAULT_SAT_CODES
 
 # Códigos usados por el motor de reglas (app/services/accounting/rules.py)
 CODE_CASH_BANK = "1100"
@@ -92,6 +93,7 @@ def seed_chart_of_accounts(db: Session, organization_id: str) -> None:
             type=account_type,
             parent_id=parent.id if parent else None,
             system=True,
+            sat_code=DEFAULT_SAT_CODES.get(code),
         )
         db.add(account)
         db.flush()
