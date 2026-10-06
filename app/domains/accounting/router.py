@@ -11,9 +11,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
-from app.models.organization import ACCOUNTING_ROLES
+from app.models.organization import ACCOUNTING_ROLES, Organization
 from app.security.deps import get_current_org_id, require_role
 from app.services.accounting.contpaqi import ENCODING, ExportError, render
+from app.services.accounting.sat import sat_code_names, sat_codes
+from app.services.accounting.sat import (
+    SatError,
+    render_balanza,
+    render_catalogo,
+    sat_filename,
+)
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 
 router = APIRouter(
@@ -33,6 +40,7 @@ class AccountRead(BaseModel):
     parent_id: str | None
     active: bool
     contpaqi_code: str | None
+    sat_code: str | None
 
 
 class JournalLineRead(BaseModel):
@@ -76,6 +84,7 @@ def list_accounts(
 
 class AccountUpdate(BaseModel):
     contpaqi_code: str | None = None
+    sat_code: str | None = None
 
 
 @router.patch("/accounts/{account_id}", response_model=AccountRead)
@@ -85,7 +94,8 @@ def update_account(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    """Por ahora lo único editable de una cuenta es su equivalente en CONTPAQi."""
+    """Lo editable de una cuenta: su equivalente en CONTPAQi y su código agrupador.
+    Sólo cambia lo que viene en el cuerpo; un campo ausente no borra nada."""
     account = (
         db.query(Account)
         .filter(Account.id == account_id, Account.organization_id == org_id)
@@ -94,20 +104,37 @@ def update_account(
     if account is None:
         raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
 
-    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
-    code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
-    if code and not (code.isascii() and code.isalnum()):
-        raise HTTPException(
-            status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones."
-        )
-    if len(code) > 30:
-        raise HTTPException(
-            status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
-        )
-    account.contpaqi_code = code or None
+    if "contpaqi_code" in payload.model_fields_set:
+        # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+        code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
+        if code and not (code.isascii() and code.isalnum()):
+            raise HTTPException(
+                status_code=400,
+                detail="El número de cuenta sólo puede llevar letras, números y guiones.",
+            )
+        if len(code) > 30:
+            raise HTTPException(
+                status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
+            )
+        account.contpaqi_code = code or None
+
+    if "sat_code" in payload.model_fields_set:
+        sat_code = (payload.sat_code or "").strip()
+        if sat_code and sat_code not in sat_code_names():
+            raise HTTPException(
+                status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT."
+            )
+        account.sat_code = sat_code or None
+
     db.commit()
     db.refresh(account)
     return AccountRead.model_validate(account)
+
+
+@router.get("/sat/codes")
+def list_sat_codes():
+    """La lista oficial del Anexo 24, para el selector del catálogo."""
+    return sat_codes()
 
 
 @router.get("/journal-entries")
@@ -211,3 +238,71 @@ def contpaqi_export(
             "Content-Disposition": f'attachment; filename="polizas-contpaqi-{year}-{month:02d}.txt"'
         },
     )
+
+
+def _sat_ready(db: Session, org_id: str, year: int, month: int) -> tuple[str, dict]:
+    """RFC válido y todas las cuentas clasificadas, o 400 diciendo qué falta."""
+    organization = db.get(Organization, org_id)
+    requirements = service.sat_requirements(db, organization, year, month)
+    if not requirements["rfc_ok"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Captura el RFC de la empresa en Configuración antes de generar los XML del SAT.",
+        )
+    if requirements["missing_accounts"]:
+        codes = ", ".join(a["code"] for a in requirements["missing_accounts"][:10])
+        raise HTTPException(
+            status_code=400,
+            detail=f"Hay cuentas sin código agrupador del SAT: {codes}. Asígnalo en el catálogo.",
+        )
+    return requirements["rfc"], requirements
+
+
+def _xml_response(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/sat/preview")
+def sat_preview(
+    year: int = Query(ge=2015, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    organization = db.get(Organization, org_id)
+    return service.sat_requirements(db, organization, year, month)
+
+
+@router.get("/sat/catalogo")
+def sat_catalogo(
+    year: int = Query(ge=2015, le=2100),
+    month: int = Query(ge=1, le=12),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Catálogo de cuentas del Anexo 24, sin sellar."""
+    rfc, _requirements = _sat_ready(db, org_id, year, month)
+    xml = render_catalogo(rfc, year, month, service.sat_catalog(db, org_id))
+    return _xml_response(xml, sat_filename(rfc, year, month, "CT"))
+
+
+@router.get("/sat/balanza")
+def sat_balanza(
+    year: int = Query(ge=2015, le=2100),
+    month: int = Query(ge=1, le=12),
+    tipo: str = Query(default="N", pattern="^[NC]$"),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Balanza de comprobación del Anexo 24 (N normal, C complementaria), sin sellar."""
+    rfc, _requirements = _sat_ready(db, org_id, year, month)
+    try:
+        rows = service.sat_balance(db, org_id, year, month)
+    except SatError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    xml = render_balanza(rfc, year, month, tipo, rows)
+    return _xml_response(xml, sat_filename(rfc, year, month, f"B{tipo}"))

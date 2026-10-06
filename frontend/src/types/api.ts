@@ -383,6 +383,8 @@ export interface LedgerAccount {
   active: boolean
   /** Número de la misma cuenta en el CONTPAQi del contador, o null. */
   contpaqi_code: string | null
+  /** Código agrupador del SAT (Anexo 24), o null. */
+  sat_code: string | null
 }
 
 export interface TrialBalanceRow {
@@ -446,4 +448,9 @@ export interface PortfolioItem {
   pending_proposals: number
   status: PortfolioStatus
   reasons: string[]
+}
+
+export interface SatCode {
+  code: string
+  name: string
 }

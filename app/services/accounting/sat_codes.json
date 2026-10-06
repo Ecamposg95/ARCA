@@ -1,0 +1,4322 @@
+[
+{
+"code": "000",
+"name": ""
+},
+{
+"code": "100",
+"name": "Activo"
+},
+{
+"code": "100.01",
+"name": "Activo a corto plazo"
+},
+{
+"code": "101",
+"name": "Caja"
+},
+{
+"code": "101.01",
+"name": "Caja y efectivo"
+},
+{
+"code": "102",
+"name": "Bancos"
+},
+{
+"code": "102.01",
+"name": "Bancos nacionales"
+},
+{
+"code": "102.02",
+"name": "Bancos extranjeros"
+},
+{
+"code": "103",
+"name": "Inversiones"
+},
+{
+"code": "103.01",
+"name": "Inversiones temporales"
+},
+{
+"code": "103.02",
+"name": "Inversiones en fideicomisos"
+},
+{
+"code": "103.03",
+"name": "Otras inversiones"
+},
+{
+"code": "104",
+"name": "Otros instrumentos financieros"
+},
+{
+"code": "104.01",
+"name": "Otros instrumentos financieros"
+},
+{
+"code": "105",
+"name": "Clientes"
+},
+{
+"code": "105.01",
+"name": "Clientes nacionales"
+},
+{
+"code": "105.02",
+"name": "Clientes extranjeros"
+},
+{
+"code": "105.03",
+"name": "Clientes nacionales parte relacionada"
+},
+{
+"code": "105.04",
+"name": "Clientes extranjeros parte relacionada"
+},
+{
+"code": "106",
+"name": "Cuentas y documentos por cobrar a corto plazo"
+},
+{
+"code": "106.01",
+"name": "Cuentas y documentos por cobrar a corto plazo nacional"
+},
+{
+"code": "106.02",
+"name": "Cuentas y documentos por cobrar a corto plazo extranjero"
+},
+{
+"code": "106.03",
+"name": "Cuentas y documentos por cobrar a corto plazo nacional parte relacionada"
+},
+{
+"code": "106.04",
+"name": "Cuentas y documentos por cobrar a corto plazo extranjero parte relacionada"
+},
+{
+"code": "106.05",
+"name": "Intereses por cobrar a corto plazo nacional"
+},
+{
+"code": "106.06",
+"name": "Intereses por cobrar a corto plazo extranjero"
+},
+{
+"code": "106.07",
+"name": "Intereses por cobrar a corto plazo nacional parte relacionada"
+},
+{
+"code": "106.08",
+"name": "Intereses por cobrar a corto plazo extranjero parte relacionada"
+},
+{
+"code": "106.09",
+"name": "Otras cuentas y documentos por cobrar a corto plazo"
+},
+{
+"code": "106.10",
+"name": "Otras cuentas y documentos por cobrar a corto plazo parte relacionada"
+},
+{
+"code": "107",
+"name": "Deudores diversos"
+},
+{
+"code": "107.01",
+"name": "Funcionarios y empleados"
+},
+{
+"code": "107.02",
+"name": "Socios y accionistas"
+},
+{
+"code": "107.03",
+"name": "Partes relacionadas nacionales"
+},
+{
+"code": "107.04",
+"name": "Partes relacionadas extranjeros"
+},
+{
+"code": "107.05",
+"name": "Otros deudores diversos"
+},
+{
+"code": "108",
+"name": "Estimación de cuentas incobrables"
+},
+{
+"code": "108.01",
+"name": "Estimación de cuentas incobrables nacional"
+},
+{
+"code": "108.02",
+"name": "Estimación de cuentas incobrables extranjero"
+},
+{
+"code": "108.03",
+"name": "Estimación de cuentas incobrables nacional parte relacionada"
+},
+{
+"code": "108.04",
+"name": "Estimación de cuentas incobrables extranjero parte relacionada"
+},
+{
+"code": "109",
+"name": "Pagos anticipados"
+},
+{
+"code": "109.01",
+"name": "Seguros y fianzas pagados por anticipado nacional"
+},
+{
+"code": "109.02",
+"name": "Seguros y fianzas pagados por anticipado extranjero"
+},
+{
+"code": "109.03",
+"name": "Seguros y fianzas pagados por anticipado nacional parte relacionada"
+},
+{
+"code": "109.04",
+"name": "Seguros y fianzas pagados por anticipado extranjero parte relacionada"
+},
+{
+"code": "109.05",
+"name": "Rentas pagados por anticipado nacional"
+},
+{
+"code": "109.06",
+"name": "Rentas pagados por anticipado extranjero"
+},
+{
+"code": "109.07",
+"name": "Rentas pagados por anticipado nacional parte relacionada"
+},
+{
+"code": "109.08",
+"name": "Rentas pagados por anticipado extranjero parte relacionada"
+},
+{
+"code": "109.09",
+"name": "Intereses pagados por anticipado nacional"
+},
+{
+"code": "109.10",
+"name": "Intereses pagados por anticipado extranjero"
+},
+{
+"code": "109.11",
+"name": "Intereses pagados por anticipado nacional parte relacionada"
+},
+{
+"code": "109.12",
+"name": "Intereses pagados por anticipado extranjero parte relacionada"
+},
+{
+"code": "109.13",
+"name": "Factoraje financiero pagados por anticipado nacional"
+},
+{
+"code": "109.14",
+"name": "Factoraje financiero pagados por anticipado extranjero"
+},
+{
+"code": "109.15",
+"name": "Factoraje financiero pagados por anticipado nacional parte relacionada"
+},
+{
+"code": "109.16",
+"name": "Factoraje financiero pagados por anticipado extranjero parte relacionada"
+},
+{
+"code": "109.17",
+"name": "Arrendamiento financiero pagados por anticipado nacional"
+},
+{
+"code": "109.18",
+"name": "Arrendamiento financiero pagados por anticipado extranjero"
+},
+{
+"code": "109.19",
+"name": "Arrendamiento financiero pagados por anticipado nacional parte relacionada"
+},
+{
+"code": "109.20",
+"name": "Arrendamiento financiero pagados por anticipado extranjero parte relacionada"
+},
+{
+"code": "109.21",
+"name": "Pérdida por deterioro de pagos anticipados"
+},
+{
+"code": "109.22",
+"name": "Derechos fiduciarios"
+},
+{
+"code": "109.23",
+"name": "Otros pagos anticipados"
+},
+{
+"code": "110",
+"name": "Subsidio al empleo por aplicar"
+},
+{
+"code": "110.01",
+"name": "Subsidio al empleo por aplicar"
+},
+{
+"code": "111",
+"name": "Crédito al diesel por acreditar"
+},
+{
+"code": "111.01",
+"name": "Crédito al diesel por acreditar"
+},
+{
+"code": "112",
+"name": "Otros estímulos"
+},
+{
+"code": "112.01",
+"name": "Otros estímulos"
+},
+{
+"code": "113",
+"name": "Impuestos a favor"
+},
+{
+"code": "113.01",
+"name": "IVA a favor"
+},
+{
+"code": "113.02",
+"name": "ISR a favor"
+},
+{
+"code": "113.03",
+"name": "IETU a favor"
+},
+{
+"code": "113.04",
+"name": "IDE a favor"
+},
+{
+"code": "113.05",
+"name": "IA a favor"
+},
+{
+"code": "113.06",
+"name": "Subsidio al empleo"
+},
+{
+"code": "113.07",
+"name": "Pago de lo indebido"
+},
+{
+"code": "113.08",
+"name": "Otros impuestos a favor"
+},
+{
+"code": "114",
+"name": "Pagos provisionales"
+},
+{
+"code": "114.01",
+"name": "Pagos provisionales de ISR"
+},
+{
+"code": "115",
+"name": "Inventario"
+},
+{
+"code": "115.01",
+"name": "Inventario"
+},
+{
+"code": "115.02",
+"name": "Materia prima y materiales"
+},
+{
+"code": "115.03",
+"name": "Producción en proceso"
+},
+{
+"code": "115.04",
+"name": "Productos terminados"
+},
+{
+"code": "115.05",
+"name": "Mercancías en tránsito"
+},
+{
+"code": "115.06",
+"name": "Mercancías en poder de terceros"
+},
+{
+"code": "115.07",
+"name": "Otros"
+},
+{
+"code": "116",
+"name": "Estimación de inventarios obsoletos y de lento movimiento"
+},
+{
+"code": "116.01",
+"name": "Estimación de inventarios obsoletos y de lento movimiento"
+},
+{
+"code": "117",
+"name": "Obras en proceso de inmuebles"
+},
+{
+"code": "117.01",
+"name": "Obras en proceso de inmuebles"
+},
+{
+"code": "118",
+"name": "Impuestos acreditables pagados"
+},
+{
+"code": "118.01",
+"name": "IVA acreditable pagado"
+},
+{
+"code": "118.02",
+"name": "IVA acreditable de importación pagado"
+},
+{
+"code": "118.03",
+"name": "IEPS acreditable pagado"
+},
+{
+"code": "118.04",
+"name": "IEPS pagado en importación"
+},
+{
+"code": "119",
+"name": "Impuestos acreditables por pagar"
+},
+{
+"code": "119.01",
+"name": "IVA pendiente de pago"
+},
+{
+"code": "119.02",
+"name": "IVA de importación pendiente de pago"
+},
+{
+"code": "119.03",
+"name": "IEPS pendiente de pago"
+},
+{
+"code": "119.04",
+"name": "IEPS pendiente de pago en importación"
+},
+{
+"code": "120",
+"name": "Anticipo a proveedores"
+},
+{
+"code": "120.01",
+"name": "Anticipo a proveedores nacional"
+},
+{
+"code": "120.02",
+"name": "Anticipo a proveedores extranjero"
+},
+{
+"code": "120.03",
+"name": "Anticipo a proveedores nacional parte relacionada"
+},
+{
+"code": "120.04",
+"name": "Anticipo a proveedores extranjero parte relacionada"
+},
+{
+"code": "121",
+"name": "Otros activos a corto plazo"
+},
+{
+"code": "121.01",
+"name": "Otros activos a corto plazo"
+},
+{
+"code": "100.02",
+"name": "Activo a largo plazo"
+},
+{
+"code": "151",
+"name": "Terrenos"
+},
+{
+"code": "151.01",
+"name": "Terrenos"
+},
+{
+"code": "152",
+"name": "Edificios"
+},
+{
+"code": "152.01",
+"name": "Edificios"
+},
+{
+"code": "153",
+"name": "Maquinaria y equipo"
+},
+{
+"code": "153.01",
+"name": "Maquinaria y equipo"
+},
+{
+"code": "154",
+"name": "Automóviles, autobuses, camiones de carga, tractocamiones, montacargas y remolques"
+},
+{
+"code": "154.01",
+"name": "Automóviles, autobuses, camiones de carga, tractocamiones, montacargas y remolques"
+},
+{
+"code": "155",
+"name": "Mobiliario y equipo de oficina"
+},
+{
+"code": "155.01",
+"name": "Mobiliario y equipo de oficina"
+},
+{
+"code": "156",
+"name": "Equipo de cómputo"
+},
+{
+"code": "156.01",
+"name": "Equipo de cómputo"
+},
+{
+"code": "157",
+"name": "Equipo de comunicación"
+},
+{
+"code": "157.01",
+"name": "Equipo de comunicación"
+},
+{
+"code": "158",
+"name": "Activos biológicos, vegetales y semovientes"
+},
+{
+"code": "158.01",
+"name": "Activos biológicos, vegetales y semovientes"
+},
+{
+"code": "159",
+"name": "Obras en proceso de activos fijos"
+},
+{
+"code": "159.01",
+"name": "Obras en proceso de activos fijos"
+},
+{
+"code": "160",
+"name": "Otros activos fijos"
+},
+{
+"code": "160.01",
+"name": "Otros activos fijos"
+},
+{
+"code": "161",
+"name": "Ferrocarriles"
+},
+{
+"code": "161.01",
+"name": "Ferrocarriles"
+},
+{
+"code": "162",
+"name": "Embarcaciones"
+},
+{
+"code": "162.01",
+"name": "Embarcaciones"
+},
+{
+"code": "163",
+"name": "Aviones"
+},
+{
+"code": "163.01",
+"name": "Aviones"
+},
+{
+"code": "164",
+"name": "Troqueles, moldes, matrices y herramental"
+},
+{
+"code": "164.01",
+"name": "Troqueles, moldes, matrices y herramental"
+},
+{
+"code": "165",
+"name": "Equipo de comunicaciones telefónicas"
+},
+{
+"code": "165.01",
+"name": "Equipo de comunicaciones telefónicas"
+},
+{
+"code": "166",
+"name": "Equipo de comunicación satelital"
+},
+{
+"code": "166.01",
+"name": "Equipo de comunicación satelital"
+},
+{
+"code": "167",
+"name": "Equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "167.01",
+"name": "Equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "168",
+"name": "Maquinaria y equipo de generación de energía de fuentes renovables o de sistemas de cogeneración"
+},
+{
+"code": "168.01",
+"name": "Maquinaria y equipo de generación de energía de fuentes renovables o de sistemas de cogeneración de"
+},
+{
+"code": "169",
+"name": "Otra maquinaria y equipo"
+},
+{
+"code": "169.01",
+"name": "Otra maquinaria y equipo"
+},
+{
+"code": "170",
+"name": "Adaptaciones y mejoras"
+},
+{
+"code": "170.01",
+"name": "Adaptaciones y mejoras"
+},
+{
+"code": "171",
+"name": "Depreciación acumulada de activos fijos"
+},
+{
+"code": "171.01",
+"name": "Depreciación acumulada de edificios"
+},
+{
+"code": "171.02",
+"name": "Depreciación acumulada de maquinaria y equipo"
+},
+{
+"code": "171.03",
+"name": "Depreciación acumulada de automóviles, autobuses, camiones de carga, tractocamiones, montacargas y"
+},
+{
+"code": "171.04",
+"name": "Depreciación acumulada de mobiliario y equipo de oficina"
+},
+{
+"code": "171.05",
+"name": "Depreciación acumulada de equipo de cómputo"
+},
+{
+"code": "171.06",
+"name": "Depreciación acumulada de equipo de comunicación"
+},
+{
+"code": "171.07",
+"name": "Depreciación acumulada de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "171.08",
+"name": "Depreciación acumulada de otros activos fijos"
+},
+{
+"code": "171.09",
+"name": "Depreciación acumulada de ferrocarriles"
+},
+{
+"code": "171.10",
+"name": "Depreciación acumulada de embarcaciones"
+},
+{
+"code": "171.11",
+"name": "Depreciación acumulada de aviones"
+},
+{
+"code": "171.12",
+"name": "Depreciación acumulada de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "171.13",
+"name": "Depreciación acumulada de equipo de comunicaciones telefónicas"
+},
+{
+"code": "171.14",
+"name": "Depreciación acumulada de equipo de comunicación satelital"
+},
+{
+"code": "171.15",
+"name": "Depreciación acumulada de equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "171.16",
+"name": "Depreciación acumulada de maquinaria y equipo de generación de energía de fuentes renovables o de"
+},
+{
+"code": "171.17",
+"name": "Depreciación acumulada de adaptaciones y mejoras"
+},
+{
+"code": "171.18",
+"name": "Depreciación acumulada de otra maquinaria y equipo"
+},
+{
+"code": "172",
+"name": "Pérdida por deterioro acumulado de activos fijos"
+},
+{
+"code": "172.01",
+"name": "Pérdida por deterioro acumulado de edificios"
+},
+{
+"code": "172.02",
+"name": "Pérdida por deterioro acumulado de maquinaria y equipo"
+},
+{
+"code": "172.03",
+"name": "Pérdida por deterioro acumulado de automóviles, autobuses, camiones de carga, tractocamiones,"
+},
+{
+"code": "172.04",
+"name": "Pérdida por deterioro acumulado de mobiliario y equipo de oficina"
+},
+{
+"code": "172.05",
+"name": "Pérdida por deterioro acumulado de equipo de cómputo"
+},
+{
+"code": "172.06",
+"name": "Pérdida por deterioro acumulado de equipo de comunicación"
+},
+{
+"code": "172.07",
+"name": "Pérdida por deterioro acumulado de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "172.08",
+"name": "Pérdida por deterioro acumulado de otros activos fijos"
+},
+{
+"code": "172.09",
+"name": "Pérdida por deterioro acumulado de ferrocarriles"
+},
+{
+"code": "172.10",
+"name": "Pérdida por deterioro acumulado de embarcaciones"
+},
+{
+"code": "172.11",
+"name": "Pérdida por deterioro acumulado de aviones"
+},
+{
+"code": "172.12",
+"name": "Pérdida por deterioro acumulado de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "172.13",
+"name": "Pérdida por deterioro acumulado de equipo de comunicaciones telefónicas"
+},
+{
+"code": "172.14",
+"name": "Pérdida por deterioro acumulado de equipo de comunicación satelital"
+},
+{
+"code": "172.15",
+"name": "Pérdida por deterioro acumulado de equipo de adaptaciones para personas con capacidades diferent es"
+},
+{
+"code": "172.16",
+"name": "Pérdida por deterioro acumulado de maquinaria y equipo de generación de energía de fuentes renovables o"
+},
+{
+"code": "172.17",
+"name": "Pérdida por deterioro acumulado de adaptaciones y mejoras"
+},
+{
+"code": "172.18",
+"name": "Pérdida por deterioro acumulado de otra maquinaria y equipo"
+},
+{
+"code": "173",
+"name": "Gastos diferidos"
+},
+{
+"code": "173.01",
+"name": "Gastos diferidos"
+},
+{
+"code": "174",
+"name": "Gastos pre operativos"
+},
+{
+"code": "174.01",
+"name": "Gastos pre operativos"
+},
+{
+"code": "175",
+"name": "Regalías, asistencia técnica y otros gastos diferidos"
+},
+{
+"code": "175.01",
+"name": "Regalías, asistencia técnica y otros gastos diferidos"
+},
+{
+"code": "176",
+"name": "Activos intangibles"
+},
+{
+"code": "176.01",
+"name": "Activos intangibles"
+},
+{
+"code": "177",
+"name": "Gastos de organización"
+},
+{
+"code": "177.01",
+"name": "Gastos de organización"
+},
+{
+"code": "178",
+"name": "Investigación y desarrollo de mercado"
+},
+{
+"code": "178.01",
+"name": "Investigación y desarrollo de mercado"
+},
+{
+"code": "179",
+"name": "Marcas y patentes"
+},
+{
+"code": "179.01",
+"name": "Marcas y patentes"
+},
+{
+"code": "180",
+"name": "Crédito mercantil"
+},
+{
+"code": "180.01",
+"name": "Crédito mercantil"
+},
+{
+"code": "181",
+"name": "Gastos de instalación"
+},
+{
+"code": "181.01",
+"name": "Gastos de instalación"
+},
+{
+"code": "182",
+"name": "Otros activos diferidos"
+},
+{
+"code": "182.01",
+"name": "Otros activos diferidos"
+},
+{
+"code": "183",
+"name": "Amortización acumulada de activos diferidos"
+},
+{
+"code": "183.01",
+"name": "Amortización acumulada de gastos diferidos"
+},
+{
+"code": "183.02",
+"name": "Amortización acumulada de gastos pre operativos"
+},
+{
+"code": "183.03",
+"name": "Amortización acumulada de regalías, asistencia técnica y otros gastos diferidos"
+},
+{
+"code": "183.04",
+"name": "Amortización acumulada de activos intangibles"
+},
+{
+"code": "183.05",
+"name": "Amortización acumulada de gastos de organización"
+},
+{
+"code": "183.06",
+"name": "Amortización acumulada de investigación y desarrollo d e mercado"
+},
+{
+"code": "183.07",
+"name": "Amortización acumulada de marcas y patentes"
+},
+{
+"code": "183.08",
+"name": "Amortización acumulada de crédito mercantil"
+},
+{
+"code": "183.09",
+"name": "Amortización acumulada de gastos de instalación"
+},
+{
+"code": "183.10",
+"name": "Amortización acumulada de otros activos diferidos"
+},
+{
+"code": "184",
+"name": "Depósitos en garantía"
+},
+{
+"code": "184.01",
+"name": "Depósitos de fianzas"
+},
+{
+"code": "184.02",
+"name": "Depósitos de arrendamiento de bienes inmuebles"
+},
+{
+"code": "184.03",
+"name": "Otros depósitos en garantía"
+},
+{
+"code": "185",
+"name": "Impuestos diferidos"
+},
+{
+"code": "185.01",
+"name": "Impuestos diferidos ISR"
+},
+{
+"code": "186",
+"name": "Cuentas y documentos por cobrar a largo plazo"
+},
+{
+"code": "186.01",
+"name": "Cuentas y documentos por cobrar a largo plazo nacional"
+},
+{
+"code": "186.02",
+"name": "Cuentas y documentos por cobrar a largo plazo extranjero"
+},
+{
+"code": "186.03",
+"name": "Cuentas y documentos por cobrar a largo plazo nacional parte relacionada"
+},
+{
+"code": "186.04",
+"name": "Cuentas y documentos por cobrar a largo plazo extranjero parte relacionada"
+},
+{
+"code": "186.05",
+"name": "Intereses por cobrar a largo plazo nacional"
+},
+{
+"code": "186.06",
+"name": "Intereses por cobrar a largo plazo extranjero"
+},
+{
+"code": "186.07",
+"name": "Intereses por cobrar a largo plazo nacional parte relacionada"
+},
+{
+"code": "186.08",
+"name": "Intereses por cobrar a largo plazo extranjero parte relacionada"
+},
+{
+"code": "186.09",
+"name": "Otras cuentas y documentos por cobrar a largo plazo"
+},
+{
+"code": "186.10",
+"name": "Otras cuentas y documentos por cobrar a largo plazo parte relacionada"
+},
+{
+"code": "187",
+"name": "Participación de los trabajadores en las utilidades diferidas"
+},
+{
+"code": "187.01",
+"name": "Participación de los trabajadores en las utilidades diferidas"
+},
+{
+"code": "188",
+"name": "Inversiones permanentes en acciones"
+},
+{
+"code": "188.01",
+"name": "Inversiones a largo plazo en subsidiarias"
+},
+{
+"code": "188.02",
+"name": "Inversiones a largo plazo en asociadas"
+},
+{
+"code": "188.03",
+"name": "Otras inversiones permanentes en acciones"
+},
+{
+"code": "189",
+"name": "Estimación por deterioro de inversiones permanentes en acciones"
+},
+{
+"code": "189.01",
+"name": "Estimación por deterioro de inversiones permanentes en acciones"
+},
+{
+"code": "190",
+"name": "Otros instrumentos financieros"
+},
+{
+"code": "190.01",
+"name": "Otros instrumentos financieros"
+},
+{
+"code": "191",
+"name": "Otros activos a largo plazo"
+},
+{
+"code": "191.01",
+"name": "Otros activos a largo plazo"
+},
+{
+"code": "200",
+"name": "Pasivo"
+},
+{
+"code": "200.01",
+"name": "Pasivo a corto plazo"
+},
+{
+"code": "201",
+"name": "Proveedores"
+},
+{
+"code": "201.01",
+"name": "Proveedores nacionales"
+},
+{
+"code": "201.02",
+"name": "Proveedores extranjeros"
+},
+{
+"code": "201.03",
+"name": "Proveedores nacionales parte relacionada"
+},
+{
+"code": "201.04",
+"name": "Proveedores extranjeros parte relacionada"
+},
+{
+"code": "202",
+"name": "Cuentas por pagar a corto plazo"
+},
+{
+"code": "202.01",
+"name": "Documentos por pagar bancario y financiero nacional"
+},
+{
+"code": "202.02",
+"name": "Documentos por pagar bancario y financiero extranjero"
+},
+{
+"code": "202.03",
+"name": "Documentos y cuentas por pagar a corto plazo nacional"
+},
+{
+"code": "202.04",
+"name": "Documentos y cuentas por pagar a corto plazo ext ranjero"
+},
+{
+"code": "202.05",
+"name": "Documentos y cuentas por pagar a corto plazo nacional parte relacionada"
+},
+{
+"code": "202.06",
+"name": "Documentos y cuentas por pagar a corto plazo extranjero parte relacionada"
+},
+{
+"code": "202.07",
+"name": "Intereses por pagar a corto plazo nacional"
+},
+{
+"code": "202.08",
+"name": "Intereses por pagar a corto plazo extranjero"
+},
+{
+"code": "202.09",
+"name": "Intereses por pagar a corto plazo nacional parte relacionada"
+},
+{
+"code": "202.10",
+"name": "Intereses por pagar a corto plazo extranjero parte relacionada"
+},
+{
+"code": "202.11",
+"name": "Dividendo por pagar nacional"
+},
+{
+"code": "202.12",
+"name": "Dividendo por pagar extranjero"
+},
+{
+"code": "203",
+"name": "Cobros anticipados a corto plazo"
+},
+{
+"code": "203.01",
+"name": "Rentas cobradas por anticipado a corto plazo nacional"
+},
+{
+"code": "203.02",
+"name": "Rentas cobradas por anticipado a corto plazo extranjero"
+},
+{
+"code": "203.03",
+"name": "Rentas cobradas por anticipado a corto plazo nacional parte relacionada"
+},
+{
+"code": "203.04",
+"name": "Rentas cobradas por anticipado a corto plazo extranjero parte relacionada"
+},
+{
+"code": "203.05",
+"name": "Intereses cobrados por anticipado a corto plazo nacional"
+},
+{
+"code": "203.06",
+"name": "Intereses cobrados por anticipado a corto plazo extranjero"
+},
+{
+"code": "203.07",
+"name": "Intereses cobrados por anticipado a corto plazo nacional parte relacionada"
+},
+{
+"code": "203.08",
+"name": "Intereses cobrados por anticipado a corto plazo extranjero parte relacionada"
+},
+{
+"code": "203.09",
+"name": "Factoraje financiero cobrados por anticipado a corto plazo nacional"
+},
+{
+"code": "203.10",
+"name": "Factoraje financiero cobrados por anticipado a corto plazo extranjero"
+},
+{
+"code": "203.11",
+"name": "Factoraje financiero cobrados por anticipado a corto plazo nacional parte relacionada"
+},
+{
+"code": "203.12",
+"name": "Factoraje financiero cobrados por anticipado a corto plazo extranjero parte relacionada"
+},
+{
+"code": "203.13",
+"name": "Arrendamiento financiero cobrados por anticipado a corto plazo nacional"
+},
+{
+"code": "203.14",
+"name": "Arrendamiento financiero cobrados por anticipado a corto plazo extranjero"
+},
+{
+"code": "203.15",
+"name": "Arrendamiento financiero cobrados por anticipado a corto plazo nacional parte relacionada"
+},
+{
+"code": "203.16",
+"name": "Arrendamiento financiero cobrados por anticipado a corto plazo extranjero parte relacio nada"
+},
+{
+"code": "203.17",
+"name": "Derechos fiduciarios"
+},
+{
+"code": "203.18",
+"name": "Otros cobros anticipados"
+},
+{
+"code": "204",
+"name": "Instrumentos financieros a corto plazo"
+},
+{
+"code": "204.01",
+"name": "Instrumentos financieros a corto plazo"
+},
+{
+"code": "205",
+"name": "Acreedores diversos a corto plazo"
+},
+{
+"code": "205.01",
+"name": "Socios, accionistas o representante legal"
+},
+{
+"code": "205.02",
+"name": "Acreedores diversos a corto plazo nacional"
+},
+{
+"code": "205.03",
+"name": "Acreedores diversos a corto plazo extranjero"
+},
+{
+"code": "205.04",
+"name": "Acreedores diversos a corto plazo nacional parte relacionada"
+},
+{
+"code": "205.05",
+"name": "Acreedores diversos a corto plazo extranjero parte relacionada"
+},
+{
+"code": "205.06",
+"name": "Otros acreedores diversos a corto plazo"
+},
+{
+"code": "206",
+"name": "Anticipo de cliente"
+},
+{
+"code": "206.01",
+"name": "Anticipo de cliente nacional"
+},
+{
+"code": "206.02",
+"name": "Anticipo de cliente extranjero"
+},
+{
+"code": "206.03",
+"name": "Anticipo de cliente nacional parte relacionada"
+},
+{
+"code": "206.04",
+"name": "Anticipo de cliente extranjero parte relacionada"
+},
+{
+"code": "206.05",
+"name": "Otros anticipos de clientes"
+},
+{
+"code": "207",
+"name": "Impuestos trasladados"
+},
+{
+"code": "207.01",
+"name": "IVA trasladado"
+},
+{
+"code": "207.02",
+"name": "IEPS trasladado"
+},
+{
+"code": "208",
+"name": "Impuestos trasladados cobrados"
+},
+{
+"code": "208.01",
+"name": "IVA trasladado cobrado"
+},
+{
+"code": "208.02",
+"name": "IEPS trasladado cobrado"
+},
+{
+"code": "209",
+"name": "Impuestos trasladados no cobrados"
+},
+{
+"code": "209.01",
+"name": "IVA trasladado no cobrado"
+},
+{
+"code": "209.02",
+"name": "IEPS trasladado no cobrado"
+},
+{
+"code": "210",
+"name": "Provisión de sueldos y salarios por pagar"
+},
+{
+"code": "210.01",
+"name": "Provisión de sueldos y salarios por pagar"
+},
+{
+"code": "210.02",
+"name": "Provisión de vacaciones por pagar"
+},
+{
+"code": "210.03",
+"name": "Provisión de aguinaldo por pagar"
+},
+{
+"code": "210.04",
+"name": "Provisión de fondo de ahorro por pagar"
+},
+{
+"code": "210.05",
+"name": "Provisión de asimilados a salarios por pagar"
+},
+{
+"code": "210.06",
+"name": "Provisión de anticipos o remanentes por distribuir"
+},
+{
+"code": "210.07",
+"name": "Provisión de otros sueldos y salarios por pagar"
+},
+{
+"code": "211",
+"name": "Provisión de contribuciones de seguridad social por pagar"
+},
+{
+"code": "211.01",
+"name": "Provisión de IMSS patronal por pagar"
+},
+{
+"code": "211.02",
+"name": "Provisión de SAR por pagar"
+},
+{
+"code": "211.03",
+"name": "Provisión de infonavit por pagar"
+},
+{
+"code": "212",
+"name": "Provisión de impuesto estatal sobre nómina por pagar"
+},
+{
+"code": "212.01",
+"name": "Provisión de impuesto estatal sobre nómina por pagar"
+},
+{
+"code": "213",
+"name": "Impuestos y derechos por pagar"
+},
+{
+"code": "213.01",
+"name": "IVA por pagar"
+},
+{
+"code": "213.02",
+"name": "IEPS por pagar"
+},
+{
+"code": "213.03",
+"name": "ISR por pagar"
+},
+{
+"code": "213.04",
+"name": "Impuesto estatal sobre nómina por pagar"
+},
+{
+"code": "213.05",
+"name": "Impuesto estatal y municipal por pagar"
+},
+{
+"code": "213.06",
+"name": "Derechos por pagar"
+},
+{
+"code": "213.07",
+"name": "Otros impuestos por pagar"
+},
+{
+"code": "214",
+"name": "Dividendos por pagar"
+},
+{
+"code": "214.01",
+"name": "Dividendos por pagar"
+},
+{
+"code": "215",
+"name": "PTU por pagar"
+},
+{
+"code": "215.01",
+"name": "PTU por pagar"
+},
+{
+"code": "215.02",
+"name": "PTU por pagar de ejercicios anteriores"
+},
+{
+"code": "215.03",
+"name": "Provisión de PTU por pagar"
+},
+{
+"code": "216",
+"name": "Impuestos retenidos"
+},
+{
+"code": "216.01",
+"name": "Impuestos retenidos de ISR por sueldos y salarios"
+},
+{
+"code": "216.02",
+"name": "Impuestos retenidos de ISR por asimilados a salarios"
+},
+{
+"code": "216.03",
+"name": "Impuestos retenidos de ISR por arrendamiento"
+},
+{
+"code": "216.04",
+"name": "Impuestos retenidos de ISR por servicios profesionales"
+},
+{
+"code": "216.05",
+"name": "Impuestos retenidos de ISR por dividendos"
+},
+{
+"code": "216.06",
+"name": "Impuestos retenidos de ISR por intereses"
+},
+{
+"code": "216.07",
+"name": "Impuestos retenidos de ISR por pagos al extranjero"
+},
+{
+"code": "216.08",
+"name": "Impuestos retenidos de ISR por venta de acciones"
+},
+{
+"code": "216.09",
+"name": "Impuestos retenidos de ISR por venta de partes sociales"
+},
+{
+"code": "216.10",
+"name": "Impuestos retenidos de IVA"
+},
+{
+"code": "216.11",
+"name": "Retenciones de IMSS a los trabajadores"
+},
+{
+"code": "216.12",
+"name": "Otras impuestos retenidos"
+},
+{
+"code": "217",
+"name": "Pagos realizados por cuenta de terceros"
+},
+{
+"code": "217.01",
+"name": "Pagos realizados por cuenta de terceros"
+},
+{
+"code": "218",
+"name": "Otros pasivos a corto plazo"
+},
+{
+"code": "218.01",
+"name": "Otros pasivos a corto plazo"
+},
+{
+"code": "200.02",
+"name": "Pasivo a largo plazo"
+},
+{
+"code": "251",
+"name": "Acreedores diversos a largo plazo"
+},
+{
+"code": "251.01",
+"name": "Socios, accionistas o representante legal"
+},
+{
+"code": "251.02",
+"name": "Acreedores diversos a largo plazo nacional"
+},
+{
+"code": "251.03",
+"name": "Acreedores diversos a largo plazo extranjero"
+},
+{
+"code": "251.04",
+"name": "Acreedores diversos a largo plazo nacional parte relacionada"
+},
+{
+"code": "251.05",
+"name": "Acreedores diversos a largo plazo extranjero parte relacionada"
+},
+{
+"code": "251.06",
+"name": "Otros acreedores diversos a largo plazo"
+},
+{
+"code": "252",
+"name": "Cuentas por pagar a largo plazo"
+},
+{
+"code": "252.01",
+"name": "Documentos bancarios y financieros por pagar a largo plazo nacional"
+},
+{
+"code": "252.02",
+"name": "Documentos bancarios y financieros por pagar a largo plazo extranjero"
+},
+{
+"code": "252.03",
+"name": "Documentos y cuentas por pagar a largo plazo nacional"
+},
+{
+"code": "252.04",
+"name": "Documentos y cuentas por pagar a largo plazo extranjero"
+},
+{
+"code": "252.05",
+"name": "Documentos y cuentas por pagar a largo plazo nacional parte relacionada"
+},
+{
+"code": "252.06",
+"name": "Documentos y cuentas por pagar a largo plazo extranjero parte relacionada"
+},
+{
+"code": "252.07",
+"name": "Hipotecas por pagar a largo plazo nacional"
+},
+{
+"code": "252.08",
+"name": "Hipotecas por pagar a largo plazo extranjero"
+},
+{
+"code": "252.09",
+"name": "Hipotecas por pagar a largo plazo nacional parte relacionada"
+},
+{
+"code": "252.10",
+"name": "Hipotecas por pagar a largo plazo extranjero parte relacionada"
+},
+{
+"code": "252.11",
+"name": "Intereses por pagar a largo plazo nacional"
+},
+{
+"code": "252.12",
+"name": "Intereses por pagar a largo plazo extranjero"
+},
+{
+"code": "252.13",
+"name": "Intereses por pagar a largo plazo nacional parte relacionada"
+},
+{
+"code": "252.14",
+"name": "Intereses por pagar a largo plazo extranjero parte relacionada"
+},
+{
+"code": "252.15",
+"name": "Dividendos por pagar nacionales"
+},
+{
+"code": "252.16",
+"name": "Dividendos por pagar extranjeros"
+},
+{
+"code": "252.17",
+"name": "Otras cuentas y documentos por pagar a largo plazo"
+},
+{
+"code": "253",
+"name": "Cobros anticipados a largo plazo"
+},
+{
+"code": "253.01",
+"name": "Rentas cobradas por anticipado a largo plazo nacional"
+},
+{
+"code": "253.02",
+"name": "Rentas cobradas por anticipado a largo plazo extranjero"
+},
+{
+"code": "253.03",
+"name": "Rentas cobradas por anticipado a largo plazo nacional parte relacionada"
+},
+{
+"code": "253.04",
+"name": "Rentas cobradas por anticipado a largo plazo extranjero parte relacionada"
+},
+{
+"code": "253.05",
+"name": "Intereses cobrados por anticipado a largo plazo nacional"
+},
+{
+"code": "253.06",
+"name": "Intereses cobrados por anticipado a largo plazo extranjero"
+},
+{
+"code": "253.07",
+"name": "Intereses cobrados por anticipado a largo plazo nacional parte relacionada"
+},
+{
+"code": "253.08",
+"name": "Intereses cobrados por anticipado a largo plazo extranjero part e relacionada"
+},
+{
+"code": "253.09",
+"name": "Factoraje financiero cobrados por anticipado a largo plazo nacional"
+},
+{
+"code": "253.10",
+"name": "Factoraje financiero cobrados por anticipado a largo plazo extranjero"
+},
+{
+"code": "253.11",
+"name": "Factoraje financiero cobrados por anticipado a largo pla zo nacional parte relacionada"
+},
+{
+"code": "253.12",
+"name": "Factoraje financiero cobrados por anticipado a largo plazo extranjero parte relacionada"
+},
+{
+"code": "253.13",
+"name": "Arrendamiento financiero cobrados por anticipado a largo plazo nacional"
+},
+{
+"code": "253.14",
+"name": "Arrendamiento financiero cobrados por anticipado a largo plazo extranjero"
+},
+{
+"code": "253.15",
+"name": "Arrendamiento financiero cobrados por anticipado a largo plazo nacional parte relacionada"
+},
+{
+"code": "253.16",
+"name": "Arrendamiento financiero cobrados por anticipado a largo plazo extranjero par te relacionada"
+},
+{
+"code": "253.17",
+"name": "Derechos fiduciarios"
+},
+{
+"code": "253.18",
+"name": "Otros cobros anticipados"
+},
+{
+"code": "254",
+"name": "Instrumentos financieros a largo plazo"
+},
+{
+"code": "254.01",
+"name": "Instrumentos financieros a largo plazo"
+},
+{
+"code": "255",
+"name": "Pasivos por beneficios a los empleados a largo plazo"
+},
+{
+"code": "255.01",
+"name": "Pasivos por beneficios a los empleados a largo plazo"
+},
+{
+"code": "256",
+"name": "Otros pasivos a largo plazo"
+},
+{
+"code": "256.01",
+"name": "Otros pasivos a largo plazo"
+},
+{
+"code": "257",
+"name": "Participación de los trabajadores en las utilidades diferida"
+},
+{
+"code": "257.01",
+"name": "Participación de los trabajadores en las utilidades diferida"
+},
+{
+"code": "258",
+"name": "Obligaciones contraídas de fideicomisos"
+},
+{
+"code": "258.01",
+"name": "Obligaciones contraídas de fideicomisos"
+},
+{
+"code": "259",
+"name": "Impuestos diferidos"
+},
+{
+"code": "259.01",
+"name": "ISR diferido"
+},
+{
+"code": "259.02",
+"name": "ISR por dividendo diferido"
+},
+{
+"code": "259.03",
+"name": "Otros impuestos diferidos"
+},
+{
+"code": "260",
+"name": "Pasivos diferidos"
+},
+{
+"code": "260.01",
+"name": "Pasivos diferidos"
+},
+{
+"code": "300",
+"name": "Capital contable"
+},
+{
+"code": "301",
+"name": "Capital social"
+},
+{
+"code": "301.01",
+"name": "Capital fijo"
+},
+{
+"code": "301.02",
+"name": "Capital variable"
+},
+{
+"code": "301.03",
+"name": "Aportaciones para futuros aumentos de capital"
+},
+{
+"code": "301.04",
+"name": "Prima en suscripción de acciones"
+},
+{
+"code": "301.05",
+"name": "Prima en suscripción de partes sociales"
+},
+{
+"code": "302",
+"name": "Patrimonio"
+},
+{
+"code": "302.01",
+"name": "Patrimonio"
+},
+{
+"code": "302.02",
+"name": "Aportación patrimonial"
+},
+{
+"code": "302.03",
+"name": "Déficit o remanente del ejercicio"
+},
+{
+"code": "303",
+"name": "Reserva legal"
+},
+{
+"code": "303.01",
+"name": "Reserva legal"
+},
+{
+"code": "304",
+"name": "Resultado de ejercicios anteriores"
+},
+{
+"code": "304.01",
+"name": "Utilidad de ejercicios anteriores"
+},
+{
+"code": "304.02",
+"name": "Pérdida de ejercicios anteriores"
+},
+{
+"code": "304.03",
+"name": "Resultado integral de ejercicios anteriores"
+},
+{
+"code": "304.04",
+"name": "Déficit o remanente de ejercicio anteriores"
+},
+{
+"code": "305",
+"name": "Resultado del ejercicio"
+},
+{
+"code": "305.01",
+"name": "Utilidad del ejercicio"
+},
+{
+"code": "305.02",
+"name": "Pérdida del ejercicio"
+},
+{
+"code": "305.03",
+"name": "Resultado integral"
+},
+{
+"code": "306",
+"name": "Otras cuentas de capital"
+},
+{
+"code": "306.01",
+"name": "Otras cuentas de capital"
+},
+{
+"code": "400",
+"name": "Ingresos"
+},
+{
+"code": "401",
+"name": "Ingresos"
+},
+{
+"code": "401.01",
+"name": "Ventas y/o servicios gravados a la tasa general"
+},
+{
+"code": "401.02",
+"name": "Ventas y/o servicios gravados a la tasa general de contado"
+},
+{
+"code": "401.03",
+"name": "Ventas y/o servicios gravados a la tasa general a crédito"
+},
+{
+"code": "401.04",
+"name": "Ventas y/o servicios gravados al 0%"
+},
+{
+"code": "401.05",
+"name": "Ventas y/o servicios gravados al 0% de contado"
+},
+{
+"code": "401.06",
+"name": "Ventas y/o servicios gravados al 0% a crédito"
+},
+{
+"code": "401.07",
+"name": "Ventas y/o servicios exentos"
+},
+{
+"code": "401.08",
+"name": "Ventas y/o servicios exentos de contado"
+},
+{
+"code": "401.09",
+"name": "Ventas y/o servicios exentos a crédito"
+},
+{
+"code": "401.10",
+"name": "Ventas y/o servicios gravados a la tasa general nacionales partes relacionadas"
+},
+{
+"code": "401.11",
+"name": "Ventas y/o servicios gravados a la tasa general extranjeros partes relacionadas"
+},
+{
+"code": "401.12",
+"name": "Ventas y/o servicios gravados al 0% nacionales partes relacionadas"
+},
+{
+"code": "401.13",
+"name": "Ventas y/o servicios gravados al 0% extranjeros partes relacionadas"
+},
+{
+"code": "401.14",
+"name": "Ventas y/o servicios exentos nacionales partes relacionadas"
+},
+{
+"code": "401.15",
+"name": "Ventas y/o servicios exentos extranjeros partes relacionadas"
+},
+{
+"code": "401.16",
+"name": "Ingresos por servicios administrativos"
+},
+{
+"code": "401.17",
+"name": "Ingresos por servicios administrativos nacionales partes relacionadas"
+},
+{
+"code": "401.18",
+"name": "Ingresos por servicios administrativos extranjeros partes relacionadas"
+},
+{
+"code": "401.19",
+"name": "Ingresos por servicios profesionales"
+},
+{
+"code": "401.20",
+"name": "Ingresos por servicios profesionales nacionales partes relacionadas"
+},
+{
+"code": "401.21",
+"name": "Ingresos por servicios profesionales extranjeros partes relacionadas"
+},
+{
+"code": "401.22",
+"name": "Ingresos por arrendamiento"
+},
+{
+"code": "401.23",
+"name": "Ingresos por arrendamiento nacionales partes relacionadas"
+},
+{
+"code": "401.24",
+"name": "Ingresos por arrendamiento extranjeros partes relacionadas"
+},
+{
+"code": "401.25",
+"name": "Ingresos por exportación"
+},
+{
+"code": "401.26",
+"name": "Ingresos por comisiones"
+},
+{
+"code": "401.27",
+"name": "Ingresos por maquila"
+},
+{
+"code": "401.28",
+"name": "Ingresos por coordinados"
+},
+{
+"code": "401.29",
+"name": "Ingresos por regalías"
+},
+{
+"code": "401.30",
+"name": "Ingresos por asistencia técnica"
+},
+{
+"code": "401.31",
+"name": "Ingresos por donativos"
+},
+{
+"code": "401.32",
+"name": "Ingresos por intereses (actividad propia)"
+},
+{
+"code": "401.33",
+"name": "Ingresos de copropiedad"
+},
+{
+"code": "401.34",
+"name": "Ingresos por fideicomisos"
+},
+{
+"code": "401.35",
+"name": "Ingresos por factoraje financiero"
+},
+{
+"code": "401.36",
+"name": "Ingresos por arrendamiento financiero"
+},
+{
+"code": "401.37",
+"name": "Ingresos de extranjeros con establecimiento en el país"
+},
+{
+"code": "401.38",
+"name": "Otros ingresos propios"
+},
+{
+"code": "401.39",
+"name": ""
+},
+{
+"code": "401.40",
+"name": ""
+},
+{
+"code": "401.41",
+"name": ""
+},
+{
+"code": "402",
+"name": "Devoluciones, descuentos o bonificaciones sobre ingresos"
+},
+{
+"code": "402.01",
+"name": "Devoluciones, descuentos o bonificaciones sobre ventas y/o servicios a la tasa general"
+},
+{
+"code": "402.02",
+"name": "Devoluciones, descuentos o bonificaciones sobre ventas y/o servicios al 0%"
+},
+{
+"code": "402.03",
+"name": "Devoluciones, descuentos o bonificaciones sobre ventas y/o servicios exentos"
+},
+{
+"code": "402.04",
+"name": "Devoluciones, descuentos o bonificaciones de otros ingresos"
+},
+{
+"code": "402.05",
+"name": ""
+},
+{
+"code": "403",
+"name": "Otros ingresos"
+},
+{
+"code": "403.01",
+"name": "Otros Ingresos"
+},
+{
+"code": "403.02",
+"name": "Otros ingresos nacionales parte relacionada"
+},
+{
+"code": "403.03",
+"name": "Otros ingresos extranjeros parte relacionada"
+},
+{
+"code": "403.04",
+"name": "Ingresos por operaciones discontinuas"
+},
+{
+"code": "403.05",
+"name": "Ingresos por condonación de adeudo"
+},
+{
+"code": "500",
+"name": "Costos"
+},
+{
+"code": "501",
+"name": "Costo de venta y/o servicio"
+},
+{
+"code": "501.01",
+"name": "Costo de venta"
+},
+{
+"code": "501.02",
+"name": "Costo de servicios (Mano de obra)"
+},
+{
+"code": "501.03",
+"name": "Materia prima directa utilizada para la producción"
+},
+{
+"code": "501.04",
+"name": "Materia prima consumida en el proceso productivo"
+},
+{
+"code": "501.05",
+"name": "Mano de obra directa consumida"
+},
+{
+"code": "501.06",
+"name": "Mano de obra directa"
+},
+{
+"code": "501.07",
+"name": "Cargos indirectos de producción"
+},
+{
+"code": "501.08",
+"name": "Otros conceptos de costo"
+},
+{
+"code": "502",
+"name": "Compras"
+},
+{
+"code": "502.01",
+"name": "Compras nacionales"
+},
+{
+"code": "502.02",
+"name": "Compras nacionales parte relacionada"
+},
+{
+"code": "502.03",
+"name": "Compras de Importación"
+},
+{
+"code": "502.04",
+"name": "Compras de Importación partes relacionadas"
+},
+{
+"code": "503",
+"name": "Devoluciones, descuentos o bonificaciones sobre compras"
+},
+{
+"code": "503.01",
+"name": "Devoluciones, descuentos o bonificaciones sobre comp ras"
+},
+{
+"code": "504",
+"name": "Otras cuentas de costos"
+},
+{
+"code": "504.01",
+"name": "Gastos indirectos de fabricación"
+},
+{
+"code": "504.02",
+"name": "Gastos indirectos de fabricación de partes relacionadas nacionales"
+},
+{
+"code": "504.03",
+"name": "Gastos indirectos de fabricación de partes relacionadas extranjeras"
+},
+{
+"code": "504.04",
+"name": "Otras cuentas de costos incurridos"
+},
+{
+"code": "504.05",
+"name": "Otras cuentas de costos incurridos con partes relacionadas nacionales"
+},
+{
+"code": "504.06",
+"name": "Otras cuentas de costos incurridos con partes relacionadas extranjeras"
+},
+{
+"code": "504.07",
+"name": "Depreciación de edificios"
+},
+{
+"code": "504.08",
+"name": "Depreciación de maquinaria y equipo"
+},
+{
+"code": "504.09",
+"name": "Depreciación de automóviles, autobuses, camiones de carga, tractocamiones, montacargas y remolques"
+},
+{
+"code": "504.10",
+"name": "Depreciación de mobiliario y equipo de oficina"
+},
+{
+"code": "504.11",
+"name": "Depreciación de equipo de cómputo"
+},
+{
+"code": "504.12",
+"name": "Depreciación de equipo de comunicación"
+},
+{
+"code": "504.13",
+"name": "Depreciación de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "504.14",
+"name": "Depreciación de otros activos fijos"
+},
+{
+"code": "504.15",
+"name": "Depreciación de ferrocarriles"
+},
+{
+"code": "504.16",
+"name": "Depreciación de embarcaciones"
+},
+{
+"code": "504.17",
+"name": "Depreciación de aviones"
+},
+{
+"code": "504.18",
+"name": "Depreciación de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "504.19",
+"name": "Depreciación de equipo de comunicaciones telefónicas"
+},
+{
+"code": "504.20",
+"name": "Depreciación de equipo de comunicación satelital"
+},
+{
+"code": "504.21",
+"name": "Depreciación de equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "504.22",
+"name": "Depreciación de maquinaria y equipo de generación de energía de fuentes renovables o de sistemas de"
+},
+{
+"code": "504.23",
+"name": "Depreciación de adaptaciones y mejoras"
+},
+{
+"code": "504.24",
+"name": "Depreciación de otra maquinaria y equipo"
+},
+{
+"code": "504.25",
+"name": "Otras cuentas de costos"
+},
+{
+"code": "505",
+"name": "Costo de activo fijo"
+},
+{
+"code": "505.01",
+"name": "Costo por venta de activo fijo"
+},
+{
+"code": "505.02",
+"name": "Costo por baja de activo fijo"
+},
+{
+"code": "600",
+"name": "Gastos"
+},
+{
+"code": "601",
+"name": "Gastos generales"
+},
+{
+"code": "601.01",
+"name": "Sueldos y salarios"
+},
+{
+"code": "601.02",
+"name": "Compensaciones"
+},
+{
+"code": "601.03",
+"name": "Tiempos extras"
+},
+{
+"code": "601.04",
+"name": "Premios de asistencia"
+},
+{
+"code": "601.05",
+"name": "Premios de puntualidad"
+},
+{
+"code": "601.06",
+"name": "Vacaciones"
+},
+{
+"code": "601.07",
+"name": "Prima vacacional"
+},
+{
+"code": "601.08",
+"name": "Prima dominical"
+},
+{
+"code": "601.09",
+"name": "Días festivos"
+},
+{
+"code": "601.10",
+"name": "Gratificaciones"
+},
+{
+"code": "601.11",
+"name": "Primas de antigüedad"
+},
+{
+"code": "601.12",
+"name": "Aguinaldo"
+},
+{
+"code": "601.13",
+"name": "Indemnizaciones"
+},
+{
+"code": "601.14",
+"name": "Destajo"
+},
+{
+"code": "601.15",
+"name": "Despensa"
+},
+{
+"code": "601.16",
+"name": "Transporte"
+},
+{
+"code": "601.17",
+"name": "Servicio médico"
+},
+{
+"code": "601.18",
+"name": "Ayuda en gastos funerarios"
+},
+{
+"code": "601.19",
+"name": "Fondo de ahorro"
+},
+{
+"code": "601.20",
+"name": "Cuotas sindicales"
+},
+{
+"code": "601.21",
+"name": "PTU"
+},
+{
+"code": "601.22",
+"name": "Estímulo al personal"
+},
+{
+"code": "601.23",
+"name": "Previsión social"
+},
+{
+"code": "601.24",
+"name": "Aportaciones para el plan de jubilación"
+},
+{
+"code": "601.25",
+"name": "Otras prestaciones al personal"
+},
+{
+"code": "601.26",
+"name": "Cuotas al IMSS"
+},
+{
+"code": "601.27",
+"name": "Aportaciones al infonavit"
+},
+{
+"code": "601.28",
+"name": "Aportaciones al SAR"
+},
+{
+"code": "601.29",
+"name": "Impuesto estatal sobre nóminas"
+},
+{
+"code": "601.30",
+"name": "Otras aportaciones"
+},
+{
+"code": "601.31",
+"name": "Asimilados a salarios"
+},
+{
+"code": "601.32",
+"name": "Servicios administrativos"
+},
+{
+"code": "601.33",
+"name": "Servicios administrativos partes relacionadas"
+},
+{
+"code": "601.34",
+"name": "Honorarios a personas físicas residentes nacionales"
+},
+{
+"code": "601.35",
+"name": "Honorarios a personas físicas residentes nacionales partes relacionadas"
+},
+{
+"code": "601.36",
+"name": "Honorarios a personas físicas residentes del extranjero"
+},
+{
+"code": "601.37",
+"name": "Honorarios a personas físicas residentes del extranjero partes relacionadas"
+},
+{
+"code": "601.38",
+"name": "Honorarios a personas morales residentes nacionales"
+},
+{
+"code": "601.39",
+"name": "Honorarios a personas morales residentes nacionales partes relacionadas"
+},
+{
+"code": "601.40",
+"name": "Honorarios a personas morales residentes del extranjero"
+},
+{
+"code": "601.41",
+"name": "Honorarios a personas morales residentes del extranjero partes relacionadas"
+},
+{
+"code": "601.42",
+"name": "Honorarios aduanales personas físicas"
+},
+{
+"code": "601.43",
+"name": "Honorarios aduanales personas morales"
+},
+{
+"code": "601.44",
+"name": "Honorarios al consejo de administración"
+},
+{
+"code": "601.45",
+"name": "Arrendamiento a personas físicas residentes nacionales"
+},
+{
+"code": "601.46",
+"name": "Arrendamiento a personas morales residentes nacionales"
+},
+{
+"code": "601.47",
+"name": "Arrendamiento a residentes del extranjero"
+},
+{
+"code": "601.48",
+"name": "Combustibles y lubricantes"
+},
+{
+"code": "601.49",
+"name": "Viáticos y gastos de viaje"
+},
+{
+"code": "601.50",
+"name": "Teléfono, internet"
+},
+{
+"code": "601.51",
+"name": "Agua"
+},
+{
+"code": "601.52",
+"name": "Energía eléctrica"
+},
+{
+"code": "601.53",
+"name": "Vigilancia y seguridad"
+},
+{
+"code": "601.54",
+"name": "Limpieza"
+},
+{
+"code": "601.55",
+"name": "Papelería y artículos de oficina"
+},
+{
+"code": "601.56",
+"name": "Mantenimiento y conservación"
+},
+{
+"code": "601.57",
+"name": "Seguros y fianzas"
+},
+{
+"code": "601.58",
+"name": "Otros impuestos y derechos"
+},
+{
+"code": "601.59",
+"name": "Recargos fiscales"
+},
+{
+"code": "601.60",
+"name": "Cuotas y suscripciones"
+},
+{
+"code": "601.61",
+"name": "Propaganda y publicidad"
+},
+{
+"code": "601.62",
+"name": "Capacitación al personal"
+},
+{
+"code": "601.63",
+"name": "Donativos y ayudas"
+},
+{
+"code": "601.64",
+"name": "Asistencia técnica"
+},
+{
+"code": "601.65",
+"name": "Regalías sujetas a otros porcentajes"
+},
+{
+"code": "601.66",
+"name": "Regalías sujetas al 5%"
+},
+{
+"code": "601.67",
+"name": "Regalías sujetas al 10%"
+},
+{
+"code": "601.68",
+"name": "Regalías sujetas al 15%"
+},
+{
+"code": "601.69",
+"name": "Regalías sujetas al 25%"
+},
+{
+"code": "601.70",
+"name": "Regalías sujetas al 30%"
+},
+{
+"code": "601.71",
+"name": "Regalías sin retención"
+},
+{
+"code": "601.72",
+"name": "Fletes y acarreos"
+},
+{
+"code": "601.73",
+"name": "Gastos de importación"
+},
+{
+"code": "601.74",
+"name": "Comisiones sobre ventas"
+},
+{
+"code": "601.75",
+"name": "Comisiones por tarjetas de crédito"
+},
+{
+"code": "601.76",
+"name": "Patentes y marcas"
+},
+{
+"code": "601.77",
+"name": "Uniformes"
+},
+{
+"code": "601.78",
+"name": "Prediales"
+},
+{
+"code": "601.79",
+"name": "Gastos generales de urbanización"
+},
+{
+"code": "601.80",
+"name": "Gastos generales de construcción"
+},
+{
+"code": "601.81",
+"name": "Fletes del extranjero"
+},
+{
+"code": "601.82",
+"name": "Recolección de bienes del sector agropecuario y/o ganadero"
+},
+{
+"code": "601.83",
+"name": "Gastos no deducibles (sin requisitos fiscales)"
+},
+{
+"code": "601.84",
+"name": "Otros gastos generales"
+},
+{
+"code": "602",
+"name": "Gastos de venta"
+},
+{
+"code": "602.01",
+"name": "Sueldos y salarios"
+},
+{
+"code": "602.02",
+"name": "Compensaciones"
+},
+{
+"code": "602.03",
+"name": "Tiempos extras"
+},
+{
+"code": "602.04",
+"name": "Premios de asistencia"
+},
+{
+"code": "602.05",
+"name": "Premios de puntualidad"
+},
+{
+"code": "602.06",
+"name": "Vacaciones"
+},
+{
+"code": "602.07",
+"name": "Prima vacacional"
+},
+{
+"code": "602.08",
+"name": "Prima dominical"
+},
+{
+"code": "602.09",
+"name": "Días festivos"
+},
+{
+"code": "602.10",
+"name": "Gratificaciones"
+},
+{
+"code": "602.11",
+"name": "Primas de antigüedad"
+},
+{
+"code": "602.12",
+"name": "Aguinaldo"
+},
+{
+"code": "602.13",
+"name": "Indemnizaciones"
+},
+{
+"code": "602.14",
+"name": "Destajo"
+},
+{
+"code": "602.15",
+"name": "Despensa"
+},
+{
+"code": "602.16",
+"name": "Transporte"
+},
+{
+"code": "602.17",
+"name": "Servicio médico"
+},
+{
+"code": "602.18",
+"name": "Ayuda en gastos funerarios"
+},
+{
+"code": "602.19",
+"name": "Fondo de ahorro"
+},
+{
+"code": "602.20",
+"name": "Cuotas sindicales"
+},
+{
+"code": "602.21",
+"name": "PTU"
+},
+{
+"code": "602.22",
+"name": "Estímulo al personal"
+},
+{
+"code": "602.23",
+"name": "Previsión social"
+},
+{
+"code": "602.24",
+"name": "Aportaciones para el plan de jubilación"
+},
+{
+"code": "602.25",
+"name": "Otras prestaciones al personal"
+},
+{
+"code": "602.26",
+"name": "Cuotas al IMSS"
+},
+{
+"code": "602.27",
+"name": "Aportaciones al infonavit"
+},
+{
+"code": "602.28",
+"name": "Aportaciones al SAR"
+},
+{
+"code": "602.29",
+"name": "Impuesto estatal sobre nóminas"
+},
+{
+"code": "602.30",
+"name": "Otras aportaciones"
+},
+{
+"code": "602.31",
+"name": "Asimilados a salarios"
+},
+{
+"code": "602.32",
+"name": "Servicios administrativos"
+},
+{
+"code": "602.33",
+"name": "Servicios administrativos partes relacionadas"
+},
+{
+"code": "602.34",
+"name": "Honorarios a personas físicas residentes nacionales"
+},
+{
+"code": "602.35",
+"name": "Honorarios a personas físicas residentes nacionales partes relacionadas"
+},
+{
+"code": "602.36",
+"name": "Honorarios a personas físicas residentes del extranjero"
+},
+{
+"code": "602.37",
+"name": "Honorarios a personas físicas residentes del extranjero partes relacionadas"
+},
+{
+"code": "602.38",
+"name": "Honorarios a personas morales residentes nacionales"
+},
+{
+"code": "602.39",
+"name": "Honorarios a personas morales residentes nacionales partes relacionadas"
+},
+{
+"code": "602.40",
+"name": "Honorarios a personas morales residentes del extranjero"
+},
+{
+"code": "602.41",
+"name": "Honorarios a personas morales residentes del extranjero partes relacionadas"
+},
+{
+"code": "602.42",
+"name": "Honorarios aduanales personas físicas"
+},
+{
+"code": "602.43",
+"name": "Honorarios aduanales personas morales"
+},
+{
+"code": "602.44",
+"name": "Honorarios al consejo de administración"
+},
+{
+"code": "602.45",
+"name": "Arrendamiento a personas físicas residentes nacionales"
+},
+{
+"code": "602.46",
+"name": "Arrendamiento a personas morales residentes nacionales"
+},
+{
+"code": "602.47",
+"name": "Arrendamiento a residentes del extranjero"
+},
+{
+"code": "602.48",
+"name": "Combustibles y lubricantes"
+},
+{
+"code": "602.49",
+"name": "Viáticos y gastos de viaje"
+},
+{
+"code": "602.50",
+"name": "Teléfono, internet"
+},
+{
+"code": "602.51",
+"name": "Agua"
+},
+{
+"code": "602.52",
+"name": "Energía eléctrica"
+},
+{
+"code": "602.53",
+"name": "Vigilancia y seguridad"
+},
+{
+"code": "602.54",
+"name": "Limpieza"
+},
+{
+"code": "602.55",
+"name": "Papelería y artículos de oficina"
+},
+{
+"code": "602.56",
+"name": "Mantenimiento y conservación"
+},
+{
+"code": "602.57",
+"name": "Seguros y fianzas"
+},
+{
+"code": "602.58",
+"name": "Otros impuestos y derechos"
+},
+{
+"code": "602.59",
+"name": "Recargos fiscales"
+},
+{
+"code": "602.60",
+"name": "Cuotas y suscripciones"
+},
+{
+"code": "602.61",
+"name": "Propaganda y publicidad"
+},
+{
+"code": "602.62",
+"name": "Capacitación al personal"
+},
+{
+"code": "602.63",
+"name": "Donativos y ayudas"
+},
+{
+"code": "602.64",
+"name": "Asistencia técnica"
+},
+{
+"code": "602.65",
+"name": "Regalías sujetas a otros porcentajes"
+},
+{
+"code": "602.66",
+"name": "Regalías sujetas al 5%"
+},
+{
+"code": "602.67",
+"name": "Regalías sujetas al 10%"
+},
+{
+"code": "602.68",
+"name": "Regalías sujetas al 15%"
+},
+{
+"code": "602.69",
+"name": "Regalías sujetas al 25%"
+},
+{
+"code": "602.70",
+"name": "Regalías sujetas al 30%"
+},
+{
+"code": "602.71",
+"name": "Regalías sin retención"
+},
+{
+"code": "602.72",
+"name": "Fletes y acarreos"
+},
+{
+"code": "602.73",
+"name": "Gastos de importación"
+},
+{
+"code": "602.74",
+"name": "Comisiones sobre ventas"
+},
+{
+"code": "602.75",
+"name": "Comisiones por tarjetas de crédito"
+},
+{
+"code": "602.76",
+"name": "Patentes y marcas"
+},
+{
+"code": "602.77",
+"name": "Uniformes"
+},
+{
+"code": "602.78",
+"name": "Prediales"
+},
+{
+"code": "602.79",
+"name": "Gastos de venta de urbanización"
+},
+{
+"code": "602.80",
+"name": "Gastos de venta de construcción"
+},
+{
+"code": "602.81",
+"name": "Fletes del extranjero"
+},
+{
+"code": "602.82",
+"name": "Recolección de bienes del sector agropecuario y/o ganadero"
+},
+{
+"code": "602.83",
+"name": "Gastos no deducibles (sin requisitos fiscales)"
+},
+{
+"code": "602.84",
+"name": "Otros gastos de venta"
+},
+{
+"code": "603",
+"name": "Gastos de administración"
+},
+{
+"code": "603.01",
+"name": "Sueldos y salarios"
+},
+{
+"code": "603.02",
+"name": "Compensaciones"
+},
+{
+"code": "603.03",
+"name": "Tiempos extras"
+},
+{
+"code": "603.04",
+"name": "Premios de asistencia"
+},
+{
+"code": "603.05",
+"name": "Premios de puntualidad"
+},
+{
+"code": "603.06",
+"name": "Vacaciones"
+},
+{
+"code": "603.07",
+"name": "Prima vacacional"
+},
+{
+"code": "603.08",
+"name": "Prima dominical"
+},
+{
+"code": "603.09",
+"name": "Días festivos"
+},
+{
+"code": "603.10",
+"name": "Gratificaciones"
+},
+{
+"code": "603.11",
+"name": "Primas de antigüedad"
+},
+{
+"code": "603.12",
+"name": "Aguinaldo"
+},
+{
+"code": "603.13",
+"name": "Indemnizaciones"
+},
+{
+"code": "603.14",
+"name": "Destajo"
+},
+{
+"code": "603.15",
+"name": "Despensa"
+},
+{
+"code": "603.16",
+"name": "Transporte"
+},
+{
+"code": "603.17",
+"name": "Servicio médico"
+},
+{
+"code": "603.18",
+"name": "Ayuda en gastos funerarios"
+},
+{
+"code": "603.19",
+"name": "Fondo de ahorro"
+},
+{
+"code": "603.20",
+"name": "Cuotas sindicales"
+},
+{
+"code": "603.21",
+"name": "PTU"
+},
+{
+"code": "603.22",
+"name": "Estímulo al personal"
+},
+{
+"code": "603.23",
+"name": "Previsión social"
+},
+{
+"code": "603.24",
+"name": "Aportaciones para el plan de jubilación"
+},
+{
+"code": "603.25",
+"name": "Otras prestaciones al personal"
+},
+{
+"code": "603.26",
+"name": "Cuotas al IMSS"
+},
+{
+"code": "603.27",
+"name": "Aportaciones al infonavit"
+},
+{
+"code": "603.28",
+"name": "Aportaciones al SAR"
+},
+{
+"code": "603.29",
+"name": "Impuesto estatal sobre nóminas"
+},
+{
+"code": "603.30",
+"name": "Otras aportaciones"
+},
+{
+"code": "603.31",
+"name": "Asimilados a salarios"
+},
+{
+"code": "603.32",
+"name": "Servicios administrativos"
+},
+{
+"code": "603.33",
+"name": "Servicios administrativos partes relacionadas"
+},
+{
+"code": "603.34",
+"name": "Honorarios a personas físicas residentes nacionales"
+},
+{
+"code": "603.35",
+"name": "Honorarios a personas físicas residentes nacionales partes relacionadas"
+},
+{
+"code": "603.36",
+"name": "Honorarios a personas físicas residentes del extranjero"
+},
+{
+"code": "603.37",
+"name": "Honorarios a personas físicas residentes del extranjero partes relacionadas"
+},
+{
+"code": "603.38",
+"name": "Honorarios a personas morales residentes nacionales"
+},
+{
+"code": "603.39",
+"name": "Honorarios a personas morales residentes nacionales partes relacionadas"
+},
+{
+"code": "603.40",
+"name": "Honorarios a personas morales residentes del extranjero"
+},
+{
+"code": "603.41",
+"name": "Honorarios a personas morales residentes del extranjero partes relacionadas"
+},
+{
+"code": "603.42",
+"name": "Honorarios aduanales personas físicas"
+},
+{
+"code": "603.43",
+"name": "Honorarios aduanales personas morales"
+},
+{
+"code": "603.44",
+"name": "Honorarios al consejo de administración"
+},
+{
+"code": "603.45",
+"name": "Arrendamiento a personas físicas residentes nacionales"
+},
+{
+"code": "603.46",
+"name": "Arrendamiento a personas morales residentes nacionales"
+},
+{
+"code": "603.47",
+"name": "Arrendamiento a residentes del extranjero"
+},
+{
+"code": "603.48",
+"name": "Combustibles y lubricantes"
+},
+{
+"code": "603.49",
+"name": "Viáticos y gastos de viaje"
+},
+{
+"code": "603.50",
+"name": "Teléfono, internet"
+},
+{
+"code": "603.51",
+"name": "Agua"
+},
+{
+"code": "603.52",
+"name": "Energía eléctrica"
+},
+{
+"code": "603.53",
+"name": "Vigilancia y seguridad"
+},
+{
+"code": "603.54",
+"name": "Limpieza"
+},
+{
+"code": "603.55",
+"name": "Papelería y artículos de oficina"
+},
+{
+"code": "603.56",
+"name": "Mantenimiento y conservación"
+},
+{
+"code": "603.57",
+"name": "Seguros y fianzas"
+},
+{
+"code": "603.58",
+"name": "Otros impuestos y derechos"
+},
+{
+"code": "603.59",
+"name": "Recargos fiscales"
+},
+{
+"code": "603.60",
+"name": "Cuotas y suscripciones"
+},
+{
+"code": "603.61",
+"name": "Propaganda y publicidad"
+},
+{
+"code": "603.62",
+"name": "Capacitación al personal"
+},
+{
+"code": "603.63",
+"name": "Donativos y ayudas"
+},
+{
+"code": "603.64",
+"name": "Asistencia técnica"
+},
+{
+"code": "603.65",
+"name": "Regalías sujetas a otros porcentajes"
+},
+{
+"code": "603.66",
+"name": "Regalías sujetas al 5%"
+},
+{
+"code": "603.67",
+"name": "Regalías sujetas al 10%"
+},
+{
+"code": "603.68",
+"name": "Regalías sujetas al 15%"
+},
+{
+"code": "603.69",
+"name": "Regalías sujetas al 25%"
+},
+{
+"code": "603.70",
+"name": "Regalías sujetas al 30%"
+},
+{
+"code": "603.71",
+"name": "Regalías sin retención"
+},
+{
+"code": "603.72",
+"name": "Fletes y acarreos"
+},
+{
+"code": "603.73",
+"name": "Gastos de importación"
+},
+{
+"code": "603.74",
+"name": "Patentes y marcas"
+},
+{
+"code": "603.75",
+"name": "Uniformes"
+},
+{
+"code": "603.76",
+"name": "Prediales"
+},
+{
+"code": "603.77",
+"name": "Gastos de administración de urbanización"
+},
+{
+"code": "603.78",
+"name": "Gastos de administración de construcción"
+},
+{
+"code": "603.79",
+"name": "Fletes del extranjero"
+},
+{
+"code": "603.80",
+"name": "Recolección de bienes del sector agropecuario y/o ganadero"
+},
+{
+"code": "603.81",
+"name": "Gastos no deducibles (sin requisitos fiscales)"
+},
+{
+"code": "603.82",
+"name": "Otros gastos de administración"
+},
+{
+"code": "604",
+"name": "Gastos de fabricación"
+},
+{
+"code": "604.01",
+"name": "Sueldos y salarios"
+},
+{
+"code": "604.02",
+"name": "Compensaciones"
+},
+{
+"code": "604.03",
+"name": "Tiempos extras"
+},
+{
+"code": "604.04",
+"name": "Premios de asistencia"
+},
+{
+"code": "604.05",
+"name": "Premios de puntualidad"
+},
+{
+"code": "604.06",
+"name": "Vacaciones"
+},
+{
+"code": "604.07",
+"name": "Prima vacacional"
+},
+{
+"code": "604.08",
+"name": "Prima dominical"
+},
+{
+"code": "604.09",
+"name": "Días festivos"
+},
+{
+"code": "604.10",
+"name": "Gratificaciones"
+},
+{
+"code": "604.11",
+"name": "Primas de antigüedad"
+},
+{
+"code": "604.12",
+"name": "Aguinaldo"
+},
+{
+"code": "604.13",
+"name": "Indemnizaciones"
+},
+{
+"code": "604.14",
+"name": "Destajo"
+},
+{
+"code": "604.15",
+"name": "Despensa"
+},
+{
+"code": "604.16",
+"name": "Transporte"
+},
+{
+"code": "604.17",
+"name": "Servicio médico"
+},
+{
+"code": "604.18",
+"name": "Ayuda en gastos funerarios"
+},
+{
+"code": "604.19",
+"name": "Fondo de ahorro"
+},
+{
+"code": "604.20",
+"name": "Cuotas sindicales"
+},
+{
+"code": "604.21",
+"name": "PTU"
+},
+{
+"code": "604.22",
+"name": "Estímulo al personal"
+},
+{
+"code": "604.23",
+"name": "Previsión social"
+},
+{
+"code": "604.24",
+"name": "Aportaciones para el plan de jubilación"
+},
+{
+"code": "604.25",
+"name": "Otras prestaciones al personal"
+},
+{
+"code": "604.26",
+"name": "Cuotas al IMSS"
+},
+{
+"code": "604.27",
+"name": "Aportaciones al infonavit"
+},
+{
+"code": "604.28",
+"name": "Aportaciones al SAR"
+},
+{
+"code": "604.29",
+"name": "Impuesto estatal sobre nóminas"
+},
+{
+"code": "604.30",
+"name": "Otras aportaciones"
+},
+{
+"code": "604.31",
+"name": "Asimilados a salarios"
+},
+{
+"code": "604.32",
+"name": "Servicios administrativos"
+},
+{
+"code": "604.33",
+"name": "Servicios administrativos partes relacionadas"
+},
+{
+"code": "604.34",
+"name": "Honorarios a personas físicas residentes nacionales"
+},
+{
+"code": "604.35",
+"name": "Honorarios a personas físicas residentes nacionales partes relacionadas"
+},
+{
+"code": "604.36",
+"name": "Honorarios a personas físicas residentes del extranjero"
+},
+{
+"code": "604.37",
+"name": "Honorarios a personas físicas residentes del extranjero partes relacionadas"
+},
+{
+"code": "604.38",
+"name": "Honorarios a personas morales residentes nacionales"
+},
+{
+"code": "604.39",
+"name": "Honorarios a personas morales residentes nacionales partes relacionadas"
+},
+{
+"code": "604.40",
+"name": "Honorarios a personas morales residentes del extranjero"
+},
+{
+"code": "604.41",
+"name": "Honorarios a personas morales residentes del extranjero partes relacionadas"
+},
+{
+"code": "604.42",
+"name": "Honorarios aduanales personas físicas"
+},
+{
+"code": "604.43",
+"name": "Honorarios aduanales personas morales"
+},
+{
+"code": "604.44",
+"name": "Honorarios al consejo de administración"
+},
+{
+"code": "604.45",
+"name": "Arrendamiento a personas físicas residentes nacionales"
+},
+{
+"code": "604.46",
+"name": "Arrendamiento a personas morales residentes nacionales"
+},
+{
+"code": "604.47",
+"name": "Arrendamiento a residentes del extranjero"
+},
+{
+"code": "604.48",
+"name": "Combustibles y lubricantes"
+},
+{
+"code": "604.49",
+"name": "Viáticos y gastos de viaje"
+},
+{
+"code": "604.50",
+"name": "Teléfono, internet"
+},
+{
+"code": "604.51",
+"name": "Agua"
+},
+{
+"code": "604.52",
+"name": "Energía eléctrica"
+},
+{
+"code": "604.53",
+"name": "Vigilancia y seguridad"
+},
+{
+"code": "604.54",
+"name": "Limpieza"
+},
+{
+"code": "604.55",
+"name": "Papelería y artículos de oficina"
+},
+{
+"code": "604.56",
+"name": "Mantenimiento y conservación"
+},
+{
+"code": "604.57",
+"name": "Seguros y fianzas"
+},
+{
+"code": "604.58",
+"name": "Otros impuestos y derechos"
+},
+{
+"code": "604.59",
+"name": "Recargos fiscales"
+},
+{
+"code": "604.60",
+"name": "Cuotas y suscripciones"
+},
+{
+"code": "604.61",
+"name": "Propaganda y publicidad"
+},
+{
+"code": "604.62",
+"name": "Capacitación al personal"
+},
+{
+"code": "604.63",
+"name": "Donativos y ayudas"
+},
+{
+"code": "604.64",
+"name": "Asistencia técnica"
+},
+{
+"code": "604.65",
+"name": "Regalías sujetas a otros porcentajes"
+},
+{
+"code": "604.66",
+"name": "Regalías sujetas al 5%"
+},
+{
+"code": "604.67",
+"name": "Regalías sujetas al 10%"
+},
+{
+"code": "604.68",
+"name": "Regalías sujetas al 15%"
+},
+{
+"code": "604.69",
+"name": "Regalías sujetas al 25%"
+},
+{
+"code": "604.70",
+"name": "Regalías sujetas al 30%"
+},
+{
+"code": "604.71",
+"name": "Regalías sin retención"
+},
+{
+"code": "604.72",
+"name": "Fletes y acarreos"
+},
+{
+"code": "604.73",
+"name": "Gastos de importación"
+},
+{
+"code": "604.74",
+"name": "Patentes y marcas"
+},
+{
+"code": "604.75",
+"name": "Uniformes"
+},
+{
+"code": "604.76",
+"name": "Prediales"
+},
+{
+"code": "604.77",
+"name": "Gastos de fabricación de urbanización"
+},
+{
+"code": "604.78",
+"name": "Gastos de fabricación de construcción"
+},
+{
+"code": "604.79",
+"name": "Fletes del extranjero"
+},
+{
+"code": "604.80",
+"name": "Recolección de bienes del sector agropecuario y/o ganadero"
+},
+{
+"code": "604.81",
+"name": "Gastos no deducibles (sin requisitos fiscales)"
+},
+{
+"code": "604.82",
+"name": "Otros gastos de fabricación"
+},
+{
+"code": "605",
+"name": "Mano de obra directa"
+},
+{
+"code": "605.01",
+"name": "Mano de obra"
+},
+{
+"code": "605.02",
+"name": "Sueldos y Salarios"
+},
+{
+"code": "605.03",
+"name": "Compensaciones"
+},
+{
+"code": "605.04",
+"name": "Tiempos extras"
+},
+{
+"code": "605.05",
+"name": "Premios de asistencia"
+},
+{
+"code": "605.06",
+"name": "Premios de puntualidad"
+},
+{
+"code": "605.07",
+"name": "Vacaciones"
+},
+{
+"code": "605.08",
+"name": "Prima vacacional"
+},
+{
+"code": "605.09",
+"name": "Prima dominical"
+},
+{
+"code": "605.10",
+"name": "Días festivos"
+},
+{
+"code": "605.11",
+"name": "Gratificaciones"
+},
+{
+"code": "605.12",
+"name": "Primas de antigüedad"
+},
+{
+"code": "605.13",
+"name": "Aguinaldo"
+},
+{
+"code": "605.14",
+"name": "Indemnizaciones"
+},
+{
+"code": "605.15",
+"name": "Destajo"
+},
+{
+"code": "605.16",
+"name": "Despensa"
+},
+{
+"code": "605.17",
+"name": "Transporte"
+},
+{
+"code": "605.18",
+"name": "Servicio médico"
+},
+{
+"code": "605.19",
+"name": "Ayuda en gastos funerarios"
+},
+{
+"code": "605.20",
+"name": "Fondo de ahorro"
+},
+{
+"code": "605.21",
+"name": "Cuotas sindicales"
+},
+{
+"code": "605.22",
+"name": "PTU"
+},
+{
+"code": "605.23",
+"name": "Estímulo al personal"
+},
+{
+"code": "605.24",
+"name": "Previsión social"
+},
+{
+"code": "605.25",
+"name": "Aportaciones para el plan de jubilación"
+},
+{
+"code": "605.26",
+"name": "Otras prestaciones al personal"
+},
+{
+"code": "605.27",
+"name": "Asimilados a salarios"
+},
+{
+"code": "605.28",
+"name": "Cuotas al IMSS"
+},
+{
+"code": "605.29",
+"name": "Aportaciones al infonavit"
+},
+{
+"code": "605.30",
+"name": "Aportaciones al SAR"
+},
+{
+"code": "605.31",
+"name": "Otros costos de mano de obra directa"
+},
+{
+"code": "606",
+"name": "Facilidades administrativas fiscales"
+},
+{
+"code": "606.01",
+"name": "Facilidades administrativas fiscales"
+},
+{
+"code": "607",
+"name": "Participación de los trabajadores en las utilidades"
+},
+{
+"code": "607.01",
+"name": "Participación de los trabajadores en las utilidades"
+},
+{
+"code": "608",
+"name": "Participación en resultados de subsidiarias"
+},
+{
+"code": "608.01",
+"name": "Participación en resultados de subsidiarias"
+},
+{
+"code": "609",
+"name": "Participación en resultados de asociadas"
+},
+{
+"code": "609.01",
+"name": "Participación en resultados de asociadas"
+},
+{
+"code": "610",
+"name": "Participación de los trabajadores en las utilidades diferida"
+},
+{
+"code": "610.01",
+"name": "Participación de los trabajadores en las utilidades diferida"
+},
+{
+"code": "611",
+"name": "Impuesto Sobre la renta"
+},
+{
+"code": "611.01",
+"name": "Impuesto Sobre la renta"
+},
+{
+"code": "611.02",
+"name": "Impuesto Sobre la renta por remanente distribuible"
+},
+{
+"code": "612",
+"name": "Gastos no deducibles para CUFIN"
+},
+{
+"code": "612.01",
+"name": "Gastos no deducibles para CUFIN"
+},
+{
+"code": "613",
+"name": "Depreciación contable"
+},
+{
+"code": "613.01",
+"name": "Depreciación de edificios"
+},
+{
+"code": "613.02",
+"name": "Depreciación de maquinaria y equipo"
+},
+{
+"code": "613.03",
+"name": "Depreciación de automóviles, autobuses, camiones de carga, tractocamiones, montacargas y remolques"
+},
+{
+"code": "613.04",
+"name": "Depreciación de mobiliario y equipo de oficina"
+},
+{
+"code": "613.05",
+"name": "Depreciación de equipo de cómputo"
+},
+{
+"code": "613.06",
+"name": "Depreciación de equipo de comunicación"
+},
+{
+"code": "613.07",
+"name": "Depreciación de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "613.08",
+"name": "Depreciación de otros activos fijos"
+},
+{
+"code": "613.09",
+"name": "Depreciación de ferrocarriles"
+},
+{
+"code": "613.10",
+"name": "Depreciación de embarcaciones"
+},
+{
+"code": "613.11",
+"name": "Depreciación de aviones"
+},
+{
+"code": "613.12",
+"name": "Depreciación de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "613.13",
+"name": "Depreciación de equipo de comunicaciones telefónicas"
+},
+{
+"code": "613.14",
+"name": "Depreciación de equipo de comunicación satelital"
+},
+{
+"code": "613.15",
+"name": "Depreciación de equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "613.16",
+"name": "Depreciación de maquinaria y equipo de generación de energía de fuentes renovables o de sistemas de"
+},
+{
+"code": "613.17",
+"name": "Depreciación de adaptaciones y mejoras"
+},
+{
+"code": "613.18",
+"name": "Depreciación de otra maquinaria y equipo"
+},
+{
+"code": "614",
+"name": "Amortización contable"
+},
+{
+"code": "614.01",
+"name": "Amortización de gastos diferidos"
+},
+{
+"code": "614.02",
+"name": "Amortización de gastos pre operativos"
+},
+{
+"code": "614.03",
+"name": "Amortización de regalías, asistencia técnica y otros gastos diferidos"
+},
+{
+"code": "614.04",
+"name": "Amortización de activos intangibles"
+},
+{
+"code": "614.05",
+"name": "Amortización de gastos de organización"
+},
+{
+"code": "614.06",
+"name": "Amortización de investigación y desarrollo de mercado"
+},
+{
+"code": "614.07",
+"name": "Amortización de marcas y patentes"
+},
+{
+"code": "614.08",
+"name": "Amortización de crédito mercantil"
+},
+{
+"code": "614.09",
+"name": "Amortización de gastos de instalación"
+},
+{
+"code": "614.10",
+"name": "Amortización de otros activos diferidos"
+},
+{
+"code": "700",
+"name": "Resultado integral de financiamiento"
+},
+{
+"code": "701",
+"name": "Gastos financieros"
+},
+{
+"code": "701.01",
+"name": "Pérdida cambiaria"
+},
+{
+"code": "701.02",
+"name": "Pérdida cambiaria nacional parte relacionada"
+},
+{
+"code": "701.03",
+"name": "Pérdida cambiaria extranjero parte relacionada"
+},
+{
+"code": "701.04",
+"name": "Intereses a cargo bancario nacional"
+},
+{
+"code": "701.05",
+"name": "Intereses a cargo bancario extranjero"
+},
+{
+"code": "701.06",
+"name": "Intereses a cargo de personas físicas nacional"
+},
+{
+"code": "701.07",
+"name": "Intereses a cargo de personas físicas extranjero"
+},
+{
+"code": "701.08",
+"name": "Intereses a cargo de personas morales nacional"
+},
+{
+"code": "701.09",
+"name": "Intereses a cargo de personas morales extranjero"
+},
+{
+"code": "701.10",
+"name": "Comisiones bancarias"
+},
+{
+"code": "701.11",
+"name": "Otros gastos financieros"
+},
+{
+"code": "702",
+"name": "Productos financieros"
+},
+{
+"code": "702.01",
+"name": "Utilidad cambiaria"
+},
+{
+"code": "702.02",
+"name": "Utilidad cambiaria nacional parte relacionada"
+},
+{
+"code": "702.03",
+"name": "Utilidad cambiaria extranjero parte relacionada"
+},
+{
+"code": "702.04",
+"name": "Intereses a favor bancarios nacional"
+},
+{
+"code": "702.05",
+"name": "Intereses a favor bancarios extranjero"
+},
+{
+"code": "702.06",
+"name": "Intereses a favor de personas físicas nacional"
+},
+{
+"code": "702.07",
+"name": "Intereses a favor de personas físicas extranjero"
+},
+{
+"code": "702.08",
+"name": "Intereses a favor de personas morales nacional"
+},
+{
+"code": "702.09",
+"name": "Intereses a favor de personas morales extranjero"
+},
+{
+"code": "702.10",
+"name": "Otros productos financieros"
+},
+{
+"code": "703",
+"name": "Otros gastos"
+},
+{
+"code": "703.01",
+"name": "Pérdida en venta y/o baja de terrenos"
+},
+{
+"code": "703.02",
+"name": "Pérdida en venta y/o baja de edificios"
+},
+{
+"code": "703.03",
+"name": "Pérdida en venta y/o baja de maquinaria y equipo"
+},
+{
+"code": "703.04",
+"name": "Pérdida en venta y/o baja de automóviles, autobuses, camiones de carga, tractoca miones, montacargas y"
+},
+{
+"code": "703.05",
+"name": "Pérdida en venta y/o baja de mobiliario y equipo de oficina"
+},
+{
+"code": "703.06",
+"name": "Pérdida en venta y/o baja de equipo de cómputo"
+},
+{
+"code": "703.07",
+"name": "Pérdida en venta y/o baja de equipo de comunicación"
+},
+{
+"code": "703.08",
+"name": "Pérdida en venta y/o baja de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "703.09",
+"name": "Pérdida en venta y/o baja de otros activos fijos"
+},
+{
+"code": "703.10",
+"name": "Pérdida en venta y/o baja de ferrocarriles"
+},
+{
+"code": "703.11",
+"name": "Pérdida en venta y/o baja de embarcaciones"
+},
+{
+"code": "703.12",
+"name": "Pérdida en venta y/o baja de aviones"
+},
+{
+"code": "703.13",
+"name": "Pérdida en venta y/o baja de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "703.14",
+"name": "Pérdida en venta y/o baja de equipo de comunicaciones telefónicas"
+},
+{
+"code": "703.15",
+"name": "Pérdida en venta y/o baja de equipo de comunicación satelital"
+},
+{
+"code": "703.16",
+"name": "Pérdida en venta y/o baja de equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "703.17",
+"name": "Pérdida en venta y/o baja de maquinaria y equipo de generación de energía de fuentes ren ovables o de"
+},
+{
+"code": "703.18",
+"name": "Pérdida en venta y/o baja de otra maquinaria y equipo"
+},
+{
+"code": "703.19",
+"name": "Pérdida por enajenación de acciones"
+},
+{
+"code": "703.20",
+"name": "Pérdida por enajenación de partes sociales"
+},
+{
+"code": "703.21",
+"name": "Otros gastos"
+},
+{
+"code": "704",
+"name": "Otros productos"
+},
+{
+"code": "704.01",
+"name": "Ganancia en venta y/o baja de terrenos"
+},
+{
+"code": "704.02",
+"name": "Ganancia en venta y/o baja de edificios"
+},
+{
+"code": "704.03",
+"name": "Ganancia en venta y/o baja de maquinaria y equipo"
+},
+{
+"code": "704.04",
+"name": "Ganancia en venta y/o baja de automóviles, autobuses, camiones de carga, tractocamiones, montacargas y"
+},
+{
+"code": "704.05",
+"name": "Ganancia en venta y/o baja de mobiliario y equipo de oficina"
+},
+{
+"code": "704.06",
+"name": "Ganancia en venta y/o baja de equipo de cómputo"
+},
+{
+"code": "704.07",
+"name": "Ganancia en venta y/o baja de equipo de comunicación"
+},
+{
+"code": "704.08",
+"name": "Ganancia en venta y/o baja de activos biológicos, vegetales y semovientes"
+},
+{
+"code": "704.09",
+"name": "Ganancia en venta y/o baja de otros activos fijos"
+},
+{
+"code": "704.10",
+"name": "Ganancia en venta y/o baja de ferrocarriles"
+},
+{
+"code": "704.11",
+"name": "Ganancia en venta y/o baja de embarcaciones"
+},
+{
+"code": "704.12",
+"name": "Ganancia en venta y/o baja de aviones"
+},
+{
+"code": "704.13",
+"name": "Ganancia en venta y/o baja de troqueles, moldes, matrices y herramental"
+},
+{
+"code": "704.14",
+"name": "Ganancia en venta y/o baja de equipo de comunicaciones telefónicas"
+},
+{
+"code": "704.15",
+"name": "Ganancia en venta y/o baja de equipo de comunicación satelital"
+},
+{
+"code": "704.16",
+"name": "Ganancia en venta y/o baja de equipo de adaptaciones para personas con capacidades diferentes"
+},
+{
+"code": "704.17",
+"name": "Ganancia en venta de maquinaria y equipo de generación de energía de fuentes renovables o de sistemas"
+},
+{
+"code": "704.18",
+"name": "Ganancia en venta y/o baja de otra maquinaria y equipo"
+},
+{
+"code": "704.19",
+"name": "Ganancia por enajenación de acciones"
+},
+{
+"code": "704.20",
+"name": "Ganancia por enajenación de partes sociales"
+},
+{
+"code": "704.21",
+"name": "Ingresos por estímulos fiscales"
+},
+{
+"code": "704.22",
+"name": "Ingresos por condonación de adeudo"
+},
+{
+"code": "704.23",
+"name": "Otros productos"
+},
+{
+"code": "800",
+"name": "Cuentas de orden"
+},
+{
+"code": "801",
+"name": "UFIN del ejercicio"
+},
+{
+"code": "801.01",
+"name": "UFIN"
+},
+{
+"code": "801.02",
+"name": "Contra cuenta UFIN"
+},
+{
+"code": "802",
+"name": "CUFIN del ejercicio"
+},
+{
+"code": "802.01",
+"name": "CUFIN"
+},
+{
+"code": "802.02",
+"name": "Contra cuenta CUFIN"
+},
+{
+"code": "803",
+"name": "CUFIN de ejercicios anteriores"
+},
+{
+"code": "803.01",
+"name": "CUFIN de ejercicios anteriores"
+},
+{
+"code": "803.02",
+"name": "Contra cuenta CUFIN de ejercicios anteriores"
+},
+{
+"code": "804",
+"name": "CUFINRE del ejercicio"
+},
+{
+"code": "804.01",
+"name": "CUFINRE"
+},
+{
+"code": "804.02",
+"name": "Contra cuenta CUFINRE"
+},
+{
+"code": "805",
+"name": "CUFINRE de ejercicios anteriores"
+},
+{
+"code": "805.01",
+"name": "CUFINRE de ejercicios anteriores"
+},
+{
+"code": "805.02",
+"name": "Contra cuenta CUFINRE de ejercicios anteriores"
+},
+{
+"code": "806",
+"name": "CUCA del ejercicio"
+},
+{
+"code": "806.01",
+"name": "CUCA"
+},
+{
+"code": "806.02",
+"name": "Contra cuenta CUCA"
+},
+{
+"code": "807",
+"name": "CUCA de ejercicios anteriores"
+},
+{
+"code": "807.01",
+"name": "CUCA de ejercicios anteriores"
+},
+{
+"code": "807.02",
+"name": "Contra cuenta CUCA de ejercicios anteriores"
+},
+{
+"code": "808",
+"name": "Ajuste anual por inflación acumulable"
+},
+{
+"code": "808.01",
+"name": "Ajuste anual por inflación acumulable"
+},
+{
+"code": "808.02",
+"name": "Acumulación del ajuste anual inflacionario"
+},
+{
+"code": "809",
+"name": "Ajuste anual por inflación deducible"
+},
+{
+"code": "809.01",
+"name": "Ajuste anual por inflación deducible"
+},
+{
+"code": "809.02",
+"name": "Deducción del ajuste anual inflacionario"
+},
+{
+"code": "810",
+"name": "Deducción de inversión"
+},
+{
+"code": "810.01",
+"name": "Deducción de inversión"
+},
+{
+"code": "810.02",
+"name": "Contra cuenta deducción de inversiones"
+},
+{
+"code": "811",
+"name": "Utilidad o pérdida fiscal en venta y/o baja de activo fijo"
+},
+{
+"code": "811.01",
+"name": "Utilidad o pérdida fiscal en venta y/o baja de activo fijo"
+},
+{
+"code": "811.02",
+"name": "Contra cuenta utilidad o pérdida fiscal en venta y/o baja de activo fijo"
+},
+{
+"code": "812",
+"name": "Utilidad o pérdida fiscal en venta acciones o partes sociales"
+},
+{
+"code": "812.01",
+"name": "Utilidad o pérdida fiscal en venta acciones o partes sociales"
+},
+{
+"code": "812.02",
+"name": "Contra cuenta utilidad o pérdida fiscal en venta acciones o partes sociales"
+},
+{
+"code": "813",
+"name": "Pérdidas fiscales pendientes de amortizar actualizadas de ejercicios anteriores"
+},
+{
+"code": "813.01",
+"name": "Pérdidas fiscales pendientes de amortizar actualizadas de ejercicios anteriores"
+},
+{
+"code": "813.02",
+"name": "Actualización de pérdidas fiscales pendientes de amortizar de ejercicios anteriores"
+},
+{
+"code": "814",
+"name": "Mercancías recibidas en consignación"
+},
+{
+"code": "814.01",
+"name": "Mercancías recibidas en consignación"
+},
+{
+"code": "814.02",
+"name": "Consignación de mercancías recibidas"
+},
+{
+"code": "815",
+"name": "Crédito fiscal de IVA e IEPS por la importación de mercancías para empresas certificadas"
+},
+{
+"code": "815.01",
+"name": "Crédito fiscal de IVA e IEPS por la importación de mercancías"
+},
+{
+"code": "815.02",
+"name": "Importación de mercancías con aplicación de crédito fiscal de IVA e IEPS"
+},
+{
+"code": "816",
+"name": "Crédito fiscal de IVA e IEPS por la importación de activos fijos para empresas certificadas"
+},
+{
+"code": "816.01",
+"name": "Crédito fiscal de IVA e IEPS por la importación de activo fijo"
+},
+{
+"code": "816.02",
+"name": "Importación de activo fijo con aplicación de crédito fiscal de IVA e IEPS"
+},
+{
+"code": "899",
+"name": "Otras cuentas de orden"
+},
+{
+"code": "899.01",
+"name": "Otras cuentas de orden"
+},
+{
+"code": "899.02",
+"name": "Contra cuenta otras cuentas de orden"
+}
+]

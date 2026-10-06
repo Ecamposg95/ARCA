@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
-import { ContpaqiCodeCell } from '@/features/accounting/ContpaqiCodeCell'
+import { AccountFieldCell } from '@/features/accounting/AccountFieldCell'
 import { JournalDiary } from '@/features/accounting/JournalDiary'
 import { PeriodsPanel } from '@/features/accounting/PeriodsPanel'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -11,7 +11,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { Table } from '@/components/ui/Table'
 import { formatMoney } from '@/lib/format'
 import { PERIOD_OPTIONS, rangeForPeriod, type PeriodKey } from '@/lib/periods'
-import type { JournalEntry, LedgerAccount, Page, TrialBalanceRow } from '@/types/api'
+import type { JournalEntry, LedgerAccount, Page, SatCode, TrialBalanceRow } from '@/types/api'
 
 type Tab = 'diario' | 'balanza' | 'catalogo' | 'periodos'
 
@@ -47,6 +47,16 @@ export function AccountingPage() {
     queryKey: ['accounting', 'accounts'],
     queryFn: async () => (await api.get<LedgerAccount[]>('/accounting/accounts')).data,
   })
+  const satCodesQuery = useQuery({
+    queryKey: ['accounting', 'sat-codes'],
+    queryFn: async () => (await api.get<SatCode[]>('/accounting/sat/codes')).data,
+    enabled: tab === 'catalogo',
+    staleTime: Infinity,
+  })
+  const satName = useMemo(() => {
+    const map = new Map((satCodesQuery.data ?? []).map((item) => [item.code, item.name]))
+    return (code: string | null) => (code ? (map.get(code) ?? '') : '')
+  }, [satCodesQuery.data])
   const entriesQuery = useQuery({
     queryKey: ['accounting', 'entries', period, offset],
     queryFn: async () =>
@@ -203,22 +213,42 @@ export function AccountingPage() {
       ) : null}
 
       {tab === 'catalogo' ? (
-        <Table headers={['Código', 'Cuenta', 'Tipo', 'Cuenta en CONTPAQi']}>
-          {(accountsQuery.data ?? []).map((account) => (
-            <tr key={account.id} className={account.parent_id ? '' : 'bg-surface-2/40 font-medium'}>
-              <td className="figures px-4 py-2">{account.code}</td>
-              <td className={`px-4 py-2 ${account.parent_id ? 'pl-8' : ''}`}>{account.name}</td>
-              {/* El tipo sólo en la cuenta mayor: repetirlo en cada hija es ruido. */}
-              <td className="px-4 py-2 text-muted">
-                {account.parent_id ? '' : (ACCOUNT_TYPE_LABELS[account.type] ?? account.type)}
-              </td>
-              {/* Sólo las cuentas que reciben movimientos necesitan equivalente. */}
-              <td className="px-4 py-1.5">
-                {account.parent_id ? <ContpaqiCodeCell account={account} /> : null}
-              </td>
-            </tr>
-          ))}
-        </Table>
+        <>
+          <Table headers={['Código', 'Cuenta', 'Tipo', 'Código SAT', 'Cuenta en CONTPAQi']} secondary={[3, 5]}>
+            {(accountsQuery.data ?? []).map((account) => (
+              <tr key={account.id} className={account.parent_id ? '' : 'bg-surface-2/40 font-medium'}>
+                <td className="figures px-4 py-2">{account.code}</td>
+                <td className={`px-4 py-2 ${account.parent_id ? 'pl-8' : ''}`}>{account.name}</td>
+                {/* El tipo sólo en la cuenta mayor: repetirlo en cada hija es ruido. */}
+                <td className="px-4 py-2 text-muted">
+                  {account.parent_id ? '' : (ACCOUNT_TYPE_LABELS[account.type] ?? account.type)}
+                </td>
+                {/* El SAT clasifica todos los niveles; CONTPAQi sólo recibe movimientos. */}
+                <td className="px-4 py-1.5">
+                  <AccountFieldCell
+                    account={account}
+                    field="sat_code"
+                    placeholder="Sin código SAT"
+                    list="sat-codes"
+                    caption={satName(account.sat_code)}
+                  />
+                </td>
+                <td className="px-4 py-1.5">
+                  {account.parent_id ? (
+                    <AccountFieldCell account={account} field="contpaqi_code" placeholder="Sin equivalente" />
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </Table>
+          <datalist id="sat-codes">
+            {(satCodesQuery.data ?? []).map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.name}
+              </option>
+            ))}
+          </datalist>
+        </>
       ) : null}
 
       {tab === 'periodos' ? <PeriodsPanel /> : null}
