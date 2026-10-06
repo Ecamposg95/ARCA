@@ -115,7 +115,11 @@ declarada: `1490 Depreciación Acumulada` es un contra-activo y va con `A`
 `GET /api/accounting/sat/balanza?year&month&tipo=N|C`
 
 - Por cuenta: `SaldoIni` (saldo al cierre del mes anterior), `Debe` y `Haber`
-  (movimientos del mes), `SaldoFin`. Los saldos van en la naturaleza de la
+  (movimientos del mes), `SaldoFin`. **Cierre anual virtual:** ARCA no cierra el
+  ejercicio, así que ingresos y gastos sólo arrastran saldo desde el 1 de enero
+  del año pedido y el resultado neto de los años anteriores abre en `3200
+  Resultados Acumulados`. Así enero no muestra las ventas de años pasados como
+  saldo inicial, que es lo que el SAT cruza contra la declaración anual. Los saldos van en la naturaleza de la
   cuenta: para `D`, `SaldoFin = SaldoIni + Debe − Haber`; para `A`,
   `SaldoFin = SaldoIni − Debe + Haber`. Un saldo contrario a la naturaleza sale
   negativo.

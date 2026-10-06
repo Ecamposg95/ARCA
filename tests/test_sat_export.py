@@ -240,3 +240,26 @@ def test_a_viewer_cannot_download(client):
         ).json()
     )
     assert client.get("/api/accounting/sat/catalogo", headers=viewer, params=MONTH).status_code == 403
+
+
+def test_prior_year_results_open_the_year_in_retained_earnings(client):
+    """ARCA no tiene cierre anual: el XML lo hace virtual. Ingresos y gastos de
+    años anteriores no arrastran saldo; su resultado neto abre en 3200."""
+    headers, account, category = _setup(client)
+    _income(client, headers, account, category, amount="11600", when=date(TODAY.year - 1, 6, 15))
+    _expense(client, headers, account, category, amount="2320", when=date(TODAY.year - 1, 7, 20))
+    _income(client, headers, account, category, amount="1160")
+
+    rows = _balanza(client, headers)
+    ventas = rows["4100"]
+    assert (ventas["@SaldoIni"], ventas["@Haber"], ventas["@SaldoFin"]) == (
+        Decimal("0.00"),
+        Decimal("1000.00"),
+        Decimal("1000.00"),
+    )
+    assert "5300" not in rows  # el gasto del año pasado ya no es saldo de este año
+    assert rows["3200"]["@SaldoIni"] == Decimal("8000.00")  # 10,000 − 2,000 del año anterior
+    # El IVA de aquellas operaciones sí sigue en balance: es pasivo/activo, no resultado.
+    assert rows["2190"]["@SaldoIni"] == Decimal("1600.00")
+    leaves = [row for code, row in rows.items() if len(code) == 4 and code[1:] != "000"]
+    assert sum(r["@Debe"] for r in leaves) == sum(r["@Haber"] for r in leaves)

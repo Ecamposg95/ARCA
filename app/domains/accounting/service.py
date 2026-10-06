@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import Organization
+from app.services.accounting.coa import CODE_RETAINED_EARNINGS
 from app.services.accounting.sat import (
     BalanceRow,
     CatalogRow,
@@ -95,6 +96,8 @@ def month_vouchers(
 
 # --- Contabilidad electrónica (Anexo 24) ---
 
+RESULT_ACCOUNT_TYPES = ("REVENUE", "EXPENSE")
+
 
 def _active_accounts(db: Session, organization_id: str) -> list[Account]:
     return (
@@ -154,16 +157,35 @@ def sat_balance(db: Session, organization_id: str, year: int, month: int) -> lis
     aplican SU naturaleza: así un contra-activo resta en el total de activo."""
     start = date(year, month, 1)
     end = date(year, month, monthrange(year, month)[1])
-    before = _line_sums(db, organization_id, None, start - timedelta(days=1))
+    year_start = date(year, 1, 1)
+    # ARCA no tiene cierre anual, así que el XML lo hace virtual: ingresos y
+    # gastos sólo arrastran saldo desde el 1 de enero, y el resultado neto de
+    # los años anteriores abre en Resultados Acumulados. Sin esto, enero
+    # mostraría las ventas de todos los años como saldo inicial.
+    prior_years = _line_sums(db, organization_id, None, year_start - timedelta(days=1))
+    this_year = _line_sums(db, organization_id, year_start, start - timedelta(days=1))
     during = _line_sums(db, organization_id, start, end)
 
     accounts = _active_accounts(db, organization_id)
     zero = (Decimal("0"), Decimal("0"))
     raw: dict[str, list[Decimal]] = {}  # id → [deb_before, cred_before, deb_month, cred_month]
+    prior_result = Decimal("0")  # acreedor positivo: utilidad
     for account in accounts:
-        db_, cb = before.get(account.id, zero)
+        dp, cp = prior_years.get(account.id, zero)
+        dy, cy = this_year.get(account.id, zero)
         dm, cm = during.get(account.id, zero)
-        raw[account.id] = [db_, cb, dm, cm]
+        if account.type in RESULT_ACCOUNT_TYPES:
+            raw[account.id] = [dy, cy, dm, cm]
+            if account.parent_id:  # sólo hojas: los padres se agregan abajo
+                prior_result += cp - dp
+        else:
+            raw[account.id] = [dp + dy, cp + cy, dm, cm]
+    retained = next((a for a in accounts if a.code == CODE_RETAINED_EARNINGS), None)
+    if retained is not None and prior_result:
+        if prior_result > 0:
+            raw[retained.id][1] += prior_result
+        else:
+            raw[retained.id][0] += -prior_result
     for account in accounts:
         if account.parent_id in raw:
             for i in range(4):
