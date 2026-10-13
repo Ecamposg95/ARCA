@@ -30,6 +30,16 @@ export function rangeForPeriod(period: PeriodKey): { start?: string; end?: strin
   return { start: iso(new Date(now.getFullYear(), now.getMonth(), 1)), end: iso(now) }
 }
 
+/** El periodo más angosto (en el orden de PERIOD_OPTIONS) que contiene la fecha ISO:
+ *  sirve para que una póliza recién creada, aun fechada atrás, quede visible en la lista. */
+export function periodContaining(dateIso: string): PeriodKey {
+  for (const { key } of PERIOD_OPTIONS) {
+    const { start, end } = rangeForPeriod(key)
+    if ((!start || dateIso >= start) && (!end || dateIso <= end)) return key
+  }
+  return 'all'
+}
+
 export function periodLabel(period: PeriodKey): string {
   return PERIOD_OPTIONS.find((option) => option.key === period)?.label ?? ''
 }
