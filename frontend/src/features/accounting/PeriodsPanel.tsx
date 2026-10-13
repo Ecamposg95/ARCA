@@ -49,13 +49,16 @@ function OpeningBalanceCard({ onShowEntry }: { onShowEntry?: (id: string) => voi
     queryFn: async () => (await api.get<OpeningBalance>('/accounting/opening-balance')).data,
   })
   const entry = openingQuery.data?.entry ?? null
+  const accountsLoading = accountsQuery.isLoading
 
   if (openingQuery.isLoading) return <div className="h-24 animate-pulse rounded-xl bg-surface-2" />
 
   return (
     <>
       <Card>
-        {entry ? (
+        {openingQuery.isError ? (
+          <p className="text-sm text-neg">{errorMessage(openingQuery.error)}</p>
+        ) : entry ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-base font-semibold">
@@ -77,7 +80,9 @@ function OpeningBalanceCard({ onShowEntry }: { onShowEntry?: (id: string) => voi
               <h3 className="font-display text-base font-semibold">Saldos iniciales</h3>
               <p className="mt-1 text-sm text-muted">Trae los saldos con los que la empresa llega a ARCA.</p>
             </div>
-            <Button onClick={() => setFormOpen(true)}>Capturar saldos iniciales</Button>
+            <Button disabled={accountsLoading} onClick={() => setFormOpen(true)}>
+              Capturar saldos iniciales
+            </Button>
           </div>
         )}
       </Card>
@@ -108,6 +113,18 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
     queryFn: async () => (await api.get<Page<FiscalYear>>('/periods/years')).data.items,
   })
 
+  function startReopen(item: FiscalYear) {
+    setReason('')
+    setError(null)
+    setReopening(item)
+  }
+
+  function stopReopen() {
+    setReopening(null)
+    setReason('')
+    setError(null)
+  }
+
   // Cerrar o reabrir asienta una póliza: el diario y la balanza también cambian.
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ['periods'] })
@@ -128,9 +145,7 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
     },
     onSuccess: () => {
       invalidate()
-      setReopening(null)
-      setReason('')
-      setError(null)
+      stopReopen()
     },
     onError: (err) => setError(errorMessage(err)),
   })
@@ -163,6 +178,13 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
         ]}
         secondary={[2, 3]}
       >
+        {(data ?? []).length === 0 ? (
+          <tr>
+            <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted">
+              Aún no hay ejercicios con movimientos.
+            </td>
+          </tr>
+        ) : null}
         {(data ?? []).map((item) => (
           <tr key={item.year} className="hover:bg-surface-2/50">
             <td className="figures px-4 py-2.5 font-medium">{item.year}</td>
@@ -193,7 +215,7 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
                       Ver póliza
                     </Button>
                   ) : null}
-                  <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => setReopening(item)}>
+                  <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => startReopen(item)}>
                     Reabrir
                   </Button>
                 </>
@@ -226,7 +248,7 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
       <Modal
         title={`Reabrir el ejercicio ${reopening?.year ?? ''}`}
         open={reopening !== null}
-        onClose={() => setReopening(null)}
+        onClose={() => stopReopen()}
       >
         <form
           onSubmit={(event) => {
@@ -250,7 +272,7 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
             required
           />
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setReopening(null)}>
+            <Button variant="ghost" onClick={() => stopReopen()}>
               Cancelar
             </Button>
             <Button type="submit" disabled={reopen.isPending}>
@@ -264,7 +286,6 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
 }
 
 export function PeriodsPanel({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
-
   const queryClient = useQueryClient()
   const [reopening, setReopening] = useState<Period | null>(null)
   const [reason, setReason] = useState('')

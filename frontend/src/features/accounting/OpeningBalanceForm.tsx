@@ -40,7 +40,8 @@ function toNumber(value: string | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 
-const cents = (value: number) => Math.round(value * 100) / 100
+/** Centavos enteros: los totales se acumulan sin aritmética de punto flotante sobre dinero. */
+const toCents = (value: string | undefined) => Math.round(toNumber(value) * 100)
 
 const lastYearEnd = () => `${new Date().getFullYear() - 1}-12-31`
 
@@ -90,14 +91,15 @@ export function OpeningBalanceForm({
   const filled = groups
     .flatMap((group) => group.rows)
     .filter((account) => toNumber(amounts[account.id]) > 0)
-  const assets = cents(
-    filled.filter((a) => a.type === 'ASSET').reduce((sum, a) => sum + toNumber(amounts[a.id]), 0),
-  )
-  const liabilitiesAndEquity = cents(
-    filled.filter((a) => a.type !== 'ASSET').reduce((sum, a) => sum + toNumber(amounts[a.id]), 0),
-  )
+  const assetsCents = filled.filter((a) => a.type === 'ASSET').reduce((sum, a) => sum + toCents(amounts[a.id]), 0)
+  const liabilitiesAndEquityCents = filled
+    .filter((a) => a.type !== 'ASSET')
+    .reduce((sum, a) => sum + toCents(amounts[a.id]), 0)
   // Activo mayor que pasivo y capital: la diferencia se abona a la cuenta de cuadre (sube el capital).
-  const residual = cents(assets - liabilitiesAndEquity)
+  const residualCents = assetsCents - liabilitiesAndEquityCents
+  const assets = assetsCents / 100
+  const liabilitiesAndEquity = liabilitiesAndEquityCents / 100
+  const residual = residualCents / 100
   const canSave = filled.length > 0 && Boolean(date)
 
   function reset() {
