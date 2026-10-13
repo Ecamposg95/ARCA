@@ -47,7 +47,14 @@ export function AccountFieldCell({
 
   function commit() {
     editing.current = false
-    if (value.trim() !== saved) save.mutate(value.trim())
+    const next = value.trim()
+    // Un nombre en blanco nunca es válido: se restaura en vez de pedirle al backend que lo rechace.
+    if (field === 'name' && next === '') {
+      setValue(saved)
+      setError(null)
+      return
+    }
+    if (next !== saved) save.mutate(next)
   }
 
   return (

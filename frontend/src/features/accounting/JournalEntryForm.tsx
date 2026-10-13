@@ -30,8 +30,14 @@ function toNumber(value: string): number {
 
 const cents = (value: number) => Math.round(value * 100) / 100
 
-const cellInput =
-  'w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink placeholder:text-muted/50 hover:border-muted/40'
+const cellBase = 'w-full rounded border bg-surface px-2 py-1.5 text-sm text-ink placeholder:text-muted/50'
+const cellInput = `${cellBase} border-border hover:border-muted/40`
+const cellInvalid = `${cellBase} border-neg`
+
+/** Importe en captura: sólo dígitos y hasta dos decimales (sin comas ni signos). */
+const AMOUNT_PATTERN = /^\d*(\.\d{0,2})?$/
+
+const hasAmount = (line: Line) => toNumber(line.debit) > 0 || toNumber(line.credit) > 0
 
 export function JournalEntryForm({
   open,
@@ -56,11 +62,17 @@ export function JournalEntryForm({
     [accounts],
   )
 
-  const totalDebit = cents(lines.reduce((sum, line) => sum + toNumber(line.debit), 0))
-  const totalCredit = cents(lines.reduce((sum, line) => sum + toNumber(line.credit), 0))
+  // Los totales se calculan sobre lo mismo que se envía: una línea a medias
+  // (importe sin cuenta, o cuenta sin importe) nunca cuenta ni viaja, y bloquea el guardado.
+  const filled = lines.filter((line) => line.account_id && hasAmount(line))
+  const missingAccount = (line: Line) => !line.account_id && hasAmount(line)
+  const missingAmount = (line: Line) => Boolean(line.account_id) && !hasAmount(line)
+  const incomplete = lines.some((line) => missingAccount(line) || missingAmount(line))
+  const totalDebit = cents(filled.reduce((sum, line) => sum + toNumber(line.debit), 0))
+  const totalCredit = cents(filled.reduce((sum, line) => sum + toNumber(line.credit), 0))
   const difference = cents(totalDebit - totalCredit)
-  const filled = lines.filter((line) => line.account_id && (toNumber(line.debit) > 0 || toNumber(line.credit) > 0))
-  const canSave = description.trim().length > 0 && filled.length >= 2 && difference === 0 && totalDebit > 0
+  const canSave =
+    description.trim().length > 0 && filled.length >= 2 && !incomplete && difference === 0 && totalDebit > 0
 
   function reset() {
     setDate(today())
@@ -156,7 +168,7 @@ export function JournalEntryForm({
                   <td className="px-2 py-1.5">
                     <select
                       aria-label={`Cuenta de la línea ${index + 1}`}
-                      className={cellInput}
+                      className={missingAccount(line) ? cellInvalid : cellInput}
                       value={line.account_id}
                       onChange={(e) => updateLine(index, { account_id: e.target.value })}
                     >
@@ -171,21 +183,27 @@ export function JournalEntryForm({
                   <td className="px-2 py-1.5">
                     <input
                       aria-label={`Cargo de la línea ${index + 1}`}
-                      className={`${cellInput} figures text-right`}
+                      className={`${missingAmount(line) ? cellInvalid : cellInput} figures text-right`}
                       inputMode="decimal"
                       placeholder="0.00"
                       value={line.debit}
-                      onChange={(e) => updateLine(index, { debit: e.target.value, credit: e.target.value ? '' : line.credit })}
+                      onChange={(e) => {
+                        if (!AMOUNT_PATTERN.test(e.target.value)) return
+                        updateLine(index, { debit: e.target.value, credit: e.target.value ? '' : line.credit })
+                      }}
                     />
                   </td>
                   <td className="px-2 py-1.5">
                     <input
                       aria-label={`Abono de la línea ${index + 1}`}
-                      className={`${cellInput} figures text-right`}
+                      className={`${missingAmount(line) ? cellInvalid : cellInput} figures text-right`}
                       inputMode="decimal"
                       placeholder="0.00"
                       value={line.credit}
-                      onChange={(e) => updateLine(index, { credit: e.target.value, debit: e.target.value ? '' : line.debit })}
+                      onChange={(e) => {
+                        if (!AMOUNT_PATTERN.test(e.target.value)) return
+                        updateLine(index, { credit: e.target.value, debit: e.target.value ? '' : line.debit })
+                      }}
                     />
                   </td>
                   <td className="px-2 py-1.5">
@@ -217,7 +235,9 @@ export function JournalEntryForm({
                 <td className="figures px-2 py-2 text-right">{formatMoney(totalDebit)}</td>
                 <td className="figures px-2 py-2 text-right">{formatMoney(totalCredit)}</td>
                 <td className="px-2 py-2 text-xs" colSpan={2}>
-                  {difference === 0 && totalDebit > 0 ? (
+                  {incomplete ? (
+                    <span className="text-neg">Hay líneas sin cuenta o sin importe</span>
+                  ) : difference === 0 && totalDebit > 0 ? (
                     <span className="text-pos">cargos = abonos ✓</span>
                   ) : (
                     <span className="text-muted">

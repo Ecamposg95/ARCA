@@ -189,10 +189,12 @@ export function JournalDiary({
   page,
   onOffsetChange,
   accountLabel,
+  onReversed,
 }: {
   page: Page<JournalEntry>
   onOffsetChange: (offset: number) => void
   accountLabel: (id: string) => string
+  onReversed?: (reversal: JournalEntry) => void
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const listRef = useRef<HTMLDivElement>(null)
@@ -202,7 +204,11 @@ export function JournalDiary({
 
   const entries = page.items
   const requested = searchParams.get('poliza')
-  const selected = entries.find((entry) => entry.id === requested) ?? entries[0] ?? null
+  // Sin ?poliza= se muestra la primera; con un id que no está en esta página, ninguna:
+  // resaltar una fila al azar sería peor que no resaltar nada.
+  const selected = requested
+    ? (entries.find((entry) => entry.id === requested) ?? null)
+    : (entries[0] ?? null)
 
   function select(entry: JournalEntry, fromClick = false) {
     const params = new URLSearchParams(searchParams)
@@ -292,7 +298,7 @@ export function JournalDiary({
             key={selected.id}
             entry={selected}
             accountLabel={accountLabel}
-            onReversed={(reversal) => select(reversal)}
+            onReversed={onReversed}
           />
         </div>
       ) : null}
@@ -311,7 +317,7 @@ export function JournalDiary({
               entry={selected}
               accountLabel={accountLabel}
               onClose={() => setDrawerOpen(false)}
-              onReversed={(reversal) => select(reversal)}
+              onReversed={onReversed}
             />
           </div>
         </div>

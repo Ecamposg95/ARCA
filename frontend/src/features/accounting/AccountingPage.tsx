@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Segmented } from '@/components/ui/Segmented'
 import { Table } from '@/components/ui/Table'
 import { formatMoney } from '@/lib/format'
-import { PERIOD_OPTIONS, rangeForPeriod, type PeriodKey } from '@/lib/periods'
+import { PERIOD_OPTIONS, periodContaining, rangeForPeriod, type PeriodKey } from '@/lib/periods'
 import type { JournalEntry, LedgerAccount, Page, SatCode, TrialBalanceRow } from '@/types/api'
 
 type Tab = 'diario' | 'balanza' | 'catalogo' | 'periodos'
@@ -55,7 +55,7 @@ export function AccountingPage() {
     setSearchParams(params, { replace: true })
   }
   function selectCreated(entry: JournalEntry) {
-    setPeriod('current')
+    setPeriod(periodContaining(entry.date))
     setOffset(0)
     setSearchParams({ poliza: entry.id }, { replace: true })
   }
@@ -177,6 +177,7 @@ export function AccountingPage() {
             page={entriesQuery.data!}
             onOffsetChange={setOffset}
             accountLabel={accountLabel}
+            onReversed={selectCreated}
           />
         )
       ) : null}
@@ -290,21 +291,19 @@ export function AccountingPage() {
                   ) : null}
                 </td>
                 <td className="px-4 py-1.5 text-right">
-                  {account.parent_id && !account.system ? (
-                    account.active ? (
-                      <Button
-                        variant="ghost"
-                        disabled={account.has_movements || toggleActive.isPending}
-                        title={account.has_movements ? 'Tiene movimientos; no se puede desactivar' : undefined}
-                        onClick={() => toggleActive.mutate(account)}
-                      >
-                        Desactivar
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" disabled={toggleActive.isPending} onClick={() => toggleActive.mutate(account)}>
-                        Reactivar
-                      </Button>
-                    )
+                  {!account.active ? (
+                    <Button variant="ghost" disabled={toggleActive.isPending} onClick={() => toggleActive.mutate(account)}>
+                      Reactivar
+                    </Button>
+                  ) : account.parent_id && !account.system ? (
+                    <Button
+                      variant="ghost"
+                      disabled={account.has_movements || toggleActive.isPending}
+                      title={account.has_movements ? 'Tiene movimientos; no se puede desactivar' : undefined}
+                      onClick={() => toggleActive.mutate(account)}
+                    >
+                      Desactivar
+                    </Button>
                   ) : null}
                 </td>
               </tr>
