@@ -15,6 +15,8 @@ _Actualizado: 2026-10-12 (plan maestro MVP)_
 - Railway: PostgreSQL + servicio `ARCA` conectado al repo GitHub (`Ecamposg95/ARCA`, auto-deploy en push a main), dominio https://arca-production-d769.up.railway.app
 - Deployment productivo validado end-to-end (registro real → ingreso → gasto → dashboard/balance/balanza correctos vía HTTPS).
 
+- **C-1 Pólizas manuales y catálogo editable** (spec 2026-10-12): `POST /api/accounting/journal-entries` (sólo Diario, cuentas de detalle, nunca 1100/1200/2100/2200), reverso único por `/reverse`, alta de cuentas de detalle bajo una mayor (`POST /api/accounting/accounts`), renombrar y desactivar sin movimientos; UI con formulario de póliza, reverso desde el diario y catálogo editable.
+
 ## In Progress
 
 - (nada)
@@ -33,7 +35,7 @@ _Actualizado: 2026-10-12 (plan maestro MVP)_
 Plan maestro del MVP e integraciones Atlas (2026-10-12): `docs/MEGA_PLAN_MVP.md`; referencia técnica: `docs/ARCHITECTURE.md`.
 
 - Fase 0 · ROB robustez (outbox durable, webhooks HMAC, rate limiting, expiración de propuestas) en paralelo con la fase 1.
-- Fase 1 · C1 pólizas manuales y catálogo editable (diseño aprobado), C2 apertura y cierre anual, B estados financieros NIF.
+- Fase 1 · C2 apertura y cierre anual, B estados financieros NIF (C1 ya en producción).
 - Fase 2 · E importar CFDI, BANK conciliación bancaria, eventos de Atlas ONE.
 - Fase 3 · TAX cédula y calendario, DESP flujo del despacho, HRFlow etapa 1.
 - Fase 4 · FACT facturación CFDI 4.0 vía PAC (sirve a ARCA, ONE y nómina de HRFlow).
