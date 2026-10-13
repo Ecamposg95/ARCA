@@ -7,9 +7,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
+import { api, errorMessage } from '@/api/client'
+import { Button } from '@/components/ui/Button'
 import { TableFooter } from '@/components/ui/Pagination'
-import { formatDate, formatMoney } from '@/lib/format'
+import { formatDate, formatMoney, today } from '@/lib/format'
 import type { JournalEntry, Page } from '@/types/api'
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -23,18 +26,45 @@ const SOURCE_LABELS: Record<string, string> = {
   depreciation: 'Depreciación',
   loan: 'Préstamo',
   loan_payment: 'Pago de préstamo',
+  manual: 'Póliza manual',
 }
 
 function EntryDetail({
   entry,
   accountLabel,
   onClose,
+  onReversed,
 }: {
   entry: JournalEntry
   accountLabel: (id: string) => string
   onClose?: () => void
+  onReversed?: (reversal: JournalEntry) => void
 }) {
+  const queryClient = useQueryClient()
+  const [reversing, setReversing] = useState(false)
+  const [date, setDate] = useState(today())
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const total = entry.lines.reduce((sum, line) => sum + Number(line.debit), 0)
+  const canReverse = entry.source_type === 'manual' && !entry.reversed && !entry.reversal_of
+
+  const reverse = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post<JournalEntry>(`/accounting/journal-entries/${entry.id}/reverse`, {
+          date,
+          description: reason.trim() || null,
+        })
+      ).data,
+    onSuccess: (reversal) => {
+      void queryClient.invalidateQueries({ queryKey: ['accounting'] })
+      setReversing(false)
+      setReason('')
+      setError(null)
+      onReversed?.(reversal)
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface shadow-card">
       <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
@@ -47,6 +77,11 @@ function EntryDetail({
               ? ` · ${SOURCE_LABELS[entry.source_type] ?? entry.source_type}`
               : ''}
           </p>
+          {entry.reversed ? (
+            <p className="mt-1 text-xs font-medium text-neg">Revertida</p>
+          ) : entry.reversal_of ? (
+            <p className="mt-1 text-xs font-medium text-muted">Reverso de otra póliza</p>
+          ) : null}
         </div>
         {onClose ? (
           <button
@@ -95,6 +130,56 @@ function EntryDetail({
             </tr>
           </tbody>
         </table>
+
+        {canReverse ? (
+          <div className="mt-4 border-t border-border pt-3">
+            {reversing ? (
+              <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[9rem_1fr]">
+                  <input
+                    type="date"
+                    aria-label="Fecha del reverso"
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
+                    value={date}
+                    min={entry.date}
+                    max={today()}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  <input
+                    aria-label="Motivo del reverso"
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
+                    placeholder={`Reverso de ${entry.folio}`}
+                    value={reason}
+                    maxLength={500}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                </div>
+                {error ? <p className="text-xs text-neg">{error}</p> : null}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setReversing(false)
+                      setError(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button variant="danger" disabled={reverse.isPending} onClick={() => reverse.mutate()}>
+                    {reverse.isPending ? 'Revirtiendo…' : 'Confirmar reverso'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted">Deshacer es revertir: la original queda y se emite su espejo.</p>
+                <Button variant="secondary" onClick={() => setReversing(true)}>
+                  Revertir
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -203,7 +288,12 @@ export function JournalDiary({
       {/* Escritorio: el detalle acompaña a la lista, pegado arriba. */}
       {selected ? (
         <div className="hidden lg:sticky lg:top-4 lg:block lg:max-h-[78vh]">
-          <EntryDetail entry={selected} accountLabel={accountLabel} />
+          <EntryDetail
+            key={selected.id}
+            entry={selected}
+            accountLabel={accountLabel}
+            onReversed={(reversal) => select(reversal)}
+          />
         </div>
       ) : null}
 
@@ -217,9 +307,11 @@ export function JournalDiary({
           />
           <div className="absolute inset-y-0 right-0 w-full max-w-md p-2">
             <EntryDetail
+              key={selected.id}
               entry={selected}
               accountLabel={accountLabel}
               onClose={() => setDrawerOpen(false)}
+              onReversed={(reversal) => select(reversal)}
             />
           </div>
         </div>
