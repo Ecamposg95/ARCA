@@ -1,8 +1,9 @@
 import { Fragment, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { api } from '@/api/client'
+import { api, errorMessage } from '@/api/client'
 import { AccountFieldCell } from '@/features/accounting/AccountFieldCell'
+import { AccountForm } from '@/features/accounting/AccountForm'
 import { JournalDiary } from '@/features/accounting/JournalDiary'
 import { JournalEntryForm } from '@/features/accounting/JournalEntryForm'
 import { PeriodsPanel } from '@/features/accounting/PeriodsPanel'
@@ -63,6 +64,20 @@ export function AccountingPage() {
     queryKey: ['accounting', 'accounts'],
     queryFn: async () => (await api.get<LedgerAccount[]>('/accounting/accounts')).data,
   })
+  const queryClient = useQueryClient()
+  const [newAccountOpen, setNewAccountOpen] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
+  const toggleActive = useMutation({
+    mutationFn: async (account: LedgerAccount) =>
+      (await api.patch<LedgerAccount>(`/accounting/accounts/${account.id}`, { active: !account.active })).data,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['accounting', 'accounts'] }),
+    onError: (err) => window.alert(errorMessage(err)),
+  })
+  const majors = useMemo(() => (accountsQuery.data ?? []).filter((account) => !account.parent_id), [accountsQuery.data])
+  const catalogRows = useMemo(
+    () => (accountsQuery.data ?? []).filter((account) => showInactive || account.active),
+    [accountsQuery.data, showInactive],
+  )
   const satCodesQuery = useQuery({
     queryKey: ['accounting', 'sat-codes'],
     queryFn: async () => (await api.get<SatCode[]>('/accounting/sat/codes')).data,
@@ -134,6 +149,15 @@ export function AccountingPage() {
             ) : null}
             {tab === 'diario' ? (
               <Button onClick={() => setNewEntryOpen(true)}>Nueva póliza</Button>
+            ) : null}
+            {tab === 'catalogo' ? (
+              <>
+                <label className="flex items-center gap-1.5 text-xs text-muted">
+                  <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+                  Mostrar inactivas
+                </label>
+                <Button onClick={() => setNewAccountOpen(true)}>Nueva cuenta</Button>
+              </>
             ) : null}
           </div>
         </div>
@@ -236,11 +260,16 @@ export function AccountingPage() {
 
       {tab === 'catalogo' ? (
         <>
-          <Table headers={['Código', 'Cuenta', 'Tipo', 'Código SAT', 'Cuenta en CONTPAQi']} secondary={[3, 5]}>
-            {(accountsQuery.data ?? []).map((account) => (
-              <tr key={account.id} className={account.parent_id ? '' : 'bg-surface-2/40 font-medium'}>
+          <Table headers={['Código', 'Cuenta', 'Tipo', 'Código SAT', 'Cuenta en CONTPAQi', '']} secondary={[3, 5]}>
+            {catalogRows.map((account) => (
+              <tr
+                key={account.id}
+                className={`${account.parent_id ? '' : 'bg-surface-2/40 font-medium'} ${account.active ? '' : 'text-muted'}`}
+              >
                 <td className="figures px-4 py-2">{account.code}</td>
-                <td className={`px-4 py-2 ${account.parent_id ? 'pl-8' : ''}`}>{account.name}</td>
+                <td className={`px-4 py-1.5 ${account.parent_id ? 'pl-8' : ''}`}>
+                  <AccountFieldCell account={account} field="name" placeholder="Nombre" />
+                </td>
                 {/* El tipo sólo en la cuenta mayor: repetirlo en cada hija es ruido. */}
                 <td className="px-4 py-2 text-muted">
                   {account.parent_id ? '' : (ACCOUNT_TYPE_LABELS[account.type] ?? account.type)}
@@ -258,6 +287,24 @@ export function AccountingPage() {
                 <td className="px-4 py-1.5">
                   {account.parent_id ? (
                     <AccountFieldCell account={account} field="contpaqi_code" placeholder="Sin equivalente" />
+                  ) : null}
+                </td>
+                <td className="px-4 py-1.5 text-right">
+                  {account.parent_id && !account.system ? (
+                    account.active ? (
+                      <Button
+                        variant="ghost"
+                        disabled={account.has_movements || toggleActive.isPending}
+                        title={account.has_movements ? 'Tiene movimientos; no se puede desactivar' : undefined}
+                        onClick={() => toggleActive.mutate(account)}
+                      >
+                        Desactivar
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" disabled={toggleActive.isPending} onClick={() => toggleActive.mutate(account)}>
+                        Reactivar
+                      </Button>
+                    )
                   ) : null}
                 </td>
               </tr>
@@ -281,6 +328,7 @@ export function AccountingPage() {
         accounts={accountsQuery.data ?? []}
         onCreated={selectCreated}
       />
+      <AccountForm open={newAccountOpen} onClose={() => setNewAccountOpen(false)} majors={majors} />
     </div>
   )
 }
