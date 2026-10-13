@@ -12,7 +12,7 @@ El canal de entrada es el despacho (Asecofim es el primer partner): el contador 
 
 ## 2. Estado de partida
 
-Producción corre en Railway con 310 pruebas verdes y un solo head de migraciones. Existe: motor contable de partida doble con folios, candado de mes y reversos; operación completa del dueño (ingresos, gastos, instrumentos con naturaleza, CxC y CxP con devengo, IVA por flujo, retenciones, activos fijos, préstamos, recurrentes, proyectos); reportes derivados del ledger; capa agéntica con llaves, 18 herramientas, auditoría y bandeja de propuestas; portal de despacho multiempresa; puente a CONTPAQi (sin verificar contra un CONTPAQi real) y contabilidad electrónica SAT Anexo 24. Detalle en `docs/MVP_STATUS.md`.
+Producción corre en Railway con 348 pruebas verdes y un solo head de migraciones. Existe: motor contable de partida doble con folios, candado de mes y reversos; operación completa del dueño (ingresos, gastos, instrumentos con naturaleza, CxC y CxP con devengo, IVA por flujo, retenciones, activos fijos, préstamos, recurrentes, proyectos); reportes derivados del ledger; capa agéntica con llaves, 18 herramientas, auditoría y bandeja de propuestas; portal de despacho multiempresa; puente a CONTPAQi (sin verificar contra un CONTPAQi real) y contabilidad electrónica SAT Anexo 24. Detalle en `docs/MVP_STATUS.md`.
 
 Lo que no hay y este plan cubre: pólizas manuales y catálogo editable; apertura y cierre anual; estados financieros NIF; entrada y salida de CFDI; conciliación bancaria; cálculo de impuestos y calendario; eventos desde Atlas ONE y HRFlow; Cortex operando de verdad sobre ARCA.
 

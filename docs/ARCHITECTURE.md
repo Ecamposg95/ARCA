@@ -158,7 +158,7 @@ Salida (`outbox_events`): el worker entrega `proposal.decided`, `invoice.stamped
 
 ## 11. Pruebas
 
-- `pytest` corre en SQLite en memoria con las migraciones aplicadas; fixtures `db` y `client` en `tests/conftest.py`. 310 pruebas al 2026-10-12.
+- `pytest` corre en SQLite en memoria con las migraciones aplicadas; fixtures `db` y `client` en `tests/conftest.py`. 348 pruebas al 2026-10-12.
 - Cada módulo trae: aislamiento de tenant, partida doble (la suite falla si una póliza descuadra), efecto en saldos de instrumentos, reporte contra ledger, RBAC y paginación. Los formatos externos (CONTPAQi, XML SAT, DIOT, CFDI) llevan archivo dorado.
 - Frontend: `npm run typecheck` y `npm run build`; capturas con Edge headless desde Windows para revisar UI.
 
