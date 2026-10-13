@@ -98,11 +98,16 @@ def main() -> None:
     parser.add_argument("--password", default="demodespacho2026")
     parser.add_argument("--contador", default="C.P. Demo", help="Nombre del contador")
     parser.add_argument("--despacho", default="Despacho Contable del Valle")
+    parser.add_argument(
+        "--contador-email",
+        default=None,
+        help="Correo fijo del contador (por defecto uno con la hora, para ensayos)",
+    )
     args = parser.parse_args()
 
     # El correo lleva la hora para que dos ensayos del mismo día no choquen.
     stamp = datetime.now().strftime("%m%d%H%M")
-    contador_email = f"contador{stamp}@atlas.mx"
+    contador_email = args.contador_email or f"contador{stamp}@atlas.mx"
     duena_email = f"duena{stamp}@atlas.mx"
     http = httpx.Client(base_url=f"{args.url.rstrip('/')}/api", timeout=60)
 
