@@ -634,17 +634,27 @@ def reverse_manual_entry(
     description: str | None = None,
     created_by: str | None = None,
 ) -> JournalEntry:
-    """Reverso de una póliza manual o de apertura: espejo, una sola vez, nunca sobre un reverso."""
+    """Reverso de una póliza manual o de apertura: espejo, una sola vez, nunca sobre un reverso.
+
+    El reverso de una apertura lleva la fecha de la apertura: fechado después,
+    los meses intermedios contarían dos aperturas. Por eso ignora la `date`
+    recibida y usa `entry.date`; el candado de ejercicio del motor sigue aplicando.
+    """
+    if entry.source_type == YEAR_CLOSE_SOURCE:
+        raise AccountingError("Una póliza de cierre se deshace reabriendo el ejercicio.")
     if entry.source_type not in HAND_REVERSIBLE_SOURCES:
         raise AccountingError("Esta póliza nació de una operación; cancélala desde su módulo.")
     if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
         raise AccountingError("Un reverso no se revierte; captura una póliza nueva.")
     if entry.status != "POSTED":
         raise AccountingError("Esta póliza no está contabilizada.")
-    if date < entry.date:
-        raise AccountingError("El reverso no puede ser anterior a la póliza original.")
-    if date > date_type.today():
-        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    if entry.source_type == OPENING_SOURCE:
+        date = entry.date
+    else:
+        if date < entry.date:
+            raise AccountingError("El reverso no puede ser anterior a la póliza original.")
+        if date > date_type.today():
+            raise AccountingError("No se puede asentar una póliza con fecha futura.")
     already = (
         db.query(JournalEntry.id)
         .filter(JournalEntry.organization_id == organization_id, JournalEntry.reference == f"{REVERSAL_PREFIX}{entry.id}")
