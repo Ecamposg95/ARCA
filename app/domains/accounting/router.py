@@ -3,6 +3,7 @@
 import re
 from datetime import date as date_type
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
@@ -33,9 +34,13 @@ from app.services.accounting.sat import (
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 from app.services.accounting.rules import (
     MODULE_CONTROLLED_CODES,
+    OPENING_BALANCING_CODES,
     REVERSAL_PREFIX,
     ManualLine,
+    OpeningLine,
+    live_opening_entry,
     manual_entry,
+    opening_entry,
     reverse_manual_entry,
 )
 
@@ -391,6 +396,70 @@ def reverse_journal_entry(
     db.commit()
     db.refresh(reversal)
     return _entry_read(db, org_id, reversal)
+
+
+class OpeningLineCreate(BaseModel):
+    account_id: str = Field(min_length=1)
+    # Saldo en la naturaleza de la cuenta; cero se ignora. Centavos exactos.
+    amount: Decimal = Field(ge=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
+
+
+class OpeningBalanceCreate(BaseModel):
+    date: date_type
+    description: str | None = Field(default=None, max_length=500)
+    balancing_code: Literal["3200", "3100"] = "3200"
+    lines: list[OpeningLineCreate] = Field(min_length=1, max_length=100)
+
+
+class OpeningBalanceRead(BaseModel):
+    """La apertura viva (sin reverso), o null, y las cuentas contra las que puede cuadrar."""
+
+    entry: JournalEntryRead | None
+    balancing_codes: list[str]
+
+
+@router.get("/opening-balance", response_model=OpeningBalanceRead)
+def get_opening_balance(
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    entry = live_opening_entry(db, org_id)
+    return OpeningBalanceRead(
+        entry=_entry_read(db, org_id, entry) if entry is not None else None,
+        balancing_codes=list(OPENING_BALANCING_CODES),
+    )
+
+
+@router.post("/opening-balance", response_model=JournalEntryRead, status_code=201)
+def create_opening_balance(
+    payload: OpeningBalanceCreate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Saldos iniciales por cuenta. Las reglas viven en rules.opening_entry."""
+    # FOR UPDATE sobre la empresa: dos aperturas simultáneas se serializan y la
+    # segunda ya ve la primera ("Ya existe una póliza de apertura").
+    db.query(Organization.id).filter(Organization.id == org_id).with_for_update().one()
+    try:
+        entry = opening_entry(
+            db,
+            org_id,
+            date=payload.date,
+            lines=[OpeningLine(line.account_id, line.amount) for line in payload.lines],
+            balancing_code=payload.balancing_code,
+            description=payload.description,
+            created_by=user.id,
+        )
+    except LookupError as error:
+        db.rollback()
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    db.refresh(entry)
+    return _entry_read(db, org_id, entry)
 
 
 @router.get("/trial-balance")

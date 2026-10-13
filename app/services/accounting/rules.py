@@ -25,13 +25,19 @@ from app.services.accounting.coa import (
     CODE_INTEREST_EXPENSE,
     CODE_ISR_WITHHELD,
     CODE_LOANS_PAYABLE,
+    CODE_RETAINED_EARNINGS,
     CODE_VAT_WITHHELD,
     CODE_VAT_CHARGED_COLLECTED,
     CODE_VAT_CHARGED_PENDING,
     CODE_VAT_CREDITABLE_PAID,
     CODE_VAT_CREDITABLE_PENDING,
 )
-from app.services.accounting.engine import AccountingError, LineSpec, post_journal_entry
+from app.services.accounting.engine import (
+    TWO_PLACES,
+    AccountingError,
+    LineSpec,
+    post_journal_entry,
+)
 
 
 def opening_balance_entry(
@@ -527,6 +533,10 @@ MODULE_CONTROLLED_CODES = {
 
 MANUAL_SOURCE = "manual"
 MAX_MANUAL_LINES = 100
+OPENING_SOURCE = "opening"
+# Pólizas que nacen a mano y por eso se revierten a mano desde el diario. Las
+# de operaciones se cancelan en su módulo; la de cierre anual, reabriendo el año.
+HAND_REVERSIBLE_SOURCES = (MANUAL_SOURCE, OPENING_SOURCE)
 
 
 @dataclass(frozen=True)
@@ -619,8 +629,8 @@ def reverse_manual_entry(
     description: str | None = None,
     created_by: str | None = None,
 ) -> JournalEntry:
-    """Reverso de una póliza manual: espejo, una sola vez, nunca sobre un reverso."""
-    if entry.source_type != MANUAL_SOURCE:
+    """Reverso de una póliza manual o de apertura: espejo, una sola vez, nunca sobre un reverso."""
+    if entry.source_type not in HAND_REVERSIBLE_SOURCES:
         raise AccountingError("Esta póliza nació de una operación; cancélala desde su módulo.")
     if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
         raise AccountingError("Un reverso no se revierte; captura una póliza nueva.")
@@ -639,3 +649,152 @@ def reverse_manual_entry(
         raise AccountingError("Esta póliza ya fue revertida.")
     text = (description or "").strip() or f"Reverso de {entry.folio}: {entry.description}"
     return reversal_of(db, organization_id, entry, text[:500], date, created_by=created_by)
+
+
+# --- Apertura (C-2) ---
+
+# La cuenta contra la que cuadra la apertura: 3200 por defecto, 3100 si el
+# contador prefiere llevar la diferencia a capital.
+OPENING_BALANCING_CODES = (CODE_RETAINED_EARNINGS, CODE_CAPITAL)
+BALANCE_SHEET_TYPES = ("ASSET", "LIABILITY", "EQUITY")
+MAX_OPENING_LINES = 100
+
+
+@dataclass(frozen=True)
+class OpeningLine:
+    """Saldo inicial de una cuenta, en su naturaleza (deudora o acreedora), >= 0."""
+
+    account_id: str
+    amount: Decimal
+
+
+def opening_source_id(organization_id: str) -> str:
+    return f"opening:{organization_id}"
+
+
+def live_opening_entry(db: Session, organization_id: str) -> JournalEntry | None:
+    """La apertura vigente: contabilizada, que no es un reverso y que nadie revirtió.
+
+    El reverso conserva `source_type`/`source_id` (lo hace `reversal_of`), así
+    que originales y reversos salen de la misma consulta y se separan por
+    `reference`.
+    """
+    entries = (
+        db.query(JournalEntry)
+        .filter(
+            JournalEntry.organization_id == organization_id,
+            JournalEntry.source_type == OPENING_SOURCE,
+            JournalEntry.source_id == opening_source_id(organization_id),
+            JournalEntry.status == "POSTED",
+        )
+        .order_by(JournalEntry.created_at.desc())
+        .all()
+    )
+    reversed_ids = {
+        entry.reference[len(REVERSAL_PREFIX):]
+        for entry in entries
+        if entry.reference and entry.reference.startswith(REVERSAL_PREFIX)
+    }
+    return next(
+        (
+            entry
+            for entry in entries
+            if not (entry.reference or "").startswith(REVERSAL_PREFIX) and entry.id not in reversed_ids
+        ),
+        None,
+    )
+
+
+def opening_entry(
+    db: Session,
+    organization_id: str,
+    date: date_type,
+    lines: list[OpeningLine],
+    balancing_code: str = CODE_RETAINED_EARNINGS,
+    description: str | None = None,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Póliza de apertura: los saldos con los que la empresa llega a ARCA.
+
+    Cada cuenta de balance entra en su naturaleza (activo al cargo; pasivo y
+    capital al abono) y la diferencia va a la cuenta de cuadre. Las cuentas con
+    saldo espejo abren desde su módulo. Una sola apertura viva por empresa; para
+    corregirla se revierte y se captura otra. No hace commit.
+    """
+    if balancing_code not in OPENING_BALANCING_CODES:
+        raise AccountingError("La apertura cuadra contra Resultados Acumulados (3200) o Capital (3100).")
+    if date > date_type.today():
+        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    if len(lines) > MAX_OPENING_LINES:
+        raise AccountingError(f"La apertura lleva hasta {MAX_OPENING_LINES} cuentas.")
+    existing = live_opening_entry(db, organization_id)
+    if existing is not None:
+        raise AccountingError(
+            f"Ya existe una póliza de apertura ({existing.folio}). Reviértela desde el diario para capturar otra."
+        )
+
+    wanted = {line.account_id for line in lines}
+    accounts = {
+        account.id: account
+        for account in db.query(Account)
+        .filter(Account.organization_id == organization_id, Account.id.in_(wanted))
+        .all()
+    }
+    specs: list[LineSpec] = []
+    seen: set[str] = set()
+    total_debit = Decimal("0")
+    total_credit = Decimal("0")
+    for line in lines:
+        account = accounts.get(line.account_id)
+        if account is None:
+            raise LookupError("Esa cuenta no existe.")
+        if account.id in seen:
+            raise AccountingError(f"La cuenta {account.code} aparece dos veces.")
+        seen.add(account.id)
+        if not account.active:
+            raise AccountingError(f"La cuenta {account.code} está inactiva.")
+        if account.parent_id is None:
+            raise AccountingError(
+                f"Las pólizas van a cuentas de detalle, no a la cuenta mayor {account.code}."
+            )
+        if account.type not in BALANCE_SHEET_TYPES:
+            raise AccountingError("La apertura sólo lleva cuentas de balance; ingresos y gastos empiezan en cero.")
+        if account.code in MODULE_CONTROLLED_CODES:
+            raise AccountingError(
+                f"La cuenta {account.code} abre desde su módulo: bancos y tarjetas en Movimientos, "
+                "cartera en Por cobrar y Por pagar, activos fijos y préstamos en Patrimonio."
+            )
+        if account.code == balancing_code:
+            raise AccountingError(f"La cuenta {account.code} es la de cuadre; su saldo se calcula.")
+        amount = Decimal(line.amount).quantize(TWO_PLACES)
+        if amount < 0:
+            raise AccountingError("Los saldos iniciales no pueden ser negativos.")
+        if amount == 0:
+            continue  # una cuenta sin saldo no lleva línea
+        if account.type == "ASSET":
+            specs.append(LineSpec(account.code, debit=amount))
+            total_debit += amount
+        else:
+            specs.append(LineSpec(account.code, credit=amount))
+            total_credit += amount
+
+    if not specs:
+        raise AccountingError("Captura el saldo de al menos una cuenta.")
+    residual = total_debit - total_credit
+    if residual > 0:
+        specs.append(LineSpec(balancing_code, credit=residual, description="Cuadre de la apertura"))
+    elif residual < 0:
+        specs.append(LineSpec(balancing_code, debit=-residual, description="Cuadre de la apertura"))
+
+    text = (description or "").strip() or f"Saldos iniciales al {date:%d/%m/%Y}"
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=text[:500],
+        lines=specs,
+        source_type=OPENING_SOURCE,
+        source_id=opening_source_id(organization_id),
+        created_by=created_by,
+        kind="DIARIO",
+    )
