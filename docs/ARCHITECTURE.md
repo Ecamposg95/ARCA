@@ -24,7 +24,7 @@ ARCA es un monolito modular en FastAPI con el motor contable como núcleo y una 
 | Routers | `app/domains/<x>/router.py` | Validar entrada (Pydantic v2), resolver tenant y rol, traducir errores a 400 en español | Nunca ORM crudo ni lógica contable |
 | Services | `app/domains/<x>/service.py` | Casos de uso, transacciones, publicación de eventos | Una función por caso de uso; no hace commit cuando lo compone otro service |
 | Reglas contables | `app/services/accounting/rules.py` | Una función por evento de negocio que arma la póliza | Único lugar donde se decide cargo y abono |
-| Motor | `app/services/accounting/engine.py` | `post_journal_entry`: partida doble, folio, candado de mes, evento | Único punto de escritura al ledger |
+| Motor | `app/services/accounting/engine.py` | `post_journal_entry`: partida doble, folio, candado de mes y de ejercicio, evento | Único punto de escritura al ledger |
 | Folios | `app/services/accounting/folios.py` | Consecutivo por empresa, tipo y mes bajo lock de fila | Nunca reasignar ni reciclar |
 | Movimientos | `app/services/transactions.py` | `record_transaction`: saldo de instrumentos con lock → refresh → re-check | Única forma de mover `current_balance` |
 | Reversos | `app/services/reversals.py` | Póliza espejo y movimiento inverso de una operación | Una operación se revierte una sola vez |
@@ -62,6 +62,7 @@ Toda tabla de negocio lleva `organization_id` NOT NULL (`TenantMixin`), `id` UUI
 | `journal_entry_lines` | Líneas | `account_id`, `debit`, `credit` (uno de los dos > 0), `description` |
 | `folio_counters` | Consecutivo | único por (org, kind, period) |
 | `period_locks` | Mes cerrado | `year`, `month`, `closed_by`, `reopened_at`, `reopen_reason`, `notes` |
+| `fiscal_year_locks` | Ejercicio cerrado | único por (org, `year`), `closed_by`, `closing_entry_id`, `reopened_at`, `reopened_by`, `reopen_reason`, `notes` |
 | `financial_accounts` | Instrumentos | `type` ∈ CASH, BANK, CREDIT_CARD, OTHER, `opening_balance`, `current_balance`, `credit_limit` |
 | `financial_transactions` | Movimientos | `transaction_type` (INCOME, EXPENSE, TRANSFER_IN/OUT, RECEIVABLE_COLLECTION, PAYABLE_PAYMENT, REVERSAL_IN/OUT, ADJUSTMENT), `amount`, `date`, `status`, `source_type`, `source_id` |
 | `income`, `expenses` | Operaciones | monto, IVA, método de pago, categoría, contacto, proyecto, `status`, `cancelled_*` |
@@ -72,7 +73,7 @@ Toda tabla de negocio lleva `organization_id` NOT NULL (`TenantMixin`), `id` UUI
 | `agent_invocations` | Auditoría | herramienta, argumentos, resultado, llave, latencia |
 | `proposals` | Bandeja | tipo, payload, evidencia, agente, `status`, decisión y quién |
 
-Tablas que agrega el plan maestro: `outbox_events`, `inbound_events`, `integration_connections` (fase 0); `fiscal_year_locks` (C2); `cfdi_documents` (E y FACT); `bank_statements`, `bank_lines`, `reconciliations` (BANK); `fiscal_profiles`, `tax_filings`, `obligations` (TAX); `client_tasks` (DESP); `invoices`, `csd_credentials` (FACT); `notices` (CFO); `payroll_periods` (HRFlow).
+Tablas que agrega el plan maestro: `outbox_events`, `inbound_events`, `integration_connections` (fase 0); `cfdi_documents` (E y FACT); `bank_statements`, `bank_lines`, `reconciliations` (BANK); `fiscal_profiles`, `tax_filings`, `obligations` (TAX); `client_tasks` (DESP); `invoices`, `csd_credentials` (FACT); `notices` (CFO); `payroll_periods` (HRFlow).
 
 ## 5. Motor contable
 

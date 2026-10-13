@@ -189,6 +189,27 @@ def test_reversing_the_opening_frees_the_slot(client):
     assert twice.status_code == 400
 
 
+def test_reversing_an_opening_is_dated_at_the_opening(client):
+    headers, acc = _setup(client)
+    first = _open(client, headers, [_line(acc["1191"], "100")]).json()
+
+    reversal = client.post(
+        f"/api/accounting/journal-entries/{first['id']}/reverse",
+        headers=headers,
+        json={"date": TODAY.isoformat()},
+    )
+    assert reversal.status_code == 201, reversal.text
+    assert reversal.json()["date"] == OPENING_DATE.isoformat()
+
+    assert _open(client, headers, [_line(acc["1191"], "150")]).status_code == 201
+    as_of = date(TODAY.year, 1, 31)
+    trial = client.get("/api/accounting/trial-balance", headers=headers, params={"as_of": as_of.isoformat()}).json()
+    balances = {row["code"]: Decimal(str(row["balance"])) for row in trial["rows"]}
+    assert balances["1191"] == Decimal("150.00")
+    sheet = client.get("/api/reports/balance-sheet", headers=headers, params={"as_of": as_of.isoformat()}).json()
+    assert sheet["balanced"] is True
+
+
 def test_openings_are_isolated_by_company(client):
     headers_a, acc_a = _setup(client)
     headers_b, _acc_b = _setup(client, email="otra@example.com")

@@ -108,7 +108,7 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
   const [error, setError] = useState<string | null>(null)
   const currentYear = new Date().getFullYear()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error: loadError } = useQuery({
     queryKey: ['periods', 'years'],
     queryFn: async () => (await api.get<Page<FiscalYear>>('/periods/years')).data.items,
   })
@@ -178,7 +178,13 @@ function FiscalYears({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
         ]}
         secondary={[2, 3]}
       >
-        {(data ?? []).length === 0 ? (
+        {isError ? (
+          <tr>
+            <td colSpan={6} className="px-4 py-6 text-center text-sm text-neg">
+              {errorMessage(loadError)}
+            </td>
+          </tr>
+        ) : (data ?? []).length === 0 ? (
           <tr>
             <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted">
               Aún no hay ejercicios con movimientos.

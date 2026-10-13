@@ -64,19 +64,26 @@ def _assert_period_open(db: Session, organization_id: str, date: date_type) -> N
     from app.models.fiscal_year import FiscalYearLock
     from app.models.period import PeriodLock
 
-    # El ejercicio primero: si el año entero está cerrado, decir "el mes" confunde.
+    # Un ejercicio cerrado protege su año y todo lo anterior: si el año entero
+    # está cerrado, decir "el mes" confunde.
     year_lock = (
-        db.query(FiscalYearLock.id)
+        db.query(FiscalYearLock)
         .filter(
             FiscalYearLock.organization_id == organization_id,
-            FiscalYearLock.year == date.year,
+            FiscalYearLock.year >= date.year,
             FiscalYearLock.reopened_at.is_(None),
         )
+        .order_by(FiscalYearLock.year.asc())
         .first()
     )
     if year_lock is not None:
+        if year_lock.year == date.year:
+            raise ClosedPeriodError(
+                f"El ejercicio {year_lock.year} está cerrado. Reábrelo si necesitas corregir algo."
+            )
         raise ClosedPeriodError(
-            f"El ejercicio {date.year} está cerrado. Reábrelo si necesitas corregir algo."
+            f"El ejercicio {year_lock.year} está cerrado: nada anterior al 1 de enero de "
+            f"{year_lock.year + 1} se puede mover. Reábrelo si necesitas corregir algo."
         )
 
     lock = (

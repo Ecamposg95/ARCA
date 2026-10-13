@@ -97,6 +97,7 @@ export function AccountingPage() {
     if (entriesQuery.data?.items.some((entry) => entry.id === id)) {
       const params = new URLSearchParams(searchParams)
       params.set('poliza', id)
+      params.delete('vista')
       setSearchParams(params, { replace: true })
       return
     }

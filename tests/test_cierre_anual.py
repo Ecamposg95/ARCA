@@ -512,3 +512,46 @@ def test_an_empty_year_reports_money_with_two_decimals(client):
     headers, _org_id, _account, _category = _setup(client)
     items = client.get("/api/periods/years", headers=headers).json()["items"]
     assert (items[0]["revenue"], items[0]["expenses"], items[0]["result"]) == ("0.00", "0.00", "0.00")
+
+
+def test_a_closed_year_protects_every_earlier_date(client):
+    headers, _org_id, account, category = _setup(client)
+    older = LAST_YEAR - 1
+    accounts = {a["code"]: a for a in client.get("/api/accounting/accounts", headers=headers).json()}
+    opening = client.post(
+        "/api/accounting/opening-balance",
+        headers=headers,
+        json={"date": date(older, 12, 31).isoformat(), "lines": [{"account_id": accounts["1191"]["id"], "amount": "100"}]},
+    )
+    assert opening.status_code == 201, opening.text
+    assert _income(client, headers, account, category, date(LAST_YEAR, 6, 15)).status_code == 201
+    assert _close(client, headers, LAST_YEAR).status_code == 200
+
+    backdated = _income(client, headers, account, category, date(older, 6, 15))
+    assert backdated.status_code == 400
+    assert "cerrado" in backdated.json()["detail"]
+    assert f"1 de enero de {LAST_YEAR + 1}" in backdated.json()["detail"]
+
+    reverse = client.post(
+        f"/api/accounting/journal-entries/{opening.json()['id']}/reverse",
+        headers=headers,
+        json={"date": TODAY.isoformat()},
+    )
+    assert reverse.status_code == 400
+    assert "cerrado" in reverse.json()["detail"]
+
+    assert _reopen(client, headers, LAST_YEAR).status_code == 200
+    assert _income(client, headers, account, category, date(older, 6, 15)).status_code == 201
+
+
+def test_a_year_close_entry_is_undone_by_reopening_the_year(client):
+    headers, _org_id, _account, _category = _last_year_with_profit(client)
+    closing_id = _close(client, headers, LAST_YEAR).json()["closing_entry_id"]
+    # Un año cerrado rechaza el reverso por el mensaje propio de la póliza de cierre.
+    response = client.post(
+        f"/api/accounting/journal-entries/{closing_id}/reverse",
+        headers=headers,
+        json={"date": TODAY.isoformat()},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Una póliza de cierre se deshace reabriendo el ejercicio."
