@@ -95,6 +95,17 @@ def _assert_period_open(db: Session, organization_id: str, date: date_type) -> N
         )
 
 
+def lock_organization(db: Session, organization_id: str) -> None:
+    """FOR UPDATE sobre la empresa: serializa los procesos que postean pólizas únicas.
+
+    Dos aperturas o dos cierres de ejercicio simultáneos asentarían dos pólizas
+    que ninguna pantalla puede deshacer; con el candado, la segunda llamada ya
+    ve la primera y falla con su mensaje normal."""
+    from app.models.organization import Organization
+
+    db.query(Organization.id).filter(Organization.id == organization_id).with_for_update().one()
+
+
 def not_year_close():
     """Filtro: la póliza no es de cierre anual. `source_type` puede ser NULL
     (asientos antiguos) y en SQL `NULL != 'x'` no es verdadero: sin el IS NULL

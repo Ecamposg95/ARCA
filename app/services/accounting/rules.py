@@ -850,7 +850,7 @@ def year_close_entry(
     lines: list[LineSpec] = []
     result = Decimal("0")  # acreedor positivo: utilidad
     for code, debit, credit in rows:
-        net = Decimal(debit or 0) - Decimal(credit or 0)
+        net = (Decimal(debit or 0) - Decimal(credit or 0)).quantize(TWO_PLACES)
         if net > 0:  # saldo deudor (gasto): se abona
             lines.append(LineSpec(code, credit=net))
             result -= net

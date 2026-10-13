@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.periods import service
-from app.models.accounting import JournalEntry
 from app.models.organization import ACCOUNTING_ROLES
 from app.models.user import User
 from app.security.deps import get_current_org_id, get_current_user, require_role
@@ -113,9 +112,7 @@ def close_year(
     except ValueError as error:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(error)) from error
-    folio = None
-    if lock.closing_entry_id:
-        folio = db.query(JournalEntry.folio).filter(JournalEntry.id == lock.closing_entry_id).scalar()
+    folio = service.entry_folio(db, org_id, lock.closing_entry_id)
     return {"year": lock.year, "closed": True, "closing_entry_id": lock.closing_entry_id, "closing_folio": folio}
 
 
