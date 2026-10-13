@@ -401,6 +401,33 @@ export interface LedgerAccount {
   manual_allowed: boolean
 }
 
+/** GET /accounting/opening-balance: la apertura viva y contra qué puede cuadrar. */
+export interface OpeningBalance {
+  /** La póliza de apertura vigente (sin reverso), o null si no hay. */
+  entry: JournalEntry | null
+  /** Cuentas de cuadre permitidas, en orden: ["3200", "3100"]. */
+  balancing_codes: string[]
+}
+
+/** Un renglón de GET /periods/years. Montos como texto. */
+export interface FiscalYear {
+  year: number
+  entries: number
+  revenue: string
+  expenses: string
+  result: string
+  closed: boolean
+  /** Terminó, sigue abierto y es el siguiente en orden. */
+  can_close: boolean
+  /** Año anterior con resultados que sigue abierto y debe cerrarse primero, o null. */
+  blocked_by: number | null
+  /** Póliza de cierre vigente (sólo si está cerrado y tuvo resultados), o null. */
+  closing_entry_id: string | null
+  closing_folio: string | null
+  /** Última reapertura, si el año está abierto después de haberse cerrado. */
+  reopened_at: string | null
+}
+
 export interface TrialBalanceRow {
   code: string
   name: string

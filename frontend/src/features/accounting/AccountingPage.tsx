@@ -338,7 +338,7 @@ export function AccountingPage() {
         </>
       ) : null}
 
-      {tab === 'periodos' ? <PeriodsPanel /> : null}
+      {tab === 'periodos' ? <PeriodsPanel onShowEntry={(id) => showEntry(id, null)} /> : null}
 
       <JournalEntryForm
         open={newEntryOpen}

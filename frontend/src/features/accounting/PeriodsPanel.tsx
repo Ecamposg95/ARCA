@@ -11,10 +11,12 @@ import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
-import { Table } from '@/components/ui/Table'
+import { Card, Table } from '@/components/ui/Table'
 import { ContpaqiExport } from '@/features/accounting/ContpaqiExport'
+import { OpeningBalanceForm } from '@/features/accounting/OpeningBalanceForm'
 import { SatExport } from '@/features/accounting/SatExport'
-import { formatMoney } from '@/lib/format'
+import { formatDate, formatMoney } from '@/lib/format'
+import type { LedgerAccount, OpeningBalance } from '@/types/api'
 
 interface Period {
   year: number
@@ -35,7 +37,65 @@ function monthName(label: string) {
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
-export function PeriodsPanel() {
+/** Saldos iniciales: la puerta de entrada de una empresa que llega con historia. */
+function OpeningBalanceCard({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
+  const [formOpen, setFormOpen] = useState(false)
+  const accountsQuery = useQuery({
+    queryKey: ['accounting', 'accounts'],
+    queryFn: async () => (await api.get<LedgerAccount[]>('/accounting/accounts')).data,
+  })
+  const openingQuery = useQuery({
+    queryKey: ['accounting', 'opening-balance'],
+    queryFn: async () => (await api.get<OpeningBalance>('/accounting/opening-balance')).data,
+  })
+  const entry = openingQuery.data?.entry ?? null
+
+  if (openingQuery.isLoading) return <div className="h-24 animate-pulse rounded-xl bg-surface-2" />
+
+  return (
+    <>
+      <Card>
+        {entry ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-base font-semibold">
+                Saldos iniciales al {formatDate(entry.date)} · <span className="figures">{entry.folio}</span>
+              </h3>
+              <p className="mt-1 text-sm text-muted">
+                Para corregirlos, revierte la póliza desde el diario y captura otra.
+              </p>
+            </div>
+            {onShowEntry ? (
+              <Button variant="secondary" onClick={() => onShowEntry(entry.id)}>
+                Ver póliza
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-base font-semibold">Saldos iniciales</h3>
+              <p className="mt-1 text-sm text-muted">Trae los saldos con los que la empresa llega a ARCA.</p>
+            </div>
+            <Button onClick={() => setFormOpen(true)}>Capturar saldos iniciales</Button>
+          </div>
+        )}
+      </Card>
+      <OpeningBalanceForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        accounts={accountsQuery.data ?? []}
+        onSaved={(saved) => {
+          setFormOpen(false)
+          onShowEntry?.(saved.id)
+        }}
+      />
+    </>
+  )
+}
+
+export function PeriodsPanel({ onShowEntry }: { onShowEntry?: (id: string) => void }) {
+
   const queryClient = useQueryClient()
   const [reopening, setReopening] = useState<Period | null>(null)
   const [reason, setReason] = useState('')
@@ -81,6 +141,8 @@ export function PeriodsPanel() {
 
   return (
     <div className="space-y-4">
+      <OpeningBalanceCard onShowEntry={onShowEntry} />
+
       <p className="text-sm text-muted">
         Cierra los meses que ya declaraste. Un mes cerrado no acepta operaciones nuevas ni
         correcciones hasta que lo reabras a propósito.
