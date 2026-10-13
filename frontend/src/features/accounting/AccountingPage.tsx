@@ -4,7 +4,9 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
 import { AccountFieldCell } from '@/features/accounting/AccountFieldCell'
 import { JournalDiary } from '@/features/accounting/JournalDiary'
+import { JournalEntryForm } from '@/features/accounting/JournalEntryForm'
 import { PeriodsPanel } from '@/features/accounting/PeriodsPanel'
+import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Segmented } from '@/components/ui/Segmented'
@@ -42,6 +44,20 @@ export function AccountingPage() {
   const [period, setPeriod] = useState<PeriodKey>('current')
   const [offset, setOffset] = useState(0)
   const range = rangeForPeriod(period)
+
+  // ?nueva=poliza abre el formulario (lo usa la paleta de comandos).
+  const newEntryOpen = searchParams.get('nueva') === 'poliza'
+  function setNewEntryOpen(open: boolean) {
+    const params = new URLSearchParams(searchParams)
+    if (open) params.set('nueva', 'poliza')
+    else params.delete('nueva')
+    setSearchParams(params, { replace: true })
+  }
+  function selectCreated(entry: JournalEntry) {
+    setPeriod('current')
+    setOffset(0)
+    setSearchParams({ poliza: entry.id }, { replace: true })
+  }
 
   const accountsQuery = useQuery({
     queryKey: ['accounting', 'accounts'],
@@ -112,9 +128,14 @@ export function AccountingPage() {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented options={TABS} value={tab} onChange={setTab} />
-          {tab !== 'catalogo' ? (
-            <Segmented options={PERIOD_OPTIONS} value={period} onChange={changePeriod} size="sm" />
-          ) : null}
+          <div className="flex items-center gap-2">
+            {tab !== 'catalogo' ? (
+              <Segmented options={PERIOD_OPTIONS} value={period} onChange={changePeriod} size="sm" />
+            ) : null}
+            {tab === 'diario' ? (
+              <Button onClick={() => setNewEntryOpen(true)}>Nueva póliza</Button>
+            ) : null}
+          </div>
         </div>
       </PageHeader>
 
@@ -124,7 +145,8 @@ export function AccountingPage() {
         ) : (entriesQuery.data?.items ?? []).length === 0 ? (
           <EmptyState
             title="Sin pólizas en este periodo"
-            message="Cada ingreso, gasto, cobro o pago que registres genera aquí su asiento contable automáticamente."
+            message="Cada ingreso, gasto, cobro o pago que registres genera aquí su asiento contable automáticamente. También puedes capturar una póliza de diario a mano."
+            action={<Button onClick={() => setNewEntryOpen(true)}>Nueva póliza</Button>}
           />
         ) : (
           <JournalDiary
@@ -252,6 +274,13 @@ export function AccountingPage() {
       ) : null}
 
       {tab === 'periodos' ? <PeriodsPanel /> : null}
+
+      <JournalEntryForm
+        open={newEntryOpen}
+        onClose={() => setNewEntryOpen(false)}
+        accounts={accountsQuery.data ?? []}
+        onCreated={selectCreated}
+      />
     </div>
   )
 }

@@ -371,6 +371,10 @@ export interface JournalEntry {
   source_type: string | null
   source_id: string | null
   status: string
+  /** Ya tiene póliza espejo. */
+  reversed: boolean
+  /** Id de la póliza que este reverso deshace, o null. */
+  reversal_of: string | null
   lines: JournalLine[]
 }
 
@@ -385,6 +389,10 @@ export interface LedgerAccount {
   contpaqi_code: string | null
   /** Código agrupador del SAT (Anexo 24), o null. */
   sat_code: string | null
+  /** La sembró ARCA al crear la empresa; las reglas la usan y no se desactiva. */
+  system: boolean
+  /** Tiene al menos una línea en el ledger; una cuenta así no se desactiva. */
+  has_movements: boolean
 }
 
 export interface TrialBalanceRow {

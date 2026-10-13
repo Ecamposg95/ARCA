@@ -6,9 +6,10 @@ interface Props {
   open: boolean
   onClose: () => void
   children: ReactNode
+  size?: 'md' | 'lg'
 }
 
-export function Modal({ title, open, onClose, children }: Props) {
+export function Modal({ title, open, onClose, children, size = 'md' }: Props) {
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -25,7 +26,7 @@ export function Modal({ title, open, onClose, children }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-lg rounded-xl bg-surface p-6 shadow-float"
+        className={`w-full ${size === 'lg' ? 'max-w-3xl' : 'max-w-lg'} rounded-xl bg-surface p-6 shadow-float`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
