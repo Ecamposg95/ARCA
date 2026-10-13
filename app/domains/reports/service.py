@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.accounting import Account, DEBIT_NORMAL_TYPES, JournalEntry, JournalEntryLine
 from app.models.financial_account import FinancialAccount
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
-from app.services.accounting.engine import account_type_balance
+from app.services.accounting.engine import account_type_balance, not_year_close
 
 
 def _lines_by_account(
@@ -21,7 +21,11 @@ def _lines_by_account(
     account_types: tuple[str, ...],
     start: date_type | None = None,
     end: date_type | None = None,
+    include_closing: bool = False,
 ) -> list[dict]:
+    """Saldo por cuenta de los tipos pedidos. Sin `include_closing` ignora las
+    pólizas de cierre anual: el estado de resultados de un año cerrado sigue
+    mostrando sus ventas y sus gastos."""
     query = (
         db.query(
             Account.code,
@@ -40,6 +44,8 @@ def _lines_by_account(
         .group_by(Account.code, Account.name, Account.type)
         .order_by(Account.code)
     )
+    if not include_closing:
+        query = query.filter(not_year_close())
     if start is not None:
         query = query.filter(JournalEntry.date >= start)
     if end is not None:
@@ -73,17 +79,19 @@ def profit_loss(db: Session, organization_id: str, start: date_type, end: date_t
 
 
 def balance_sheet(db: Session, organization_id: str, as_of: date_type) -> dict:
-    assets = _lines_by_account(db, organization_id, ("ASSET",), end=as_of)
-    liabilities = _lines_by_account(db, organization_id, ("LIABILITY",), end=as_of)
-    equity = _lines_by_account(db, organization_id, ("EQUITY",), end=as_of)
+    # El balance es el libro: incluye las pólizas de cierre. Tras cerrar un año,
+    # 3200 trae su resultado y "3999" sólo muestra lo que aún no se cierra.
+    assets = _lines_by_account(db, organization_id, ("ASSET",), end=as_of, include_closing=True)
+    liabilities = _lines_by_account(db, organization_id, ("LIABILITY",), end=as_of, include_closing=True)
+    equity = _lines_by_account(db, organization_id, ("EQUITY",), end=as_of, include_closing=True)
 
     total_assets = sum((row["amount"] for row in assets), Decimal("0"))
     total_liabilities = sum((row["amount"] for row in liabilities), Decimal("0"))
     total_equity_accounts = sum((row["amount"] for row in equity), Decimal("0"))
 
     # Resultado del ejercicio (ingresos - gastos) vive en capital hasta el cierre.
-    revenue = account_type_balance(db, organization_id, "REVENUE", end=as_of)
-    expenses = account_type_balance(db, organization_id, "EXPENSE", end=as_of)
+    revenue = account_type_balance(db, organization_id, "REVENUE", end=as_of, include_closing=True)
+    expenses = account_type_balance(db, organization_id, "EXPENSE", end=as_of, include_closing=True)
     period_result = revenue - expenses
     if period_result != 0:
         equity = [*equity, {"code": "3999", "name": "Resultado del periodo", "type": "EQUITY", "amount": period_result}]

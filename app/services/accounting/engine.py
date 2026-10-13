@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import date as date_type
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.events import event_bus
@@ -93,6 +93,13 @@ def _assert_period_open(db: Session, organization_id: str, date: date_type) -> N
         raise ClosedPeriodError(
             f"{date.strftime('%m/%Y')} está cerrado. Reábrelo si necesitas corregir algo."
         )
+
+
+def not_year_close():
+    """Filtro: la póliza no es de cierre anual. `source_type` puede ser NULL
+    (asientos antiguos) y en SQL `NULL != 'x'` no es verdadero: sin el IS NULL
+    esas pólizas desaparecerían de los reportes."""
+    return or_(JournalEntry.source_type.is_(None), JournalEntry.source_type != YEAR_CLOSE_SOURCE)
 
 
 def post_journal_entry(
@@ -186,8 +193,13 @@ def account_type_balance(
     account_type: str,
     start: date_type | None = None,
     end: date_type | None = None,
+    include_closing: bool = False,
 ) -> Decimal:
-    """Saldo neto (naturaleza normal) de todas las cuentas de un tipo, desde el ledger."""
+    """Saldo neto (naturaleza normal) de todas las cuentas de un tipo, desde el ledger.
+
+    Sin `include_closing` se ignoran las pólizas de cierre anual: traspasan el
+    resultado a capital, no son ventas ni gastos. El balance general sí las pide.
+    """
     query = (
         db.query(
             func.coalesce(func.sum(JournalEntryLine.debit), 0),
@@ -201,6 +213,8 @@ def account_type_balance(
             Account.type == account_type,
         )
     )
+    if not include_closing:
+        query = query.filter(not_year_close())
     if start is not None:
         query = query.filter(JournalEntry.date >= start)
     if end is not None:

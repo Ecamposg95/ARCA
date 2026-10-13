@@ -310,11 +310,13 @@ def reversal_of(
     description: str,
     date: date_type,
     created_by: str | None = None,
+    bypass_period_lock: bool = False,
 ) -> JournalEntry:
     """Asiento de reversa: las mismas líneas del original con cargo↔abono invertidos.
 
     Es la única forma correcta de 'deshacer' contabilidad: el original nunca
-    se toca (task pack §27).
+    se toca (task pack §27). `bypass_period_lock` sólo lo usa la reapertura de
+    un ejercicio (ver `post_journal_entry`).
     """
     rows = (
         db.query(JournalEntryLine, Account.code)
@@ -344,6 +346,7 @@ def reversal_of(
         reference=f"{REVERSAL_PREFIX}{entry.id}",
         created_by=created_by,
         kind="DIARIO",
+        bypass_period_lock=bypass_period_lock,
     )
 
 
