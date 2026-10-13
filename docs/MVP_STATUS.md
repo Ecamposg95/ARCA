@@ -1,6 +1,6 @@
 # MVP STATUS — ARCA
 
-_Actualizado: 2026-10-12 (plan maestro MVP)_
+_Actualizado: 2026-10-13 (C-2 apertura y cierre anual)_
 
 ## Done
 
@@ -16,6 +16,7 @@ _Actualizado: 2026-10-12 (plan maestro MVP)_
 - Deployment productivo validado end-to-end (registro real → ingreso → gasto → dashboard/balance/balanza correctos vía HTTPS).
 
 - **C-1 Pólizas manuales y catálogo editable** (spec 2026-10-12): `POST /api/accounting/journal-entries` (sólo Diario, cuentas de detalle, nunca las cuentas con saldo espejo: 1100/1200/2100/2200/1400/1490/2300), reverso único por `/reverse`, alta de cuentas de detalle bajo una mayor (`POST /api/accounting/accounts`), renombrar y desactivar sin movimientos; UI con formulario de póliza, reverso desde el diario y catálogo editable.
+- **C-2 Apertura y cierre anual** (spec 2026-10-12): póliza de apertura por cuenta cuadrada contra 3200 o 3100 (`GET/POST /api/accounting/opening-balance`, una viva por empresa, se corrige revirtiéndola desde el diario); cierre de ejercicio que traspasa 4xxx/5xxx a 3200 con candado anual `fiscal_year_locks` validado en el motor y reapertura con motivo que revierte la póliza (`GET /api/periods/years`, `POST /years/{año}/close`, `POST /years/{año}/reopen`); el estado de resultados y el dashboard ignoran el cierre, el balance lo incluye y la balanza SAT abre enero con la póliza real. UI: tarjeta de saldos iniciales, tabla de ejercicios en Cierre de periodo y etiquetas "Apertura"/"Cierre anual" en el diario. Demo con venta y renta del año anterior.
 
 ## In Progress
 
@@ -35,7 +36,7 @@ _Actualizado: 2026-10-12 (plan maestro MVP)_
 Plan maestro del MVP e integraciones Atlas (2026-10-12): `docs/MEGA_PLAN_MVP.md`; referencia técnica: `docs/ARCHITECTURE.md`.
 
 - Fase 0 · ROB robustez (outbox durable, webhooks HMAC, rate limiting, expiración de propuestas) en paralelo con la fase 1.
-- Fase 1 · C2 apertura y cierre anual, B estados financieros NIF (C1 ya en producción).
+- Fase 1 · B estados financieros NIF (C1 y C2 ya en producción).
 - Fase 2 · E importar CFDI, BANK conciliación bancaria, eventos de Atlas ONE.
 - Fase 3 · TAX cédula y calendario, DESP flujo del despacho, HRFlow etapa 1.
 - Fase 4 · FACT facturación CFDI 4.0 vía PAC (sirve a ARCA, ONE y nómina de HRFlow).
