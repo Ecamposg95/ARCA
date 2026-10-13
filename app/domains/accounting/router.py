@@ -14,6 +14,13 @@ from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES, Organization
 from app.models.user import User
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services.accounting.coa import (
+    account_has_movements,
+    accounts_with_movements,
+    create_account as create_catalog_account,
+    rename_account,
+    set_account_active,
+)
 from app.services.accounting.contpaqi import ENCODING, ExportError, render
 from app.services.accounting.sat import sat_code_names, sat_codes
 from app.services.accounting.sat import (
@@ -41,8 +48,10 @@ class AccountRead(BaseModel):
     type: str
     parent_id: str | None
     active: bool
+    system: bool
     contpaqi_code: str | None
     sat_code: str | None
+    has_movements: bool = False
 
 
 class JournalLineRead(BaseModel):
@@ -109,16 +118,36 @@ def list_accounts(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    accounts = (
-        db.query(Account)
-        .filter(Account.organization_id == org_id)
-        .order_by(Account.code)
-        .all()
-    )
-    return [AccountRead.model_validate(account) for account in accounts]
+    accounts = db.query(Account).filter(Account.organization_id == org_id).order_by(Account.code).all()
+    with_movements = accounts_with_movements(db, org_id)
+    items = []
+    for account in accounts:
+        item = AccountRead.model_validate(account)
+        item.has_movements = account.id in with_movements
+        items.append(item)
+    return items
+
+
+def _normalize_contpaqi_code(raw: str | None) -> str | None:
+    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+    code = re.sub(r"[\s.\-]", "", raw or "")
+    if code and not (code.isascii() and code.isalnum()):
+        raise HTTPException(status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones.")
+    if len(code) > 30:
+        raise HTTPException(status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres.")
+    return code or None
+
+
+def _validated_sat_code(raw: str | None) -> str | None:
+    sat_code = (raw or "").strip()
+    if sat_code and sat_code not in sat_code_names():
+        raise HTTPException(status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT.")
+    return sat_code or None
 
 
 class AccountUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
+    active: bool | None = None
     contpaqi_code: str | None = None
     sat_code: str | None = None
 
@@ -130,38 +159,54 @@ def update_account(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    """Lo editable de una cuenta: su equivalente en CONTPAQi y su código agrupador.
+    """Lo editable de una cuenta: nombre, activa, equivalente en CONTPAQi y código agrupador.
     Sólo cambia lo que viene en el cuerpo; un campo ausente no borra nada."""
-    account = (
-        db.query(Account)
-        .filter(Account.id == account_id, Account.organization_id == org_id)
-        .first()
-    )
+    account = db.query(Account).filter(Account.id == account_id, Account.organization_id == org_id).first()
     if account is None:
         raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
-
+    try:
+        if "name" in payload.model_fields_set:
+            rename_account(account, payload.name or "")
+        if "active" in payload.model_fields_set and payload.active is not None:
+            set_account_active(db, account, payload.active)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     if "contpaqi_code" in payload.model_fields_set:
-        # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
-        code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
-        if code and not (code.isascii() and code.isalnum()):
-            raise HTTPException(
-                status_code=400,
-                detail="El número de cuenta sólo puede llevar letras, números y guiones.",
-            )
-        if len(code) > 30:
-            raise HTTPException(
-                status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
-            )
-        account.contpaqi_code = code or None
-
+        account.contpaqi_code = _normalize_contpaqi_code(payload.contpaqi_code)
     if "sat_code" in payload.model_fields_set:
-        sat_code = (payload.sat_code or "").strip()
-        if sat_code and sat_code not in sat_code_names():
-            raise HTTPException(
-                status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT."
-            )
-        account.sat_code = sat_code or None
+        account.sat_code = _validated_sat_code(payload.sat_code)
+    db.commit()
+    db.refresh(account)
+    item = AccountRead.model_validate(account)
+    item.has_movements = account_has_movements(db, account.id)
+    return item
 
+
+class AccountCreate(BaseModel):
+    parent_id: str = Field(min_length=1)
+    code: str = Field(min_length=4, max_length=12)
+    name: str = Field(min_length=1, max_length=255)
+    sat_code: str | None = None
+    contpaqi_code: str | None = None
+
+
+@router.post("/accounts", response_model=AccountRead, status_code=201)
+def create_account(
+    payload: AccountCreate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Cuenta de detalle nueva bajo una cuenta mayor. El tipo lo fija la mayor."""
+    sat_code = _validated_sat_code(payload.sat_code)
+    contpaqi_code = _normalize_contpaqi_code(payload.contpaqi_code)
+    try:
+        account = create_catalog_account(
+            db, org_id, payload.parent_id, payload.code, payload.name, sat_code=sat_code, contpaqi_code=contpaqi_code
+        )
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     db.commit()
     db.refresh(account)
     return AccountRead.model_validate(account)

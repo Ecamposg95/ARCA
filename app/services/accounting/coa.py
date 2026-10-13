@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.models.accounting import Account
+from app.models.accounting import Account, JournalEntryLine
 from app.services.accounting.sat import DEFAULT_SAT_CODES
 
 # Códigos usados por el motor de reglas (app/services/accounting/rules.py)
@@ -124,3 +124,97 @@ def ledger_code_for(account_type: str) -> str:
     from app.models.financial_account import is_liability
 
     return CODE_CREDIT_CARDS if is_liability(account_type) else CODE_CASH_BANK
+
+
+# --- Catálogo editable (C-1) ---
+
+
+class CatalogError(ValueError):
+    """Regla del catálogo violada. Mensaje apto para el usuario."""
+
+
+def validate_detail_code(code: str, parent_code: str) -> str:
+    """Sólo dígitos, de 4 a 10, y el primero igual al de la cuenta mayor."""
+    code = (code or "").strip()
+    if not (code.isascii() and code.isdigit()) or not 4 <= len(code) <= 10:
+        raise CatalogError("El código de la cuenta lleva sólo dígitos, de 4 a 10.")
+    if code[0] != parent_code[0]:
+        raise CatalogError(f"Una cuenta bajo {parent_code} debe empezar con {parent_code[0]}.")
+    return code
+
+
+def create_account(
+    db: Session,
+    organization_id: str,
+    parent_id: str,
+    code: str,
+    name: str,
+    sat_code: str | None = None,
+    contpaqi_code: str | None = None,
+) -> Account:
+    """Cuenta de detalle bajo una mayor. El tipo se hereda; el código SAT también si no viene. No hace commit."""
+    parent = db.query(Account).filter(Account.id == parent_id, Account.organization_id == organization_id).first()
+    if parent is None:
+        raise LookupError("Esa cuenta mayor no existe.")
+    if parent.parent_id is not None:
+        raise CatalogError(
+            f"{parent.code} no es una cuenta mayor; las cuentas nuevas van bajo 1000, 2000, 3000, 4000 o 5000."
+        )
+    code = validate_detail_code(code, parent.code)
+    name = (name or "").strip()
+    if not 1 <= len(name) <= 255:
+        raise CatalogError("La cuenta necesita un nombre.")
+    taken = db.query(Account.id).filter(Account.organization_id == organization_id, Account.code == code).first()
+    if taken is not None:
+        raise CatalogError(f"Ya existe la cuenta {code}.")
+    account = Account(
+        organization_id=organization_id,
+        code=code,
+        name=name,
+        type=parent.type,
+        parent_id=parent.id,
+        active=True,
+        system=False,
+        sat_code=sat_code or parent.sat_code,
+        contpaqi_code=contpaqi_code,
+    )
+    db.add(account)
+    db.flush()
+    return account
+
+
+def rename_account(account: Account, name: str) -> Account:
+    name = (name or "").strip()
+    if not 1 <= len(name) <= 255:
+        raise CatalogError("La cuenta necesita un nombre.")
+    account.name = name
+    return account
+
+
+def account_has_movements(db: Session, account_id: str) -> bool:
+    return db.query(JournalEntryLine.id).filter(JournalEntryLine.account_id == account_id).first() is not None
+
+
+def accounts_with_movements(db: Session, organization_id: str) -> set[str]:
+    """Ids de las cuentas de la empresa con al menos una línea en el ledger (una consulta)."""
+    rows = (
+        db.query(JournalEntryLine.account_id)
+        .join(Account, Account.id == JournalEntryLine.account_id)
+        .filter(Account.organization_id == organization_id)
+        .distinct()
+        .all()
+    )
+    return {account_id for (account_id,) in rows}
+
+
+def set_account_active(db: Session, account: Account, active: bool) -> Account:
+    """Reactivar siempre; desactivar sólo cuentas propias sin movimientos (las sembradas las usan las reglas)."""
+    if active:
+        account.active = True
+        return account
+    if account.system:
+        raise CatalogError("Las cuentas que ARCA sembró no se desactivan.")
+    if account_has_movements(db, account.id):
+        raise CatalogError(f"La cuenta {account.code} tiene movimientos; no se puede desactivar.")
+    account.active = False
+    return account
