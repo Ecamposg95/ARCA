@@ -1,6 +1,6 @@
 # MVP STATUS — ARCA
 
-_Actualizado: 2026-10-05 (portal de despacho)_
+_Actualizado: 2026-10-12 (plan maestro MVP)_
 
 ## Done
 
@@ -30,10 +30,14 @@ _Actualizado: 2026-10-05 (portal de despacho)_
 
 ## Next
 
-- A2 MCP server (exponer el catálogo vía MCP autenticado con AgentKey) o A1 ARCA CFO (chat con Claude; requiere ANTHROPIC_API_KEY) — orden a decidir.
-- A3 Magic Inbox (documento → propuesta con evidencia).
-- M3/M4 restantes: aging detallado de cartera, tendencias.
-- Reversal journal entries para cancelar operaciones pagadas (parciales incluidas).
+Plan maestro del MVP e integraciones Atlas (2026-10-12): `docs/MEGA_PLAN_MVP.md`; referencia técnica: `docs/ARCHITECTURE.md`.
+
+- Fase 0 · ROB robustez (outbox durable, webhooks HMAC, rate limiting, expiración de propuestas) en paralelo con la fase 1.
+- Fase 1 · C1 pólizas manuales y catálogo editable (diseño aprobado), C2 apertura y cierre anual, B estados financieros NIF.
+- Fase 2 · E importar CFDI, BANK conciliación bancaria, eventos de Atlas ONE.
+- Fase 3 · TAX cédula y calendario, DESP flujo del despacho, HRFlow etapa 1.
+- Fase 4 · FACT facturación CFDI 4.0 vía PAC (sirve a ARCA, ONE y nómina de HRFlow).
+- Fase 5 · CFO proactivo y bandeja mágica con Cortex.
 
 ## Blocked
 
