@@ -47,6 +47,7 @@ const CREATE: Command[] = [
   { label: 'Nueva cuenta por cobrar', hint: 'Crear', to: '/por-cobrar?nueva=1', keywords: 'factura credito' },
   { label: 'Nueva cuenta por pagar', hint: 'Crear', to: '/por-pagar?nueva=1' },
   { label: 'Traspaso entre cuentas', hint: 'Crear', to: '/movimientos?transferir=1', keywords: 'transferencia' },
+  { label: 'Nueva póliza de diario', hint: 'Crear', to: '/contabilidad?nueva=poliza', keywords: 'asiento manual contador' },
   { label: 'Nuevo cliente', hint: 'Crear', to: '/clientes?nuevo=1' },
   { label: 'Nuevo proveedor', hint: 'Crear', to: '/proveedores?nuevo=1' },
   { label: 'Nueva cuenta de dinero', hint: 'Crear', to: '/cuentas?nueva=1', keywords: 'banco tarjeta' },

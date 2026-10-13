@@ -105,5 +105,6 @@ Railway (proyecto ARCA, servicio `ARCA` + PostgreSQL). El servicio está conecta
 - Prioridad de calidad: 1) correctitud financiera, 2) seguridad, 3) integridad de datos, 4) UX, 5) performance, 6) extensibilidad.
 - Conceptos explícitos (Income, Expense, Receivable, Payable...) — no generalizar a una tabla universal.
 - Conservar `source_type`/`source_id` en entidades que puedan originarse fuera (futura integración Atlas ONE).
+- Las cuentas 1100, 1200, 2100, 2200, 1400, 1490 y 2300 mantienen saldos espejo (instrumentos, cartera, activos fijos y préstamos): nunca aceptan pólizas manuales; `rules.MODULE_CONTROLLED_CODES` es la lista.
 - Commits: Conventional Commits en español (`feat(gastos): ...`).
 - Actualizar `docs/MVP_STATUS.md` al avanzar.

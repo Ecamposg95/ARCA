@@ -6,6 +6,7 @@ Prohibido armar asientos en routers o en el frontend.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date as date_type
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ from app.services.accounting.coa import (
     CODE_ACCUMULATED_DEPRECIATION,
     CODE_CAPITAL,
     CODE_CASH_BANK,
+    CODE_CREDIT_CARDS,
     CODE_DEPRECIATION_EXPENSE,
     CODE_FIXED_ASSETS,
     CODE_INTEREST_EXPENSE,
@@ -29,7 +31,7 @@ from app.services.accounting.coa import (
     CODE_VAT_CREDITABLE_PAID,
     CODE_VAT_CREDITABLE_PENDING,
 )
-from app.services.accounting.engine import LineSpec, post_journal_entry
+from app.services.accounting.engine import AccountingError, LineSpec, post_journal_entry
 
 
 def opening_balance_entry(
@@ -292,6 +294,9 @@ def payable_payment_entry(
     )
 
 
+REVERSAL_PREFIX = "reversal:"
+
+
 def reversal_of(
     db: Session,
     organization_id: str,
@@ -330,7 +335,7 @@ def reversal_of(
         lines=lines,
         source_type=entry.source_type,
         source_id=entry.source_id,
-        reference=f"reversal:{entry.id}",
+        reference=f"{REVERSAL_PREFIX}{entry.id}",
         created_by=created_by,
         kind="DIARIO",
     )
@@ -503,3 +508,134 @@ def loan_payment_entry(
         created_by=created_by,
         kind="EGRESO",
     )
+
+
+# --- Pólizas manuales (C-1) ---
+
+# Cuentas que mantienen un saldo espejo fuera del ledger (instrumentos,
+# cartera, activos fijos y préstamos). Una póliza manual contra ellas
+# descuadraría ese espejo, así que se capturan desde su módulo.
+MODULE_CONTROLLED_CODES = {
+    CODE_CASH_BANK: "Movimientos",
+    CODE_CREDIT_CARDS: "Movimientos",
+    CODE_ACCOUNTS_RECEIVABLE: "Por cobrar",
+    CODE_ACCOUNTS_PAYABLE: "Por pagar",
+    CODE_FIXED_ASSETS: "Patrimonio",
+    CODE_ACCUMULATED_DEPRECIATION: "Patrimonio",
+    CODE_LOANS_PAYABLE: "Patrimonio",
+}
+
+MANUAL_SOURCE = "manual"
+MAX_MANUAL_LINES = 100
+
+
+@dataclass(frozen=True)
+class ManualLine:
+    """Línea capturada por el contador: la cuenta viene por id, no por código."""
+
+    account_id: str
+    debit: Decimal = Decimal("0")
+    credit: Decimal = Decimal("0")
+    description: str | None = None
+
+
+def manual_entry(
+    db: Session,
+    organization_id: str,
+    date: date_type,
+    description: str,
+    lines: list[ManualLine],
+    reference: str | None = None,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Póliza de diario capturada a mano.
+
+    Valida lo propio de una captura manual (fecha, cuentas permitidas) y deja
+    al motor lo demás: cuadre, montos, mes cerrado y folio. No hace commit.
+    """
+    if date > date_type.today():
+        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    description = (description or "").strip()
+    if not description:
+        raise AccountingError("La póliza necesita un concepto.")
+    if not 2 <= len(lines) <= MAX_MANUAL_LINES:
+        raise AccountingError(f"Una póliza lleva entre 2 y {MAX_MANUAL_LINES} líneas.")
+    reference = (reference or "").strip() or None
+    if reference and reference.startswith(REVERSAL_PREFIX):
+        raise AccountingError(
+            f"La referencia no puede empezar con '{REVERSAL_PREFIX}'; esa marca la pone ARCA al revertir."
+        )
+
+    wanted = {line.account_id for line in lines}
+    accounts = {
+        account.id: account
+        for account in db.query(Account)
+        .filter(Account.organization_id == organization_id, Account.id.in_(wanted))
+        .all()
+    }
+    specs: list[LineSpec] = []
+    for line in lines:
+        account = accounts.get(line.account_id)
+        if account is None:
+            raise LookupError("Esa cuenta no existe.")
+        if not account.active:
+            raise AccountingError(f"La cuenta {account.code} está inactiva.")
+        if account.parent_id is None:
+            raise AccountingError(
+                f"Las pólizas van a cuentas de detalle, no a la cuenta mayor {account.code}."
+            )
+        if account.code in MODULE_CONTROLLED_CODES:
+            raise AccountingError(
+                f"La cuenta {account.code} la mueven los módulos. Para bancos y tarjetas usa "
+                "Movimientos; para cartera, Por cobrar y Por pagar; para activos fijos y "
+                "préstamos, Patrimonio."
+            )
+        specs.append(
+            LineSpec(account.code, debit=line.debit, credit=line.credit, description=line.description)
+        )
+
+    entry = post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=specs,
+        source_type=MANUAL_SOURCE,
+        reference=reference,
+        created_by=created_by,
+        kind="DIARIO",
+    )
+    # El reverso la busca por (source_type, source_id) como a cualquier operación.
+    entry.source_id = entry.id
+    db.flush()
+    return entry
+
+
+def reverse_manual_entry(
+    db: Session,
+    organization_id: str,
+    entry: JournalEntry,
+    date: date_type,
+    description: str | None = None,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Reverso de una póliza manual: espejo, una sola vez, nunca sobre un reverso."""
+    if entry.source_type != MANUAL_SOURCE:
+        raise AccountingError("Esta póliza nació de una operación; cancélala desde su módulo.")
+    if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
+        raise AccountingError("Un reverso no se revierte; captura una póliza nueva.")
+    if entry.status != "POSTED":
+        raise AccountingError("Esta póliza no está contabilizada.")
+    if date < entry.date:
+        raise AccountingError("El reverso no puede ser anterior a la póliza original.")
+    if date > date_type.today():
+        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    already = (
+        db.query(JournalEntry.id)
+        .filter(JournalEntry.organization_id == organization_id, JournalEntry.reference == f"{REVERSAL_PREFIX}{entry.id}")
+        .first()
+    )
+    if already is not None:
+        raise AccountingError("Esta póliza ya fue revertida.")
+    text = (description or "").strip() or f"Reverso de {entry.folio}: {entry.description}"
+    return reversal_of(db, organization_id, entry, text[:500], date, created_by=created_by)

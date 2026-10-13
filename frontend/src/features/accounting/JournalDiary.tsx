@@ -7,9 +7,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
+import { api, errorMessage } from '@/api/client'
+import { Button } from '@/components/ui/Button'
 import { TableFooter } from '@/components/ui/Pagination'
-import { formatDate, formatMoney } from '@/lib/format'
+import { formatDate, formatMoney, today } from '@/lib/format'
 import type { JournalEntry, Page } from '@/types/api'
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -23,18 +26,55 @@ const SOURCE_LABELS: Record<string, string> = {
   depreciation: 'Depreciación',
   loan: 'Préstamo',
   loan_payment: 'Pago de préstamo',
+  manual: 'Póliza manual',
 }
+
+/** Marca que ARCA pone en `reference` al revertir; no es una referencia del usuario. */
+const REVERSAL_PREFIX = 'reversal:'
+
+/** Abre otra póliza en el diario. `dateIso` null: fecha desconocida, se busca en todo el libro. */
+type NavigateToEntry = (id: string, dateIso: string | null) => void
+
+const linkClass = 'figures underline underline-offset-2 hover:text-ink'
 
 function EntryDetail({
   entry,
   accountLabel,
   onClose,
+  onReversed,
+  onNavigate,
 }: {
   entry: JournalEntry
   accountLabel: (id: string) => string
   onClose?: () => void
+  onReversed?: (reversal: JournalEntry) => void
+  onNavigate: NavigateToEntry
 }) {
+  const queryClient = useQueryClient()
+  const [reversing, setReversing] = useState(false)
+  const [date, setDate] = useState(today())
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const total = entry.lines.reduce((sum, line) => sum + Number(line.debit), 0)
+  const canReverse = entry.source_type === 'manual' && !entry.reversed && !entry.reversal_of
+
+  const reverse = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post<JournalEntry>(`/accounting/journal-entries/${entry.id}/reverse`, {
+          date,
+          description: reason.trim() || null,
+        })
+      ).data,
+    onSuccess: (reversal) => {
+      void queryClient.invalidateQueries({ queryKey: ['accounting'] })
+      setReversing(false)
+      setReason('')
+      setError(null)
+      onReversed?.(reversal)
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface shadow-card">
       <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
@@ -46,7 +86,32 @@ function EntryDetail({
             {entry.source_type
               ? ` · ${SOURCE_LABELS[entry.source_type] ?? entry.source_type}`
               : ''}
+            {entry.reference && !entry.reference.startsWith(REVERSAL_PREFIX) ? ` · Ref. ${entry.reference}` : ''}
           </p>
+          {entry.reversed_by ? (
+            <p className="mt-1 text-xs font-medium text-neg">
+              Revertida por{' '}
+              <button
+                type="button"
+                className={linkClass}
+                onClick={() => onNavigate(entry.reversed_by!.id, entry.reversed_by!.date)}
+              >
+                {entry.reversed_by.folio}
+              </button>
+            </p>
+          ) : entry.reversal_of ? (
+            <p className="mt-1 text-xs font-medium text-muted">
+              Reverso de{' '}
+              {entry.reversal_of_folio ? (
+                // La fecha de la original no viaja: se busca en todo el libro.
+                <button type="button" className={linkClass} onClick={() => onNavigate(entry.reversal_of!, null)}>
+                  {entry.reversal_of_folio}
+                </button>
+              ) : (
+                'otra póliza'
+              )}
+            </p>
+          ) : null}
         </div>
         {onClose ? (
           <button
@@ -95,6 +160,56 @@ function EntryDetail({
             </tr>
           </tbody>
         </table>
+
+        {canReverse ? (
+          <div className="mt-4 border-t border-border pt-3">
+            {reversing ? (
+              <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[9rem_1fr]">
+                  <input
+                    type="date"
+                    aria-label="Fecha del reverso"
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
+                    value={date}
+                    min={entry.date}
+                    max={today()}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  <input
+                    aria-label="Motivo del reverso"
+                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
+                    placeholder={`Reverso de ${entry.folio}`}
+                    value={reason}
+                    maxLength={500}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                </div>
+                {error ? <p className="text-xs text-neg">{error}</p> : null}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setReversing(false)
+                      setError(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button variant="danger" disabled={reverse.isPending} onClick={() => reverse.mutate()}>
+                    {reverse.isPending ? 'Revirtiendo…' : 'Confirmar reverso'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted">Deshacer es revertir: la original queda y se emite su espejo.</p>
+                <Button variant="secondary" onClick={() => setReversing(true)}>
+                  Revertir
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -104,10 +219,14 @@ export function JournalDiary({
   page,
   onOffsetChange,
   accountLabel,
+  onReversed,
+  onNavigate,
 }: {
   page: Page<JournalEntry>
   onOffsetChange: (offset: number) => void
   accountLabel: (id: string) => string
+  onReversed?: (reversal: JournalEntry) => void
+  onNavigate: NavigateToEntry
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const listRef = useRef<HTMLDivElement>(null)
@@ -117,7 +236,17 @@ export function JournalDiary({
 
   const entries = page.items
   const requested = searchParams.get('poliza')
-  const selected = entries.find((entry) => entry.id === requested) ?? entries[0] ?? null
+  const inPage = requested ? (entries.find((entry) => entry.id === requested) ?? null) : null
+  // Una póliza pedida por enlace que no está en esta página se trae por id: el
+  // detalle se muestra y la lista no resalta ninguna fila (resaltar una al azar
+  // sería peor que no resaltar nada).
+  const fetched = useQuery({
+    queryKey: ['accounting', 'entry', requested],
+    queryFn: async () => (await api.get<JournalEntry>(`/accounting/journal-entries/${requested}`)).data,
+    enabled: Boolean(requested) && !inPage,
+  })
+  // Sin ?poliza= se muestra la primera.
+  const selected = requested ? (inPage ?? fetched.data ?? null) : (entries[0] ?? null)
 
   function select(entry: JournalEntry, fromClick = false) {
     const params = new URLSearchParams(searchParams)
@@ -203,7 +332,13 @@ export function JournalDiary({
       {/* Escritorio: el detalle acompaña a la lista, pegado arriba. */}
       {selected ? (
         <div className="hidden lg:sticky lg:top-4 lg:block lg:max-h-[78vh]">
-          <EntryDetail entry={selected} accountLabel={accountLabel} />
+          <EntryDetail
+            key={selected.id}
+            entry={selected}
+            accountLabel={accountLabel}
+            onReversed={onReversed}
+            onNavigate={onNavigate}
+          />
         </div>
       ) : null}
 
@@ -217,9 +352,12 @@ export function JournalDiary({
           />
           <div className="absolute inset-y-0 right-0 w-full max-w-md p-2">
             <EntryDetail
+              key={selected.id}
               entry={selected}
               accountLabel={accountLabel}
               onClose={() => setDrawerOpen(false)}
+              onReversed={onReversed}
+              onNavigate={onNavigate}
             />
           </div>
         </div>

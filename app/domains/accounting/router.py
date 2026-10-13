@@ -5,14 +5,23 @@ from datetime import date as date_type
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES, Organization
-from app.security.deps import get_current_org_id, require_role
+from app.models.user import User
+from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services.accounting.coa import (
+    account_has_movements,
+    accounts_with_movements,
+    create_account as create_catalog_account,
+    rename_account,
+    set_account_active,
+)
 from app.services.accounting.contpaqi import ENCODING, ExportError, render
 from app.services.accounting.sat import sat_code_names, sat_codes
 from app.services.accounting.sat import (
@@ -22,6 +31,13 @@ from app.services.accounting.sat import (
     sat_filename,
 )
 from app.services.accounting.engine import trial_balance as compute_trial_balance
+from app.services.accounting.rules import (
+    MODULE_CONTROLLED_CODES,
+    REVERSAL_PREFIX,
+    ManualLine,
+    manual_entry,
+    reverse_manual_entry,
+)
 
 router = APIRouter(
     prefix="/accounting",
@@ -39,8 +55,21 @@ class AccountRead(BaseModel):
     type: str
     parent_id: str | None
     active: bool
+    system: bool
     contpaqi_code: str | None
     sat_code: str | None
+    has_movements: bool = False
+    # Acepta pólizas manuales: de detalle, activa y sin saldo espejo de un módulo.
+    manual_allowed: bool = False
+
+
+def _account_read(account: Account, has_movements: bool) -> AccountRead:
+    item = AccountRead.model_validate(account)
+    item.has_movements = has_movements
+    item.manual_allowed = (
+        account.parent_id is not None and account.active and account.code not in MODULE_CONTROLLED_CODES
+    )
+    return item
 
 
 class JournalLineRead(BaseModel):
@@ -51,6 +80,14 @@ class JournalLineRead(BaseModel):
     debit: Decimal
     credit: Decimal
     description: str | None
+
+
+class ReversalRef(BaseModel):
+    """La póliza espejo que deshizo a otra: lo justo para enlazarla."""
+
+    id: str
+    folio: str
+    date: date_type
 
 
 class JournalEntryRead(BaseModel):
@@ -65,7 +102,68 @@ class JournalEntryRead(BaseModel):
     source_type: str | None
     source_id: str | None
     status: str
+    reversed: bool = False
+    reversal_of: str | None = None
+    reversed_by: ReversalRef | None = None
+    reversal_of_folio: str | None = None
     lines: list[JournalLineRead] = []
+
+
+def _reversal_target(entry: JournalEntry) -> str | None:
+    """Id de la póliza que este reverso deshace, o None si no es un reverso."""
+    if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
+        return entry.reference[len(REVERSAL_PREFIX):]
+    return None
+
+
+def _entries_read(db: Session, organization_id: str, entries: list[JournalEntry]) -> list[JournalEntryRead]:
+    """Pólizas con sus líneas y el enlace con su reverso, en tres consultas como máximo.
+
+    Todo por empresa: `reference` es texto libre y otra empresa no debe poder
+    marcar ni nombrar una póliza ajena.
+    """
+    entry_ids = [entry.id for entry in entries]
+    lines_by_entry: dict[str, list[JournalLineRead]] = {}
+    reversed_by: dict[str, ReversalRef] = {}
+    original_folios: dict[str, str] = {}
+    if entry_ids:
+        for line in db.query(JournalEntryLine).filter(JournalEntryLine.journal_entry_id.in_(entry_ids)).all():
+            lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
+        reversals = (
+            db.query(JournalEntry.id, JournalEntry.folio, JournalEntry.date, JournalEntry.reference)
+            .filter(
+                JournalEntry.organization_id == organization_id,
+                JournalEntry.reference.in_([f"{REVERSAL_PREFIX}{entry_id}" for entry_id in entry_ids]),
+            )
+            .order_by(JournalEntry.created_at)
+            .all()
+        )
+        for reversal_id, folio, date, reference in reversals:
+            reversed_by.setdefault(
+                reference[len(REVERSAL_PREFIX):], ReversalRef(id=reversal_id, folio=folio, date=date)
+            )
+        original_ids = {target for target in map(_reversal_target, entries) if target}
+        if original_ids:
+            original_folios = dict(
+                db.query(JournalEntry.id, JournalEntry.folio)
+                .filter(JournalEntry.organization_id == organization_id, JournalEntry.id.in_(original_ids))
+                .all()
+            )
+    items = []
+    for entry in entries:
+        item = JournalEntryRead.model_validate(entry)
+        item.lines = lines_by_entry.get(entry.id, [])
+        item.reversed_by = reversed_by.get(entry.id)
+        item.reversed = item.reversed_by is not None
+        item.reversal_of = _reversal_target(entry)
+        if item.reversal_of:
+            item.reversal_of_folio = original_folios.get(item.reversal_of)
+        items.append(item)
+    return items
+
+
+def _entry_read(db: Session, organization_id: str, entry: JournalEntry) -> JournalEntryRead:
+    return _entries_read(db, organization_id, [entry])[0]
 
 
 @router.get("/accounts", response_model=list[AccountRead])
@@ -73,16 +171,31 @@ def list_accounts(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    accounts = (
-        db.query(Account)
-        .filter(Account.organization_id == org_id)
-        .order_by(Account.code)
-        .all()
-    )
-    return [AccountRead.model_validate(account) for account in accounts]
+    accounts = db.query(Account).filter(Account.organization_id == org_id).order_by(Account.code).all()
+    with_movements = accounts_with_movements(db, org_id)
+    return [_account_read(account, account.id in with_movements) for account in accounts]
+
+
+def _normalize_contpaqi_code(raw: str | None) -> str | None:
+    # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
+    code = re.sub(r"[\s.\-]", "", raw or "")
+    if code and not (code.isascii() and code.isalnum()):
+        raise HTTPException(status_code=400, detail="El número de cuenta sólo puede llevar letras, números y guiones.")
+    if len(code) > 30:
+        raise HTTPException(status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres.")
+    return code or None
+
+
+def _validated_sat_code(raw: str | None) -> str | None:
+    sat_code = (raw or "").strip()
+    if sat_code and sat_code not in sat_code_names():
+        raise HTTPException(status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT.")
+    return sat_code or None
 
 
 class AccountUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
+    active: bool | None = None
     contpaqi_code: str | None = None
     sat_code: str | None = None
 
@@ -94,41 +207,60 @@ def update_account(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    """Lo editable de una cuenta: su equivalente en CONTPAQi y su código agrupador.
+    """Lo editable de una cuenta: nombre, activa, equivalente en CONTPAQi y código agrupador.
     Sólo cambia lo que viene en el cuerpo; un campo ausente no borra nada."""
-    account = (
-        db.query(Account)
-        .filter(Account.id == account_id, Account.organization_id == org_id)
-        .first()
-    )
+    account = db.query(Account).filter(Account.id == account_id, Account.organization_id == org_id).first()
     if account is None:
         raise HTTPException(status_code=404, detail="Esa cuenta no existe.")
-
+    try:
+        if "name" in payload.model_fields_set:
+            rename_account(account, payload.name or "")
+        if "active" in payload.model_fields_set and payload.active is not None:
+            set_account_active(db, account, payload.active)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     if "contpaqi_code" in payload.model_fields_set:
-        # Se guarda como la escribe el layout de CONTPAQi: sin guiones, puntos ni espacios.
-        code = re.sub(r"[\s.\-]", "", payload.contpaqi_code or "")
-        if code and not (code.isascii() and code.isalnum()):
-            raise HTTPException(
-                status_code=400,
-                detail="El número de cuenta sólo puede llevar letras, números y guiones.",
-            )
-        if len(code) > 30:
-            raise HTTPException(
-                status_code=400, detail="El número de cuenta no puede pasar de 30 caracteres."
-            )
-        account.contpaqi_code = code or None
-
+        account.contpaqi_code = _normalize_contpaqi_code(payload.contpaqi_code)
     if "sat_code" in payload.model_fields_set:
-        sat_code = (payload.sat_code or "").strip()
-        if sat_code and sat_code not in sat_code_names():
-            raise HTTPException(
-                status_code=400, detail="Ese código agrupador no existe en el catálogo del SAT."
-            )
-        account.sat_code = sat_code or None
-
+        account.sat_code = _validated_sat_code(payload.sat_code)
     db.commit()
     db.refresh(account)
-    return AccountRead.model_validate(account)
+    return _account_read(account, account_has_movements(db, account.id))
+
+
+class AccountCreate(BaseModel):
+    parent_id: str = Field(min_length=1)
+    code: str = Field(min_length=4, max_length=12)
+    name: str = Field(min_length=1, max_length=255)
+    sat_code: str | None = None
+    contpaqi_code: str | None = None
+
+
+@router.post("/accounts", response_model=AccountRead, status_code=201)
+def create_account(
+    payload: AccountCreate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Cuenta de detalle nueva bajo una cuenta mayor. El tipo lo fija la mayor."""
+    sat_code = _validated_sat_code(payload.sat_code)
+    contpaqi_code = _normalize_contpaqi_code(payload.contpaqi_code)
+    try:
+        account = create_catalog_account(
+            db, org_id, payload.parent_id, payload.code, payload.name, sat_code=sat_code, contpaqi_code=contpaqi_code
+        )
+        db.commit()
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except IntegrityError as error:
+        # Dos altas simultáneas del mismo código pasan la revisión previa; la
+        # restricción uq_account_org_code frena a la segunda (al hacer flush o commit).
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Ya existe la cuenta {payload.code.strip()}.") from error
+    db.refresh(account)
+    return _account_read(account, False)
 
 
 @router.get("/sat/codes")
@@ -162,23 +294,103 @@ def list_journal_entries(
 
     total = query.count()
     entries = query.limit(limit).offset(offset).all()
-    entry_ids = [entry.id for entry in entries]
-    lines_by_entry: dict[str, list[JournalLineRead]] = {}
-    if entry_ids:
-        lines = (
-            db.query(JournalEntryLine)
-            .filter(JournalEntryLine.journal_entry_id.in_(entry_ids))
-            .all()
-        )
-        for line in lines:
-            lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
-
-    items = []
-    for entry in entries:
-        item = JournalEntryRead.model_validate(entry)
-        item.lines = lines_by_entry.get(entry.id, [])
-        items.append(item)
+    items = _entries_read(db, org_id, entries)
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@router.get("/journal-entries/{entry_id}", response_model=JournalEntryRead)
+def get_journal_entry(
+    entry_id: str,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Una póliza por id: el diario la abre aunque no esté en la página visible."""
+    entry = db.query(JournalEntry).filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id).first()
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Esa póliza no existe.")
+    return _entry_read(db, org_id, entry)
+
+
+class JournalLineCreate(BaseModel):
+    account_id: str = Field(min_length=1)
+    # Centavos exactos desde la entrada: el motor redondea a dos decimales y un
+    # tercer decimal podría cuadrar sólo después de redondear.
+    debit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
+    credit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
+    description: str | None = Field(default=None, max_length=500)
+
+
+class JournalEntryCreate(BaseModel):
+    date: date_type
+    description: str = Field(min_length=1, max_length=500)
+    reference: str | None = Field(default=None, max_length=100)
+    lines: list[JournalLineCreate] = Field(min_length=2, max_length=100)
+
+
+@router.post("/journal-entries", response_model=JournalEntryRead, status_code=201)
+def create_journal_entry(
+    payload: JournalEntryCreate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Póliza de diario capturada a mano. Las reglas viven en rules.manual_entry."""
+    try:
+        entry = manual_entry(
+            db,
+            org_id,
+            date=payload.date,
+            description=payload.description,
+            lines=[ManualLine(l.account_id, l.debit, l.credit, l.description) for l in payload.lines],
+            reference=payload.reference,
+            created_by=user.id,
+        )
+    except LookupError as error:
+        db.rollback()
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    db.refresh(entry)
+    return _entry_read(db, org_id, entry)
+
+
+
+class ReverseRequest(BaseModel):
+    date: date_type
+    description: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/journal-entries/{entry_id}/reverse", response_model=JournalEntryRead, status_code=201)
+def reverse_journal_entry(
+    entry_id: str,
+    payload: ReverseRequest,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Deshacer es revertir: la póliza espejo se emite y la original queda."""
+    # FOR UPDATE: dos reversos simultáneos se serializan aquí; el segundo espera
+    # el commit del primero y su consulta "ya fue revertida" ya ve el espejo.
+    entry = (
+        db.query(JournalEntry)
+        .filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id)
+        .with_for_update()
+        .first()
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Esa póliza no existe.")
+    try:
+        reversal = reverse_manual_entry(
+            db, org_id, entry, date=payload.date, description=payload.description, created_by=user.id
+        )
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    db.refresh(reversal)
+    return _entry_read(db, org_id, reversal)
 
 
 @router.get("/trial-balance")

@@ -3,9 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from '@/api/client'
 import type { LedgerAccount } from '@/types/api'
 
-type Field = 'contpaqi_code' | 'sat_code'
+type Field = 'contpaqi_code' | 'sat_code' | 'name'
 
-/** Un dato editable de una cuenta del catálogo (equivalente en CONTPAQi o código
+/** Un dato editable de una cuenta del catálogo (nombre, equivalente en CONTPAQi o código
  *  agrupador del SAT). Se guarda al salir del campo o con Enter; vacío lo quita. */
 export function AccountFieldCell({
   account,
@@ -47,7 +47,14 @@ export function AccountFieldCell({
 
   function commit() {
     editing.current = false
-    if (value.trim() !== saved) save.mutate(value.trim())
+    const next = value.trim()
+    // Un nombre en blanco nunca es válido: se restaura en vez de pedirle al backend que lo rechace.
+    if (field === 'name' && next === '') {
+      setValue(saved)
+      setError(null)
+      return
+    }
+    if (next !== saved) save.mutate(next)
   }
 
   return (
@@ -55,10 +62,10 @@ export function AccountFieldCell({
       <input
         aria-label={`${placeholder} de ${account.code} ${account.name}`}
         list={list}
-        className="figures w-40 rounded border border-border bg-surface px-2 py-1 text-sm placeholder:text-muted/50 hover:border-muted/40 disabled:opacity-60"
+        className={`${field === 'name' ? 'w-full min-w-[14rem]' : 'figures w-40'} rounded border border-border bg-surface px-2 py-1 text-sm placeholder:text-muted/50 hover:border-muted/40 disabled:opacity-60`}
         placeholder={placeholder}
         value={value}
-        maxLength={40}
+        maxLength={field === 'name' ? 255 : 40}
         disabled={save.isPending}
         onFocus={() => {
           editing.current = true
