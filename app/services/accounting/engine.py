@@ -28,6 +28,11 @@ logger = logging.getLogger("arca.accounting")
 
 TWO_PLACES = Decimal("0.01")
 
+# Origen de la póliza de cierre de ejercicio. Los estados de resultados y el
+# dashboard la excluyen (traspasa resultados, no es un ingreso ni un gasto);
+# balance, balanza, diario, CONTPAQi y SAT la incluyen.
+YEAR_CLOSE_SOURCE = "year_close"
+
 
 class AccountingError(ValueError):
     """Regla contable violada. El mensaje es apto para mostrarse al usuario."""
@@ -56,7 +61,23 @@ class ClosedPeriodError(AccountingError):
 
 
 def _assert_period_open(db: Session, organization_id: str, date: date_type) -> None:
+    from app.models.fiscal_year import FiscalYearLock
     from app.models.period import PeriodLock
+
+    # El ejercicio primero: si el año entero está cerrado, decir "el mes" confunde.
+    year_lock = (
+        db.query(FiscalYearLock.id)
+        .filter(
+            FiscalYearLock.organization_id == organization_id,
+            FiscalYearLock.year == date.year,
+            FiscalYearLock.reopened_at.is_(None),
+        )
+        .first()
+    )
+    if year_lock is not None:
+        raise ClosedPeriodError(
+            f"El ejercicio {date.year} está cerrado. Reábrelo si necesitas corregir algo."
+        )
 
     lock = (
         db.query(PeriodLock)
@@ -85,18 +106,24 @@ def post_journal_entry(
     reference: str | None = None,
     created_by: str | None = None,
     kind: str = "DIARIO",
+    bypass_period_lock: bool = False,
 ) -> JournalEntry:
     """Valida y persiste una póliza balanceada. No hace commit (transacción del caller).
 
     `kind` (INGRESO/EGRESO/DIARIO) lo declara cada regla de negocio y define la
     serie del folio; no se infiere de las líneas.
+
+    `bypass_period_lock` sólo lo usan la póliza de cierre anual y su reverso: el
+    módulo de periodos es dueño de los candados y esas pólizas no cambian lo
+    declarado del mes (sólo traspasan resultados a capital).
     """
     if len(lines) < 2:
         raise AccountingError("Un asiento contable requiere al menos dos líneas.")
 
     # El candado se valida AQUÍ, en el único punto por donde pasa toda póliza:
     # ponerlo en cada router dejaría puertas abiertas por olvido.
-    _assert_period_open(db, organization_id, date)
+    if not bypass_period_lock:
+        _assert_period_open(db, organization_id, date)
 
     total_debit = Decimal("0")
     total_credit = Decimal("0")
