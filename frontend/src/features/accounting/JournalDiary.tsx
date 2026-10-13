@@ -27,7 +27,12 @@ const SOURCE_LABELS: Record<string, string> = {
   loan: 'Préstamo',
   loan_payment: 'Pago de préstamo',
   manual: 'Póliza manual',
+  opening: 'Apertura',
+  year_close: 'Cierre anual',
 }
+
+/** Orígenes que se revierten a mano desde aquí (rules.HAND_REVERSIBLE_SOURCES). */
+const HAND_REVERSIBLE = new Set(['manual', 'opening'])
 
 /** Marca que ARCA pone en `reference` al revertir; no es una referencia del usuario. */
 const REVERSAL_PREFIX = 'reversal:'
@@ -56,7 +61,8 @@ function EntryDetail({
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const total = entry.lines.reduce((sum, line) => sum + Number(line.debit), 0)
-  const canReverse = entry.source_type === 'manual' && !entry.reversed && !entry.reversal_of
+  const canReverse =
+    entry.source_type !== null && HAND_REVERSIBLE.has(entry.source_type) && !entry.reversed && !entry.reversal_of
 
   const reverse = useMutation({
     mutationFn: async () =>
