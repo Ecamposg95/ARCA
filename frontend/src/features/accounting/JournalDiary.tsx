@@ -64,11 +64,15 @@ function EntryDetail({
   const canReverse =
     entry.source_type !== null && HAND_REVERSIBLE.has(entry.source_type) && !entry.reversed && !entry.reversal_of
 
+  // El reverso de una apertura lleva la fecha de la apertura (lo fija el servidor).
+  const isOpening = entry.source_type === 'opening'
+  const reverseDate = isOpening ? entry.date : date
+
   const reverse = useMutation({
     mutationFn: async () =>
       (
         await api.post<JournalEntry>(`/accounting/journal-entries/${entry.id}/reverse`, {
-          date,
+          date: reverseDate,
           description: reason.trim() || null,
         })
       ).data,
@@ -172,15 +176,21 @@ function EntryDetail({
             {reversing ? (
               <div className="space-y-2">
                 <div className="grid gap-2 sm:grid-cols-[9rem_1fr]">
-                  <input
-                    type="date"
-                    aria-label="Fecha del reverso"
-                    className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
-                    value={date}
-                    min={entry.date}
-                    max={today()}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
+                  {isOpening ? (
+                    <p className="self-center text-sm text-muted">
+                      Se revierte con fecha <span className="figures">{formatDate(entry.date)}</span>
+                    </p>
+                  ) : (
+                    <input
+                      type="date"
+                      aria-label="Fecha del reverso"
+                      className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
+                      value={date}
+                      min={entry.date}
+                      max={today()}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  )}
                   <input
                     aria-label="Motivo del reverso"
                     className="rounded border border-border bg-surface px-2 py-1.5 text-sm"
