@@ -97,6 +97,7 @@ export function AccountingPage() {
     if (entriesQuery.data?.items.some((entry) => entry.id === id)) {
       const params = new URLSearchParams(searchParams)
       params.set('poliza', id)
+      params.delete('vista')
       setSearchParams(params, { replace: true })
       return
     }
@@ -338,7 +339,7 @@ export function AccountingPage() {
         </>
       ) : null}
 
-      {tab === 'periodos' ? <PeriodsPanel /> : null}
+      {tab === 'periodos' ? <PeriodsPanel onShowEntry={(id) => showEntry(id, null)} /> : null}
 
       <JournalEntryForm
         open={newEntryOpen}

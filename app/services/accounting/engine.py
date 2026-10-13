@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import date as date_type
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.events import event_bus
@@ -27,6 +27,11 @@ from app.services.accounting.folios import next_folio
 logger = logging.getLogger("arca.accounting")
 
 TWO_PLACES = Decimal("0.01")
+
+# Origen de la póliza de cierre de ejercicio. Los estados de resultados y el
+# dashboard la excluyen (traspasa resultados, no es un ingreso ni un gasto);
+# balance, balanza, diario, CONTPAQi y SAT la incluyen.
+YEAR_CLOSE_SOURCE = "year_close"
 
 
 class AccountingError(ValueError):
@@ -56,7 +61,30 @@ class ClosedPeriodError(AccountingError):
 
 
 def _assert_period_open(db: Session, organization_id: str, date: date_type) -> None:
+    from app.models.fiscal_year import FiscalYearLock
     from app.models.period import PeriodLock
+
+    # Un ejercicio cerrado protege su año y todo lo anterior: si el año entero
+    # está cerrado, decir "el mes" confunde.
+    year_lock = (
+        db.query(FiscalYearLock)
+        .filter(
+            FiscalYearLock.organization_id == organization_id,
+            FiscalYearLock.year >= date.year,
+            FiscalYearLock.reopened_at.is_(None),
+        )
+        .order_by(FiscalYearLock.year.asc())
+        .first()
+    )
+    if year_lock is not None:
+        if year_lock.year == date.year:
+            raise ClosedPeriodError(
+                f"El ejercicio {year_lock.year} está cerrado. Reábrelo si necesitas corregir algo."
+            )
+        raise ClosedPeriodError(
+            f"El ejercicio {year_lock.year} está cerrado: nada anterior al 1 de enero de "
+            f"{year_lock.year + 1} se puede mover. Reábrelo si necesitas corregir algo."
+        )
 
     lock = (
         db.query(PeriodLock)
@@ -74,6 +102,24 @@ def _assert_period_open(db: Session, organization_id: str, date: date_type) -> N
         )
 
 
+def lock_organization(db: Session, organization_id: str) -> None:
+    """FOR UPDATE sobre la empresa: serializa los procesos que postean pólizas únicas.
+
+    Dos aperturas o dos cierres de ejercicio simultáneos asentarían dos pólizas
+    que ninguna pantalla puede deshacer; con el candado, la segunda llamada ya
+    ve la primera y falla con su mensaje normal."""
+    from app.models.organization import Organization
+
+    db.query(Organization.id).filter(Organization.id == organization_id).with_for_update().one()
+
+
+def not_year_close():
+    """Filtro: la póliza no es de cierre anual. `source_type` puede ser NULL
+    (asientos antiguos) y en SQL `NULL != 'x'` no es verdadero: sin el IS NULL
+    esas pólizas desaparecerían de los reportes."""
+    return or_(JournalEntry.source_type.is_(None), JournalEntry.source_type != YEAR_CLOSE_SOURCE)
+
+
 def post_journal_entry(
     db: Session,
     organization_id: str,
@@ -85,18 +131,24 @@ def post_journal_entry(
     reference: str | None = None,
     created_by: str | None = None,
     kind: str = "DIARIO",
+    bypass_period_lock: bool = False,
 ) -> JournalEntry:
     """Valida y persiste una póliza balanceada. No hace commit (transacción del caller).
 
     `kind` (INGRESO/EGRESO/DIARIO) lo declara cada regla de negocio y define la
     serie del folio; no se infiere de las líneas.
+
+    `bypass_period_lock` sólo lo usan la póliza de cierre anual y su reverso: el
+    módulo de periodos es dueño de los candados y esas pólizas no cambian lo
+    declarado del mes (sólo traspasan resultados a capital).
     """
     if len(lines) < 2:
         raise AccountingError("Un asiento contable requiere al menos dos líneas.")
 
     # El candado se valida AQUÍ, en el único punto por donde pasa toda póliza:
     # ponerlo en cada router dejaría puertas abiertas por olvido.
-    _assert_period_open(db, organization_id, date)
+    if not bypass_period_lock:
+        _assert_period_open(db, organization_id, date)
 
     total_debit = Decimal("0")
     total_credit = Decimal("0")
@@ -159,8 +211,13 @@ def account_type_balance(
     account_type: str,
     start: date_type | None = None,
     end: date_type | None = None,
+    include_closing: bool = False,
 ) -> Decimal:
-    """Saldo neto (naturaleza normal) de todas las cuentas de un tipo, desde el ledger."""
+    """Saldo neto (naturaleza normal) de todas las cuentas de un tipo, desde el ledger.
+
+    Sin `include_closing` se ignoran las pólizas de cierre anual: traspasan el
+    resultado a capital, no son ventas ni gastos. El balance general sí las pide.
+    """
     query = (
         db.query(
             func.coalesce(func.sum(JournalEntryLine.debit), 0),
@@ -174,6 +231,8 @@ def account_type_balance(
             Account.type == account_type,
         )
     )
+    if not include_closing:
+        query = query.filter(not_year_close())
     if start is not None:
         query = query.filter(JournalEntry.date >= start)
     if end is not None:

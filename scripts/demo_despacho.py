@@ -7,6 +7,9 @@ Crea un contador con cuatro empresas, una por cada estado del semáforo:
     C  Restaurante La Milpa    cuentas por pagar vencidas
     D  Clínica Dental Sonríe   propuestas de agentes por revisar
 
+Todas traen además una venta en junio y una renta en julio del año pasado: el
+ejercicio anterior queda listo para cerrarse en Contabilidad → Cierre de periodo.
+
 B y C las dio de alta el contador (él lleva al cliente). En D la dueña ya usaba
 ARCA y lo invitó como contador (el cliente lo trae a él).
 
@@ -163,6 +166,30 @@ def main() -> None:
                 "financial_account_id": bank["id"],
                 "status": "PAID",
             }, headers)
+        # El año pasado: una venta en junio y una renta en julio. Así el contador
+        # puede cerrar ese ejercicio en la demo y ver 3200 abrir en enero.
+        sale_description, sale_category, sale_amount = profile["incomes"][0]
+        post("/income", {
+            "date": date(today.year - 1, 6, 15).isoformat(),
+            "description": f"{sale_description} (junio {today.year - 1})",
+            "amount": sale_amount,
+            "tax_rate": "0.16",
+            "category_id": income[sale_category]["id"],
+            "financial_account_id": bank["id"],
+            "status": "PAID",
+        }, headers)
+        rent_description, rent_category, rent_amount, rent_tax = next(
+            row for row in profile["expenses"] if row[1] == "Renta"
+        )
+        post("/expenses", {
+            "date": date(today.year - 1, 7, 20).isoformat(),
+            "description": f"{rent_description} (julio {today.year - 1})",
+            "amount": rent_amount,
+            "tax_rate": rent_tax,
+            "category_id": expense[rent_category]["id"],
+            "financial_account_id": bank["id"],
+            "status": "PAID",
+        }, headers)
         return expense
 
     def close_last_month(headers: dict) -> None:

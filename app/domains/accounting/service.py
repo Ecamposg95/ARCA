@@ -158,10 +158,11 @@ def sat_balance(db: Session, organization_id: str, year: int, month: int) -> lis
     start = date(year, month, 1)
     end = date(year, month, monthrange(year, month)[1])
     year_start = date(year, 1, 1)
-    # ARCA no tiene cierre anual, así que el XML lo hace virtual: ingresos y
-    # gastos sólo arrastran saldo desde el 1 de enero, y el resultado neto de
-    # los años anteriores abre en Resultados Acumulados. Sin esto, enero
-    # mostraría las ventas de todos los años como saldo inicial.
+    # Cierre virtual para los años que nadie ha cerrado: ingresos y gastos sólo
+    # arrastran saldo desde el 1 de enero, y el resultado neto de los años
+    # anteriores abre en Resultados Acumulados. Un ejercicio cerrado de verdad
+    # (periods.close_year) ya trae sus resultados en cero y la utilidad en 3200,
+    # así que aquí aporta cero y enero abre con la póliza real.
     prior_years = _line_sums(db, organization_id, None, year_start - timedelta(days=1))
     this_year = _line_sums(db, organization_id, year_start, start - timedelta(days=1))
     during = _line_sums(db, organization_id, start, end)
