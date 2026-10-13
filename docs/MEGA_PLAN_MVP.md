@@ -55,7 +55,7 @@ Tamaños estimados de construcción con forks en paralelo: S 1 a 2 días, M 3 a 
 - Cierre de ejercicio: traspaso de 4xxx y 5xxx a 3200, candado anual (`fiscal_year_locks`), reapertura con motivo y rastro.
 - La balanza SAT deja de simular el cierre cuando existe uno real.
 - **Hecho cuando:** enero abre con utilidad acumulada correcta y la balanza XML cuadra sin lógica virtual.
-- **Estado:** integrado, en despliegue (spec `docs/superpowers/specs/2026-10-12-apertura-cierre-anual-design.md`, plan `docs/superpowers/plans/2026-10-13-apertura-cierre-anual.md`).
+- **Estado:** en producción desde el 13 de octubre de 2026 (spec `docs/superpowers/specs/2026-10-12-apertura-cierre-anual-design.md`, plan `docs/superpowers/plans/2026-10-13-apertura-cierre-anual.md`).
 
 ### B · Estados financieros NIF
 - Estado de situación financiera clasificado (circulante y no circulante, corto y largo plazo) con clasificación por cuenta en el catálogo.

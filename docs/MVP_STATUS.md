@@ -1,6 +1,6 @@
 # MVP STATUS — ARCA
 
-_Actualizado: 2026-10-13 (C-2 apertura y cierre anual)_
+_Actualizado: 2026-10-13 (C-2 apertura y cierre anual, prod `0f23acb`)_
 
 ## Done
 
