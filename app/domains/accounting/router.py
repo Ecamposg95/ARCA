@@ -5,14 +5,15 @@ from datetime import date as date_type
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.accounting import service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES, Organization
-from app.security.deps import get_current_org_id, require_role
+from app.models.user import User
+from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.services.accounting.contpaqi import ENCODING, ExportError, render
 from app.services.accounting.sat import sat_code_names, sat_codes
 from app.services.accounting.sat import (
@@ -22,6 +23,7 @@ from app.services.accounting.sat import (
     sat_filename,
 )
 from app.services.accounting.engine import trial_balance as compute_trial_balance
+from app.services.accounting.rules import ManualLine, manual_entry
 
 router = APIRouter(
     prefix="/accounting",
@@ -65,7 +67,41 @@ class JournalEntryRead(BaseModel):
     source_type: str | None
     source_id: str | None
     status: str
+    reversed: bool = False
+    reversal_of: str | None = None
     lines: list[JournalLineRead] = []
+
+
+REVERSAL_PREFIX = "reversal:"
+
+
+def _entries_read(db: Session, entries: list[JournalEntry]) -> list[JournalEntryRead]:
+    """Pólizas con sus líneas y su estado de reverso, en dos consultas."""
+    entry_ids = [entry.id for entry in entries]
+    lines_by_entry: dict[str, list[JournalLineRead]] = {}
+    reversed_ids: set[str] = set()
+    if entry_ids:
+        for line in db.query(JournalEntryLine).filter(JournalEntryLine.journal_entry_id.in_(entry_ids)).all():
+            lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
+        reversals = (
+            db.query(JournalEntry.reference)
+            .filter(JournalEntry.reference.in_([f"{REVERSAL_PREFIX}{entry_id}" for entry_id in entry_ids]))
+            .all()
+        )
+        reversed_ids = {reference[len(REVERSAL_PREFIX):] for (reference,) in reversals}
+    items = []
+    for entry in entries:
+        item = JournalEntryRead.model_validate(entry)
+        item.lines = lines_by_entry.get(entry.id, [])
+        item.reversed = entry.id in reversed_ids
+        if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
+            item.reversal_of = entry.reference[len(REVERSAL_PREFIX):]
+        items.append(item)
+    return items
+
+
+def _entry_read(db: Session, entry: JournalEntry) -> JournalEntryRead:
+    return _entries_read(db, [entry])[0]
 
 
 @router.get("/accounts", response_model=list[AccountRead])
@@ -162,23 +198,51 @@ def list_journal_entries(
 
     total = query.count()
     entries = query.limit(limit).offset(offset).all()
-    entry_ids = [entry.id for entry in entries]
-    lines_by_entry: dict[str, list[JournalLineRead]] = {}
-    if entry_ids:
-        lines = (
-            db.query(JournalEntryLine)
-            .filter(JournalEntryLine.journal_entry_id.in_(entry_ids))
-            .all()
-        )
-        for line in lines:
-            lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
-
-    items = []
-    for entry in entries:
-        item = JournalEntryRead.model_validate(entry)
-        item.lines = lines_by_entry.get(entry.id, [])
-        items.append(item)
+    items = _entries_read(db, entries)
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+class JournalLineCreate(BaseModel):
+    account_id: str = Field(min_length=1)
+    debit: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
+    credit: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
+    description: str | None = Field(default=None, max_length=500)
+
+
+class JournalEntryCreate(BaseModel):
+    date: date_type
+    description: str = Field(min_length=1, max_length=500)
+    reference: str | None = Field(default=None, max_length=100)
+    lines: list[JournalLineCreate] = Field(min_length=2, max_length=100)
+
+
+@router.post("/journal-entries", response_model=JournalEntryRead, status_code=201)
+def create_journal_entry(
+    payload: JournalEntryCreate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Póliza de diario capturada a mano. Las reglas viven en rules.manual_entry."""
+    try:
+        entry = manual_entry(
+            db,
+            org_id,
+            date=payload.date,
+            description=payload.description,
+            lines=[ManualLine(l.account_id, l.debit, l.credit, l.description) for l in payload.lines],
+            reference=payload.reference,
+            created_by=user.id,
+        )
+    except LookupError as error:
+        db.rollback()
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    db.refresh(entry)
+    return _entry_read(db, entry)
 
 
 @router.get("/trial-balance")

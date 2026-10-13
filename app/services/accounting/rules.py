@@ -6,6 +6,7 @@ Prohibido armar asientos en routers o en el frontend.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date as date_type
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ from app.services.accounting.coa import (
     CODE_ACCUMULATED_DEPRECIATION,
     CODE_CAPITAL,
     CODE_CASH_BANK,
+    CODE_CREDIT_CARDS,
     CODE_DEPRECIATION_EXPENSE,
     CODE_FIXED_ASSETS,
     CODE_INTEREST_EXPENSE,
@@ -29,7 +31,7 @@ from app.services.accounting.coa import (
     CODE_VAT_CREDITABLE_PAID,
     CODE_VAT_CREDITABLE_PENDING,
 )
-from app.services.accounting.engine import LineSpec, post_journal_entry
+from app.services.accounting.engine import AccountingError, LineSpec, post_journal_entry
 
 
 def opening_balance_entry(
@@ -503,3 +505,95 @@ def loan_payment_entry(
         created_by=created_by,
         kind="EGRESO",
     )
+
+
+# --- Pólizas manuales (C-1) ---
+
+# Cuentas que mantienen un saldo espejo fuera del ledger (instrumentos y
+# cartera). Una póliza manual contra ellas descuadraría ese espejo, así que se
+# capturan desde su módulo.
+MODULE_CONTROLLED_CODES = {
+    CODE_CASH_BANK: "Movimientos",
+    CODE_CREDIT_CARDS: "Movimientos",
+    CODE_ACCOUNTS_RECEIVABLE: "Por cobrar",
+    CODE_ACCOUNTS_PAYABLE: "Por pagar",
+}
+
+MANUAL_SOURCE = "manual"
+MAX_MANUAL_LINES = 100
+
+
+@dataclass(frozen=True)
+class ManualLine:
+    """Línea capturada por el contador: la cuenta viene por id, no por código."""
+
+    account_id: str
+    debit: Decimal = Decimal("0")
+    credit: Decimal = Decimal("0")
+    description: str | None = None
+
+
+def manual_entry(
+    db: Session,
+    organization_id: str,
+    date: date_type,
+    description: str,
+    lines: list[ManualLine],
+    reference: str | None = None,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Póliza de diario capturada a mano.
+
+    Valida lo propio de una captura manual (fecha, cuentas permitidas) y deja
+    al motor lo demás: cuadre, montos, mes cerrado y folio. No hace commit.
+    """
+    if date > date_type.today():
+        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    description = (description or "").strip()
+    if not description:
+        raise AccountingError("La póliza necesita un concepto.")
+    if not 2 <= len(lines) <= MAX_MANUAL_LINES:
+        raise AccountingError(f"Una póliza lleva entre 2 y {MAX_MANUAL_LINES} líneas.")
+
+    wanted = {line.account_id for line in lines}
+    accounts = {
+        account.id: account
+        for account in db.query(Account)
+        .filter(Account.organization_id == organization_id, Account.id.in_(wanted))
+        .all()
+    }
+    specs: list[LineSpec] = []
+    for line in lines:
+        account = accounts.get(line.account_id)
+        if account is None:
+            raise LookupError("Esa cuenta no existe.")
+        if not account.active:
+            raise AccountingError(f"La cuenta {account.code} está inactiva.")
+        if account.parent_id is None:
+            raise AccountingError(
+                f"Las pólizas van a cuentas de detalle, no a la cuenta mayor {account.code}."
+            )
+        if account.code in MODULE_CONTROLLED_CODES:
+            raise AccountingError(
+                f"La cuenta {account.code} la mueven los módulos. Para bancos y tarjetas usa "
+                "Movimientos; para cartera, Por cobrar y Por pagar."
+            )
+        specs.append(
+            LineSpec(account.code, debit=line.debit, credit=line.credit, description=line.description)
+        )
+
+    entry = post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=description,
+        lines=specs,
+        source_type=MANUAL_SOURCE,
+        reference=reference,
+        created_by=created_by,
+        kind="DIARIO",
+    )
+    # El reverso la busca por (source_type, source_id) como a cualquier operación.
+    entry.source_id = entry.id
+    db.flush()
+    return entry
