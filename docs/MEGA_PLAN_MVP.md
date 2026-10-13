@@ -44,7 +44,7 @@ Tamaños estimados de construcción con forks en paralelo: S 1 a 2 días, M 3 a 
 - **Hecho cuando:** un evento sobrevive a un reinicio del servicio; una llave abusiva recibe 429; un webhook con firma inválida recibe 401 y no deja rastro en el libro.
 
 ### C1 · Pólizas manuales y catálogo editable
-- `POST /api/accounting/journal-entries`: póliza de diario con varias líneas, siempre `DIARIO`, origen `manual`, fecha no futura y mes abierto; sólo cuentas de detalle; bloqueadas las cuentas que mueven los módulos (1100, 1200, 2100, 2200).
+- `POST /api/accounting/journal-entries`: póliza de diario con varias líneas, siempre `DIARIO`, origen `manual`, fecha no futura y mes abierto; sólo cuentas de detalle; bloqueadas las cuentas que mueven los módulos (1100, 1200, 2100, 2200, 1400, 1490, 2300).
 - `POST /api/accounting/journal-entries/{id}/reverse`: póliza espejo, una sola vez.
 - `POST /api/accounting/accounts` y `PATCH` ampliado: cuentas de detalle bajo una mayor, código numérico único de 4 a 10 dígitos que empieza con el dígito de la mayor, renombrar, desactivar sin movimientos, reactivar.
 - UI: "Nueva póliza" en Diario con rejilla de líneas y totales vivos; "Revertir" en el detalle; "Nueva cuenta", nombre editable y desactivar en Catálogo.

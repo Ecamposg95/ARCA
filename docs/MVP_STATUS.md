@@ -15,7 +15,7 @@ _Actualizado: 2026-10-12 (plan maestro MVP)_
 - Railway: PostgreSQL + servicio `ARCA` conectado al repo GitHub (`Ecamposg95/ARCA`, auto-deploy en push a main), dominio https://arca-production-d769.up.railway.app
 - Deployment productivo validado end-to-end (registro real → ingreso → gasto → dashboard/balance/balanza correctos vía HTTPS).
 
-- **C-1 Pólizas manuales y catálogo editable** (spec 2026-10-12): `POST /api/accounting/journal-entries` (sólo Diario, cuentas de detalle, nunca 1100/1200/2100/2200), reverso único por `/reverse`, alta de cuentas de detalle bajo una mayor (`POST /api/accounting/accounts`), renombrar y desactivar sin movimientos; UI con formulario de póliza, reverso desde el diario y catálogo editable.
+- **C-1 Pólizas manuales y catálogo editable** (spec 2026-10-12): `POST /api/accounting/journal-entries` (sólo Diario, cuentas de detalle, nunca las cuentas con saldo espejo: 1100/1200/2100/2200/1400/1490/2300), reverso único por `/reverse`, alta de cuentas de detalle bajo una mayor (`POST /api/accounting/accounts`), renombrar y desactivar sin movimientos; UI con formulario de póliza, reverso desde el diario y catálogo editable.
 
 ## In Progress
 
