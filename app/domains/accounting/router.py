@@ -30,7 +30,7 @@ from app.services.accounting.sat import (
     sat_filename,
 )
 from app.services.accounting.engine import trial_balance as compute_trial_balance
-from app.services.accounting.rules import ManualLine, manual_entry, reverse_manual_entry
+from app.services.accounting.rules import REVERSAL_PREFIX, ManualLine, manual_entry, reverse_manual_entry
 
 router = APIRouter(
     prefix="/accounting",
@@ -81,10 +81,7 @@ class JournalEntryRead(BaseModel):
     lines: list[JournalLineRead] = []
 
 
-REVERSAL_PREFIX = "reversal:"
-
-
-def _entries_read(db: Session, entries: list[JournalEntry]) -> list[JournalEntryRead]:
+def _entries_read(db: Session, organization_id: str, entries: list[JournalEntry]) -> list[JournalEntryRead]:
     """Pólizas con sus líneas y su estado de reverso, en dos consultas."""
     entry_ids = [entry.id for entry in entries]
     lines_by_entry: dict[str, list[JournalLineRead]] = {}
@@ -94,7 +91,10 @@ def _entries_read(db: Session, entries: list[JournalEntry]) -> list[JournalEntry
             lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
         reversals = (
             db.query(JournalEntry.reference)
-            .filter(JournalEntry.reference.in_([f"{REVERSAL_PREFIX}{entry_id}" for entry_id in entry_ids]))
+            .filter(
+                JournalEntry.organization_id == organization_id,
+                JournalEntry.reference.in_([f"{REVERSAL_PREFIX}{entry_id}" for entry_id in entry_ids]),
+            )
             .all()
         )
         reversed_ids = {reference[len(REVERSAL_PREFIX):] for (reference,) in reversals}
@@ -109,8 +109,8 @@ def _entries_read(db: Session, entries: list[JournalEntry]) -> list[JournalEntry
     return items
 
 
-def _entry_read(db: Session, entry: JournalEntry) -> JournalEntryRead:
-    return _entries_read(db, [entry])[0]
+def _entry_read(db: Session, organization_id: str, entry: JournalEntry) -> JournalEntryRead:
+    return _entries_read(db, organization_id, [entry])[0]
 
 
 @router.get("/accounts", response_model=list[AccountRead])
@@ -243,14 +243,14 @@ def list_journal_entries(
 
     total = query.count()
     entries = query.limit(limit).offset(offset).all()
-    items = _entries_read(db, entries)
+    items = _entries_read(db, org_id, entries)
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 class JournalLineCreate(BaseModel):
     account_id: str = Field(min_length=1)
-    debit: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
-    credit: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)
+    debit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=16, allow_inf_nan=False)
+    credit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=16, allow_inf_nan=False)
     description: str | None = Field(default=None, max_length=500)
 
 
@@ -287,7 +287,7 @@ def create_journal_entry(
         raise HTTPException(status_code=400, detail=str(error)) from error
     db.commit()
     db.refresh(entry)
-    return _entry_read(db, entry)
+    return _entry_read(db, org_id, entry)
 
 
 
@@ -305,8 +305,13 @@ def reverse_journal_entry(
     user: User = Depends(get_current_user),
 ):
     """Deshacer es revertir: la póliza espejo se emite y la original queda."""
+    # FOR UPDATE: dos reversos simultáneos se serializan aquí; el segundo espera
+    # el commit del primero y su consulta "ya fue revertida" ya ve el espejo.
     entry = (
-        db.query(JournalEntry).filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id).first()
+        db.query(JournalEntry)
+        .filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id)
+        .with_for_update()
+        .first()
     )
     if entry is None:
         raise HTTPException(status_code=404, detail="Esa póliza no existe.")
@@ -319,7 +324,7 @@ def reverse_journal_entry(
         raise HTTPException(status_code=400, detail=str(error)) from error
     db.commit()
     db.refresh(reversal)
-    return _entry_read(db, reversal)
+    return _entry_read(db, org_id, reversal)
 
 
 @router.get("/trial-balance")

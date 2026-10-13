@@ -294,6 +294,9 @@ def payable_payment_entry(
     )
 
 
+REVERSAL_PREFIX = "reversal:"
+
+
 def reversal_of(
     db: Session,
     organization_id: str,
@@ -332,7 +335,7 @@ def reversal_of(
         lines=lines,
         source_type=entry.source_type,
         source_id=entry.source_id,
-        reference=f"reversal:{entry.id}",
+        reference=f"{REVERSAL_PREFIX}{entry.id}",
         created_by=created_by,
         kind="DIARIO",
     )
@@ -554,6 +557,10 @@ def manual_entry(
         raise AccountingError("La póliza necesita un concepto.")
     if not 2 <= len(lines) <= MAX_MANUAL_LINES:
         raise AccountingError(f"Una póliza lleva entre 2 y {MAX_MANUAL_LINES} líneas.")
+    if (reference or "").strip().startswith(REVERSAL_PREFIX):
+        raise AccountingError(
+            f"La referencia no puede empezar con '{REVERSAL_PREFIX}'; esa marca la pone ARCA al revertir."
+        )
 
     wanted = {line.account_id for line in lines}
     accounts = {
@@ -610,7 +617,7 @@ def reverse_manual_entry(
     """Reverso de una póliza manual: espejo, una sola vez, nunca sobre un reverso."""
     if entry.source_type != MANUAL_SOURCE:
         raise AccountingError("Esta póliza nació de una operación; cancélala desde su módulo.")
-    if entry.reference and entry.reference.startswith("reversal:"):
+    if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
         raise AccountingError("Un reverso no se revierte; captura una póliza nueva.")
     if entry.status != "POSTED":
         raise AccountingError("Esta póliza no está contabilizada.")
@@ -620,7 +627,7 @@ def reverse_manual_entry(
         raise AccountingError("No se puede asentar una póliza con fecha futura.")
     already = (
         db.query(JournalEntry.id)
-        .filter(JournalEntry.organization_id == organization_id, JournalEntry.reference == f"reversal:{entry.id}")
+        .filter(JournalEntry.organization_id == organization_id, JournalEntry.reference == f"{REVERSAL_PREFIX}{entry.id}")
         .first()
     )
     if already is not None:

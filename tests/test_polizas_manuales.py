@@ -142,6 +142,7 @@ def test_other_company_account_is_not_found(client):
     other_headers, other_acc = _setup(client, email="otra@example.com")
     response = _entry(client, headers, [_line(other_acc["5200"], debit="10"), _line(acc["3100"], credit="10")])
     assert response.status_code == 404
+    assert response.json()["detail"] == "Esa cuenta no existe."
 
 
 def test_instrument_balances_do_not_move(client):
@@ -248,4 +249,38 @@ def test_other_company_cannot_reverse(client):
     headers, acc = _setup(client)
     original = _posted(client, headers, acc)
     other_headers, _ = _setup(client, email="otra@example.com")
-    assert _reverse(client, other_headers, original["id"]).status_code == 404
+    response = _reverse(client, other_headers, original["id"])
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Esa póliza no existe."
+    listed = client.get("/api/accounting/journal-entries", headers=headers).json()["items"]
+    assert next(item for item in listed if item["id"] == original["id"])["reversed"] is False
+
+
+def test_reversal_flag_is_tenant_scoped(client, db):
+    from app.models.accounting import JournalEntry
+
+    headers, acc = _setup(client)
+    original = _posted(client, headers, acc)
+    other_headers, other_acc = _setup(client, email="otra@example.com")
+    foreign = _posted(client, other_headers, other_acc)
+    # `reference` es texto libre: otra empresa no puede marcar como revertida la póliza ajena.
+    db.get(JournalEntry, foreign["id"]).reference = f"reversal:{original['id']}"
+    db.commit()
+
+    listed = client.get("/api/accounting/journal-entries", headers=headers).json()["items"]
+    assert next(item for item in listed if item["id"] == original["id"])["reversed"] is False
+
+
+def test_reference_cannot_impersonate_a_reversal(client):
+    headers, acc = _setup(client)
+    lines = [_line(acc["5200"], debit="10"), _line(acc["3100"], credit="10")]
+    for reference in ("reversal:abc", "  reversal:abc"):
+        response = _entry(client, headers, lines, reference=reference)
+        assert response.status_code == 400, reference
+        assert "referencia" in response.json()["detail"]
+
+
+def test_absurd_amounts_are_rejected_with_422(client):
+    headers, acc = _setup(client)
+    assert _entry(client, headers, [_line(acc["5200"], debit="1e30"), _line(acc["3100"], credit="1e30")]).status_code == 422
+    assert _entry(client, headers, [_line(acc["5200"], debit="10"), _line(acc["3100"], credit="1e30")]).status_code == 422
