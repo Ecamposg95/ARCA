@@ -34,8 +34,8 @@ const cellBase = 'w-full rounded border bg-surface px-2 py-1.5 text-sm text-ink 
 const cellInput = `${cellBase} border-border hover:border-muted/40`
 const cellInvalid = `${cellBase} border-neg`
 
-/** Importe en captura: sólo dígitos y hasta dos decimales (sin comas ni signos). */
-const AMOUNT_PATTERN = /^\d*(\.\d{0,2})?$/
+/** Importe en captura: hasta 12 enteros y dos decimales, sin comas ni signos (el backend acepta 14 dígitos). */
+const AMOUNT_PATTERN = /^\d{0,12}(\.\d{0,2})?$/
 
 const hasAmount = (line: Line) => toNumber(line.debit) > 0 || toNumber(line.credit) > 0
 
@@ -123,6 +123,7 @@ export function JournalEntryForm({
 
   // Cerrar conserva el borrador; descartarlo es una decisión explícita.
   function close() {
+    setError(null)
     onClose()
   }
 

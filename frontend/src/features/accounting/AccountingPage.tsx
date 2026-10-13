@@ -54,17 +54,6 @@ export function AccountingPage() {
     else params.delete('nueva')
     setSearchParams(params, { replace: true })
   }
-  // Abre una póliza en el diario aunque esté fuera del periodo visible. Sin
-  // fecha (la original de un reverso) se busca en todo el libro.
-  function showEntry(id: string, dateIso: string | null) {
-    setPeriod(dateIso ? periodContaining(dateIso) : 'all')
-    setOffset(0)
-    setSearchParams({ poliza: id }, { replace: true })
-  }
-  function selectCreated(entry: JournalEntry) {
-    showEntry(entry.id, entry.date)
-  }
-
   const accountsQuery = useQuery({
     queryKey: ['accounting', 'accounts'],
     queryFn: async () => (await api.get<LedgerAccount[]>('/accounting/accounts')).data,
@@ -99,6 +88,26 @@ export function AccountingPage() {
       (await api.get<Page<JournalEntry>>('/accounting/journal-entries', { params: { ...range, offset } })).data,
     enabled: tab === 'diario',
   })
+
+  // Abre una póliza en el diario. Si ya está en la página visible sólo se
+  // selecciona (periodo y página se quedan); si no, se cambia al periodo que la
+  // contiene, o a todo el libro cuando no se sabe su fecha (la original de un
+  // reverso). Si aun así no cae en la primera página, el diario la trae por id.
+  function showEntry(id: string, dateIso: string | null) {
+    if (entriesQuery.data?.items.some((entry) => entry.id === id)) {
+      const params = new URLSearchParams(searchParams)
+      params.set('poliza', id)
+      setSearchParams(params, { replace: true })
+      return
+    }
+    setPeriod(dateIso ? periodContaining(dateIso) : 'all')
+    setOffset(0)
+    setSearchParams({ poliza: id }, { replace: true })
+  }
+  function selectCreated(entry: JournalEntry) {
+    showEntry(entry.id, entry.date)
+  }
+
   const trialQuery = useQuery({
     queryKey: ['accounting', 'trial', period],
     queryFn: async () =>

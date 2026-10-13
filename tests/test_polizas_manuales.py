@@ -269,6 +269,19 @@ def test_other_company_cannot_reverse(client):
     assert next(item for item in listed if item["id"] == original["id"])["reversed"] is False
 
 
+def test_get_single_entry_is_tenant_scoped(client):
+    headers, acc = _setup(client)
+    original = _posted(client, headers, acc)
+    mine = client.get(f"/api/accounting/journal-entries/{original['id']}", headers=headers)
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["folio"] == original["folio"]
+    assert len(mine.json()["lines"]) == 2
+    other_headers, _ = _setup(client, email="otra@example.com")
+    foreign = client.get(f"/api/accounting/journal-entries/{original['id']}", headers=other_headers)
+    assert foreign.status_code == 404
+    assert foreign.json()["detail"] == "Esa póliza no existe."
+
+
 def test_reversal_flag_is_tenant_scoped(client, db):
     from app.models.accounting import JournalEntry
 

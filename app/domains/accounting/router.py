@@ -298,6 +298,19 @@ def list_journal_entries(
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
+@router.get("/journal-entries/{entry_id}", response_model=JournalEntryRead)
+def get_journal_entry(
+    entry_id: str,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Una póliza por id: el diario la abre aunque no esté en la página visible."""
+    entry = db.query(JournalEntry).filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id).first()
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Esa póliza no existe.")
+    return _entry_read(db, org_id, entry)
+
+
 class JournalLineCreate(BaseModel):
     account_id: str = Field(min_length=1)
     # Centavos exactos desde la entrada: el motor redondea a dos decimales y un

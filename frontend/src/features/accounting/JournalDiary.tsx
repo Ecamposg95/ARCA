@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
@@ -236,11 +236,17 @@ export function JournalDiary({
 
   const entries = page.items
   const requested = searchParams.get('poliza')
-  // Sin ?poliza= se muestra la primera; con un id que no está en esta página, ninguna:
-  // resaltar una fila al azar sería peor que no resaltar nada.
-  const selected = requested
-    ? (entries.find((entry) => entry.id === requested) ?? null)
-    : (entries[0] ?? null)
+  const inPage = requested ? (entries.find((entry) => entry.id === requested) ?? null) : null
+  // Una póliza pedida por enlace que no está en esta página se trae por id: el
+  // detalle se muestra y la lista no resalta ninguna fila (resaltar una al azar
+  // sería peor que no resaltar nada).
+  const fetched = useQuery({
+    queryKey: ['accounting', 'entry', requested],
+    queryFn: async () => (await api.get<JournalEntry>(`/accounting/journal-entries/${requested}`)).data,
+    enabled: Boolean(requested) && !inPage,
+  })
+  // Sin ?poliza= se muestra la primera.
+  const selected = requested ? (inPage ?? fetched.data ?? null) : (entries[0] ?? null)
 
   function select(entry: JournalEntry, fromClick = false) {
     const params = new URLSearchParams(searchParams)
