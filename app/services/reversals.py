@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.accounting import JournalEntry
 from app.models.transaction import FinancialTransaction
-from app.services.accounting.rules import reversal_of
+from app.services.accounting.rules import REVERSAL_PREFIX, reversal_of
 from app.services.transactions import record_transaction
 
 # Qué movimiento deshace a cuál. Un reverso no es un gasto ni un ingreso.
@@ -36,7 +36,7 @@ def already_reversed(db: Session, organization_id: str, source_type: str, source
             JournalEntry.organization_id == organization_id,
             JournalEntry.source_type == source_type,
             JournalEntry.source_id == source_id,
-            JournalEntry.reference.like("reversal:%"),
+            JournalEntry.reference.like(f"{REVERSAL_PREFIX}%"),
         )
         .first()
         is not None

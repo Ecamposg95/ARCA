@@ -45,9 +45,20 @@ def test_create_detail_account_inherits_type_and_sat_code(client):
     assert body["parent_id"] == acc["5000"]["id"]
     assert body["active"] is True
     assert body["has_movements"] is False
+    assert body["manual_allowed"] is True
     assert body["sat_code"] == acc["5000"]["sat_code"]
     listed = client.get("/api/accounting/accounts", headers=headers).json()
     assert any(item["code"] == "5210" for item in listed)
+
+
+def test_manual_allowed_flags_controlled_and_major_accounts(client):
+    headers, acc = _setup(client)
+    for code in ("1100", "1400", "2300", "5000"):
+        assert acc[code]["manual_allowed"] is False, code
+    assert acc["5200"]["manual_allowed"] is True
+    new = _create(client, headers, acc["5000"]).json()
+    off = client.patch(f"/api/accounting/accounts/{new['id']}", headers=headers, json={"active": False})
+    assert off.json()["manual_allowed"] is False
 
 
 def test_create_with_explicit_sat_and_contpaqi_codes(client):
@@ -86,6 +97,20 @@ def test_rename_any_account(client):
     assert response.json()["name"] == "Sistemas y licencias"
     blank = client.patch(f"/api/accounting/accounts/{acc['5400']['id']}", headers=headers, json={"name": "   "})
     assert blank.status_code == 400
+
+
+def test_other_company_cannot_rename_or_deactivate(client):
+    headers, acc = _setup(client)
+    new = _create(client, headers, acc["5000"]).json()
+    other_headers, _ = _setup(client, email="otra@example.com")
+    for payload in ({"name": "x"}, {"active": False}):
+        response = client.patch(f"/api/accounting/accounts/{new['id']}", headers=other_headers, json=payload)
+        assert response.status_code == 404, payload
+        assert response.json()["detail"] == "Esa cuenta no existe."
+    listed = client.get("/api/accounting/accounts", headers=headers).json()
+    mine = next(item for item in listed if item["id"] == new["id"])
+    assert mine["name"] == "Cuotas patronales"
+    assert mine["active"] is True
 
 
 def test_deactivate_rules(client):

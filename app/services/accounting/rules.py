@@ -512,14 +512,17 @@ def loan_payment_entry(
 
 # --- Pólizas manuales (C-1) ---
 
-# Cuentas que mantienen un saldo espejo fuera del ledger (instrumentos y
-# cartera). Una póliza manual contra ellas descuadraría ese espejo, así que se
-# capturan desde su módulo.
+# Cuentas que mantienen un saldo espejo fuera del ledger (instrumentos,
+# cartera, activos fijos y préstamos). Una póliza manual contra ellas
+# descuadraría ese espejo, así que se capturan desde su módulo.
 MODULE_CONTROLLED_CODES = {
     CODE_CASH_BANK: "Movimientos",
     CODE_CREDIT_CARDS: "Movimientos",
     CODE_ACCOUNTS_RECEIVABLE: "Por cobrar",
     CODE_ACCOUNTS_PAYABLE: "Por pagar",
+    CODE_FIXED_ASSETS: "Patrimonio",
+    CODE_ACCUMULATED_DEPRECIATION: "Patrimonio",
+    CODE_LOANS_PAYABLE: "Patrimonio",
 }
 
 MANUAL_SOURCE = "manual"
@@ -557,7 +560,8 @@ def manual_entry(
         raise AccountingError("La póliza necesita un concepto.")
     if not 2 <= len(lines) <= MAX_MANUAL_LINES:
         raise AccountingError(f"Una póliza lleva entre 2 y {MAX_MANUAL_LINES} líneas.")
-    if (reference or "").strip().startswith(REVERSAL_PREFIX):
+    reference = (reference or "").strip() or None
+    if reference and reference.startswith(REVERSAL_PREFIX):
         raise AccountingError(
             f"La referencia no puede empezar con '{REVERSAL_PREFIX}'; esa marca la pone ARCA al revertir."
         )
@@ -583,7 +587,8 @@ def manual_entry(
         if account.code in MODULE_CONTROLLED_CODES:
             raise AccountingError(
                 f"La cuenta {account.code} la mueven los módulos. Para bancos y tarjetas usa "
-                "Movimientos; para cartera, Por cobrar y Por pagar."
+                "Movimientos; para cartera, Por cobrar y Por pagar; para activos fijos y "
+                "préstamos, Patrimonio."
             )
         specs.append(
             LineSpec(account.code, debit=line.debit, credit=line.credit, description=line.description)

@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -30,7 +31,13 @@ from app.services.accounting.sat import (
     sat_filename,
 )
 from app.services.accounting.engine import trial_balance as compute_trial_balance
-from app.services.accounting.rules import REVERSAL_PREFIX, ManualLine, manual_entry, reverse_manual_entry
+from app.services.accounting.rules import (
+    MODULE_CONTROLLED_CODES,
+    REVERSAL_PREFIX,
+    ManualLine,
+    manual_entry,
+    reverse_manual_entry,
+)
 
 router = APIRouter(
     prefix="/accounting",
@@ -52,6 +59,17 @@ class AccountRead(BaseModel):
     contpaqi_code: str | None
     sat_code: str | None
     has_movements: bool = False
+    # Acepta pólizas manuales: de detalle, activa y sin saldo espejo de un módulo.
+    manual_allowed: bool = False
+
+
+def _account_read(account: Account, has_movements: bool) -> AccountRead:
+    item = AccountRead.model_validate(account)
+    item.has_movements = has_movements
+    item.manual_allowed = (
+        account.parent_id is not None and account.active and account.code not in MODULE_CONTROLLED_CODES
+    )
+    return item
 
 
 class JournalLineRead(BaseModel):
@@ -62,6 +80,14 @@ class JournalLineRead(BaseModel):
     debit: Decimal
     credit: Decimal
     description: str | None
+
+
+class ReversalRef(BaseModel):
+    """La póliza espejo que deshizo a otra: lo justo para enlazarla."""
+
+    id: str
+    folio: str
+    date: date_type
 
 
 class JournalEntryRead(BaseModel):
@@ -78,33 +104,60 @@ class JournalEntryRead(BaseModel):
     status: str
     reversed: bool = False
     reversal_of: str | None = None
+    reversed_by: ReversalRef | None = None
+    reversal_of_folio: str | None = None
     lines: list[JournalLineRead] = []
 
 
+def _reversal_target(entry: JournalEntry) -> str | None:
+    """Id de la póliza que este reverso deshace, o None si no es un reverso."""
+    if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
+        return entry.reference[len(REVERSAL_PREFIX):]
+    return None
+
+
 def _entries_read(db: Session, organization_id: str, entries: list[JournalEntry]) -> list[JournalEntryRead]:
-    """Pólizas con sus líneas y su estado de reverso, en dos consultas."""
+    """Pólizas con sus líneas y el enlace con su reverso, en tres consultas como máximo.
+
+    Todo por empresa: `reference` es texto libre y otra empresa no debe poder
+    marcar ni nombrar una póliza ajena.
+    """
     entry_ids = [entry.id for entry in entries]
     lines_by_entry: dict[str, list[JournalLineRead]] = {}
-    reversed_ids: set[str] = set()
+    reversed_by: dict[str, ReversalRef] = {}
+    original_folios: dict[str, str] = {}
     if entry_ids:
         for line in db.query(JournalEntryLine).filter(JournalEntryLine.journal_entry_id.in_(entry_ids)).all():
             lines_by_entry.setdefault(line.journal_entry_id, []).append(JournalLineRead.model_validate(line))
         reversals = (
-            db.query(JournalEntry.reference)
+            db.query(JournalEntry.id, JournalEntry.folio, JournalEntry.date, JournalEntry.reference)
             .filter(
                 JournalEntry.organization_id == organization_id,
                 JournalEntry.reference.in_([f"{REVERSAL_PREFIX}{entry_id}" for entry_id in entry_ids]),
             )
+            .order_by(JournalEntry.created_at)
             .all()
         )
-        reversed_ids = {reference[len(REVERSAL_PREFIX):] for (reference,) in reversals}
+        for reversal_id, folio, date, reference in reversals:
+            reversed_by.setdefault(
+                reference[len(REVERSAL_PREFIX):], ReversalRef(id=reversal_id, folio=folio, date=date)
+            )
+        original_ids = {target for target in map(_reversal_target, entries) if target}
+        if original_ids:
+            original_folios = dict(
+                db.query(JournalEntry.id, JournalEntry.folio)
+                .filter(JournalEntry.organization_id == organization_id, JournalEntry.id.in_(original_ids))
+                .all()
+            )
     items = []
     for entry in entries:
         item = JournalEntryRead.model_validate(entry)
         item.lines = lines_by_entry.get(entry.id, [])
-        item.reversed = entry.id in reversed_ids
-        if entry.reference and entry.reference.startswith(REVERSAL_PREFIX):
-            item.reversal_of = entry.reference[len(REVERSAL_PREFIX):]
+        item.reversed_by = reversed_by.get(entry.id)
+        item.reversed = item.reversed_by is not None
+        item.reversal_of = _reversal_target(entry)
+        if item.reversal_of:
+            item.reversal_of_folio = original_folios.get(item.reversal_of)
         items.append(item)
     return items
 
@@ -120,12 +173,7 @@ def list_accounts(
 ):
     accounts = db.query(Account).filter(Account.organization_id == org_id).order_by(Account.code).all()
     with_movements = accounts_with_movements(db, org_id)
-    items = []
-    for account in accounts:
-        item = AccountRead.model_validate(account)
-        item.has_movements = account.id in with_movements
-        items.append(item)
-    return items
+    return [_account_read(account, account.id in with_movements) for account in accounts]
 
 
 def _normalize_contpaqi_code(raw: str | None) -> str | None:
@@ -177,9 +225,7 @@ def update_account(
         account.sat_code = _validated_sat_code(payload.sat_code)
     db.commit()
     db.refresh(account)
-    item = AccountRead.model_validate(account)
-    item.has_movements = account_has_movements(db, account.id)
-    return item
+    return _account_read(account, account_has_movements(db, account.id))
 
 
 class AccountCreate(BaseModel):
@@ -203,13 +249,18 @@ def create_account(
         account = create_catalog_account(
             db, org_id, payload.parent_id, payload.code, payload.name, sat_code=sat_code, contpaqi_code=contpaqi_code
         )
+        db.commit()
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    db.commit()
+    except IntegrityError as error:
+        # Dos altas simultáneas del mismo código pasan la revisión previa; la
+        # restricción uq_account_org_code frena a la segunda (al hacer flush o commit).
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Ya existe la cuenta {payload.code.strip()}.") from error
     db.refresh(account)
-    return AccountRead.model_validate(account)
+    return _account_read(account, False)
 
 
 @router.get("/sat/codes")
@@ -249,8 +300,10 @@ def list_journal_entries(
 
 class JournalLineCreate(BaseModel):
     account_id: str = Field(min_length=1)
-    debit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=16, allow_inf_nan=False)
-    credit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=16, allow_inf_nan=False)
+    # Centavos exactos desde la entrada: el motor redondea a dos decimales y un
+    # tercer decimal podría cuadrar sólo después de redondear.
+    debit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
+    credit: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
     description: str | None = Field(default=None, max_length=500)
 
 

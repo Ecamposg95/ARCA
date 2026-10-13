@@ -41,7 +41,7 @@ def test_balanced_entry_is_posted_as_diario(client):
             _line(acc["2400"], credit="100"),
             _line(acc["3100"], credit="900"),
         ],
-        reference="NOM-10",
+        reference="  NOM-10 ",
     )
     assert response.status_code == 201, response.text
     body = response.json()
@@ -55,7 +55,8 @@ def test_balanced_entry_is_posted_as_diario(client):
     assert len(body["lines"]) == 3
 
     diary = client.get("/api/accounting/journal-entries", headers=headers).json()
-    assert any(item["id"] == body["id"] for item in diary["items"])
+    listed = next(item for item in diary["items"] if item["id"] == body["id"])
+    assert listed["reference"] == "NOM-10"
     balance = client.get("/api/accounting/trial-balance", headers=headers).json()
     nomina = next(row for row in balance["rows"] if row["code"] == "5200")
     assert Decimal(str(nomina["debit"])) == Decimal("1000")
@@ -78,20 +79,20 @@ def test_unbalanced_entry_is_rejected(client):
     assert "balanceado" in response.json()["detail"]
 
 
-def test_three_decimals_that_only_balance_before_rounding_are_rejected(client):
+def test_three_decimals_are_rejected_by_the_schema(client):
     headers, acc = _setup(client)
-    response = _entry(
-        client,
-        headers,
-        [_line(acc["5200"], debit="10.005"), _line(acc["3100"], credit="10.004"), _line(acc["3200"], credit="0.001")],
-    )
-    assert response.status_code == 400
+    response = _entry(client, headers, [_line(acc["5200"], debit="10.005"), _line(acc["3100"], credit="10.00")])
+    assert response.status_code == 422
 
 
 def test_single_line_and_empty_line_are_rejected(client):
     headers, acc = _setup(client)
     assert _entry(client, headers, [_line(acc["5200"], debit="10")]).status_code == 422
-    response = _entry(client, headers, [_line(acc["5200"], debit="10", credit="10"), _line(acc["3100"])])
+    response = _entry(
+        client,
+        headers,
+        [_line(acc["5200"], debit="10"), _line(acc["3100"], credit="10"), _line(acc["3200"], debit="0", credit="0")],
+    )
     assert response.status_code == 400
     assert "cargo o abono" in response.json()["detail"]
 
@@ -105,10 +106,12 @@ def test_major_account_is_rejected(client):
 
 def test_module_controlled_accounts_are_rejected(client):
     headers, acc = _setup(client)
-    for code in ("1100", "1200", "2100", "2200"):
+    for code in ("1100", "1200", "2100", "2200", "1400", "1490", "2300"):
         response = _entry(client, headers, [_line(acc[code], debit="10"), _line(acc["3100"], credit="10")])
         assert response.status_code == 400, code
-        assert "Movimientos" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert f"La cuenta {code} la mueven los módulos" in detail
+        assert "Movimientos" in detail and "Patrimonio" in detail
 
 
 def test_future_date_is_rejected(client):
@@ -181,8 +184,18 @@ def test_reverse_mirrors_the_lines_once(client):
     assert by_account[acc["5200"]["id"]]["credit"] == "1000.00"
     assert by_account[acc["3100"]["id"]]["debit"] == "1000.00"
 
+    assert reversal["reversal_of_folio"] == original["folio"]
+    assert reversal["reversed_by"] is None
+
     listed = client.get("/api/accounting/journal-entries", headers=headers).json()["items"]
-    assert next(item for item in listed if item["id"] == original["id"])["reversed"] is True
+    listed_original = next(item for item in listed if item["id"] == original["id"])
+    assert listed_original["reversed"] is True
+    assert listed_original["reversed_by"]["id"] == reversal["id"]
+    assert listed_original["reversed_by"]["folio"] == reversal["folio"]
+    assert listed_original["reversed_by"]["date"] == reversal["date"]
+    assert listed_original["reversal_of_folio"] is None
+    listed_reversal = next(item for item in listed if item["id"] == reversal["id"])
+    assert listed_reversal["reversal_of_folio"] == original["folio"]
 
     again = _reverse(client, headers, original["id"])
     assert again.status_code == 400

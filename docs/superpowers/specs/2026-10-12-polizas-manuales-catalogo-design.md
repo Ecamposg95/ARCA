@@ -32,7 +32,7 @@ def manual_entry(db, organization_id, date, description, lines, reference=None, 
   - Descripción obligatoria (1 a 500 caracteres), entre 2 y 100 líneas.
   - Cada línea referencia una cuenta de la empresa por `account_id`; se traduce a código para `LineSpec`.
   - Cuenta mayor (sin `parent_id`): "Las pólizas van a cuentas de detalle, no a la cuenta mayor {code}."
-  - Cuentas controladas por módulos: 1100, 1200, 2100, 2200 → "La cuenta {code} la mueven los módulos. Para bancos y tarjetas usa Movimientos; para cartera, Por cobrar y Por pagar."
+  - Cuentas controladas por módulos: 1100, 1200, 2100, 2200, 1400, 1490, 2300 → "La cuenta {code} la mueven los módulos. Para bancos y tarjetas usa Movimientos; para cartera, Por cobrar y Por pagar; para activos fijos y préstamos, Patrimonio."
   - Cuenta inactiva: "La cuenta {code} está inactiva."
 - Lo demás (balance, montos, mes cerrado) lo valida el motor y sus errores suben tal cual.
 
@@ -109,7 +109,7 @@ Paleta de comandos: acción "Nueva póliza" que navega a `/contabilidad?nueva=po
 `tests/test_polizas_manuales.py`:
 - Póliza balanceada de tres líneas → 201, folio `Dr-`, aparece en diario y balanza, `source_type="manual"`.
 - Descuadre → 400 "no está balanceado"; una línea → 400; línea con cargo y abono → 400.
-- Cuenta mayor → 400; cuenta 1100 → 400 con "Movimientos"; cuenta inactiva → 400.
+- Cuenta mayor → 400; cuentas 1100, 1200, 2100, 2200, 1400, 1490 y 2300 → 400 con "Movimientos" y "Patrimonio"; cuenta inactiva → 400.
 - Fecha futura → 400; mes cerrado → 400 "cerrado".
 - Reverso → 201 con líneas invertidas y `reference="reversal:{id}"`; segundo reverso → 400; revertir el reverso → 400; revertir póliza de un gasto → 400.
 - Otra empresa no ve ni revierte la póliza (404).
