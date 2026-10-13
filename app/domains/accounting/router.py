@@ -23,7 +23,7 @@ from app.services.accounting.sat import (
     sat_filename,
 )
 from app.services.accounting.engine import trial_balance as compute_trial_balance
-from app.services.accounting.rules import ManualLine, manual_entry
+from app.services.accounting.rules import ManualLine, manual_entry, reverse_manual_entry
 
 router = APIRouter(
     prefix="/accounting",
@@ -243,6 +243,38 @@ def create_journal_entry(
     db.commit()
     db.refresh(entry)
     return _entry_read(db, entry)
+
+
+
+class ReverseRequest(BaseModel):
+    date: date_type
+    description: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/journal-entries/{entry_id}/reverse", response_model=JournalEntryRead, status_code=201)
+def reverse_journal_entry(
+    entry_id: str,
+    payload: ReverseRequest,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Deshacer es revertir: la póliza espejo se emite y la original queda."""
+    entry = (
+        db.query(JournalEntry).filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id).first()
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Esa póliza no existe.")
+    try:
+        reversal = reverse_manual_entry(
+            db, org_id, entry, date=payload.date, description=payload.description, created_by=user.id
+        )
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    db.refresh(reversal)
+    return _entry_read(db, reversal)
 
 
 @router.get("/trial-balance")

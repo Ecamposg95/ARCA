@@ -597,3 +597,33 @@ def manual_entry(
     entry.source_id = entry.id
     db.flush()
     return entry
+
+
+def reverse_manual_entry(
+    db: Session,
+    organization_id: str,
+    entry: JournalEntry,
+    date: date_type,
+    description: str | None = None,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Reverso de una póliza manual: espejo, una sola vez, nunca sobre un reverso."""
+    if entry.source_type != MANUAL_SOURCE:
+        raise AccountingError("Esta póliza nació de una operación; cancélala desde su módulo.")
+    if entry.reference and entry.reference.startswith("reversal:"):
+        raise AccountingError("Un reverso no se revierte; captura una póliza nueva.")
+    if entry.status != "POSTED":
+        raise AccountingError("Esta póliza no está contabilizada.")
+    if date < entry.date:
+        raise AccountingError("El reverso no puede ser anterior a la póliza original.")
+    if date > date_type.today():
+        raise AccountingError("No se puede asentar una póliza con fecha futura.")
+    already = (
+        db.query(JournalEntry.id)
+        .filter(JournalEntry.organization_id == organization_id, JournalEntry.reference == f"reversal:{entry.id}")
+        .first()
+    )
+    if already is not None:
+        raise AccountingError("Esta póliza ya fue revertida.")
+    text = (description or "").strip() or f"Reverso de {entry.folio}: {entry.description}"
+    return reversal_of(db, organization_id, entry, text[:500], date, created_by=created_by)
