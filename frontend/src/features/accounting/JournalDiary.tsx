@@ -29,16 +29,26 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: 'Póliza manual',
 }
 
+/** Marca que ARCA pone en `reference` al revertir; no es una referencia del usuario. */
+const REVERSAL_PREFIX = 'reversal:'
+
+/** Abre otra póliza en el diario. `dateIso` null: fecha desconocida, se busca en todo el libro. */
+type NavigateToEntry = (id: string, dateIso: string | null) => void
+
+const linkClass = 'figures underline underline-offset-2 hover:text-ink'
+
 function EntryDetail({
   entry,
   accountLabel,
   onClose,
   onReversed,
+  onNavigate,
 }: {
   entry: JournalEntry
   accountLabel: (id: string) => string
   onClose?: () => void
   onReversed?: (reversal: JournalEntry) => void
+  onNavigate: NavigateToEntry
 }) {
   const queryClient = useQueryClient()
   const [reversing, setReversing] = useState(false)
@@ -76,11 +86,31 @@ function EntryDetail({
             {entry.source_type
               ? ` · ${SOURCE_LABELS[entry.source_type] ?? entry.source_type}`
               : ''}
+            {entry.reference && !entry.reference.startsWith(REVERSAL_PREFIX) ? ` · Ref. ${entry.reference}` : ''}
           </p>
-          {entry.reversed ? (
-            <p className="mt-1 text-xs font-medium text-neg">Revertida</p>
+          {entry.reversed_by ? (
+            <p className="mt-1 text-xs font-medium text-neg">
+              Revertida por{' '}
+              <button
+                type="button"
+                className={linkClass}
+                onClick={() => onNavigate(entry.reversed_by!.id, entry.reversed_by!.date)}
+              >
+                {entry.reversed_by.folio}
+              </button>
+            </p>
           ) : entry.reversal_of ? (
-            <p className="mt-1 text-xs font-medium text-muted">Reverso de otra póliza</p>
+            <p className="mt-1 text-xs font-medium text-muted">
+              Reverso de{' '}
+              {entry.reversal_of_folio ? (
+                // La fecha de la original no viaja: se busca en todo el libro.
+                <button type="button" className={linkClass} onClick={() => onNavigate(entry.reversal_of!, null)}>
+                  {entry.reversal_of_folio}
+                </button>
+              ) : (
+                'otra póliza'
+              )}
+            </p>
           ) : null}
         </div>
         {onClose ? (
@@ -190,11 +220,13 @@ export function JournalDiary({
   onOffsetChange,
   accountLabel,
   onReversed,
+  onNavigate,
 }: {
   page: Page<JournalEntry>
   onOffsetChange: (offset: number) => void
   accountLabel: (id: string) => string
   onReversed?: (reversal: JournalEntry) => void
+  onNavigate: NavigateToEntry
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const listRef = useRef<HTMLDivElement>(null)
@@ -299,6 +331,7 @@ export function JournalDiary({
             entry={selected}
             accountLabel={accountLabel}
             onReversed={onReversed}
+            onNavigate={onNavigate}
           />
         </div>
       ) : null}
@@ -318,6 +351,7 @@ export function JournalDiary({
               accountLabel={accountLabel}
               onClose={() => setDrawerOpen(false)}
               onReversed={onReversed}
+              onNavigate={onNavigate}
             />
           </div>
         </div>

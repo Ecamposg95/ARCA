@@ -1,6 +1,9 @@
 /** Captura de una póliza de diario: la rejilla que un contador espera, con
  *  totales vivos y sin botón de guardar hasta que cuadre. El backend vuelve a
- *  validar todo; aquí sólo evitamos viajes inútiles. */
+ *  validar todo; aquí sólo evitamos viajes inútiles.
+ *
+ *  El padre mantiene el componente montado, así que cerrar el modal no borra
+ *  la captura: el borrador sólo se va al guardar o con "Descartar borrador". */
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -10,9 +13,6 @@ import { TextInput } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { formatMoney, today } from '@/lib/format'
 import type { JournalEntry, LedgerAccount } from '@/types/api'
-
-/** Cuentas con saldo espejo fuera del ledger: se mueven desde su módulo. */
-const MODULE_CONTROLLED = new Set(['1100', '1200', '2100', '2200'])
 
 interface Line {
   account_id: string
@@ -57,10 +57,8 @@ export function JournalEntryForm({
   const [lines, setLines] = useState<Line[]>([emptyLine(), emptyLine()])
   const [error, setError] = useState<string | null>(null)
 
-  const options = useMemo(
-    () => accounts.filter((a) => a.parent_id && a.active && !MODULE_CONTROLLED.has(a.code)),
-    [accounts],
-  )
+  // Qué cuentas aceptan pólizas manuales lo decide el backend (manual_allowed).
+  const options = useMemo(() => accounts.filter((a) => a.manual_allowed), [accounts])
 
   // Los totales se calculan sobre lo mismo que se envía: una línea a medias
   // (importe sin cuenta, o cuenta sin importe) nunca cuenta ni viaja, y bloquea el guardado.
@@ -73,6 +71,11 @@ export function JournalEntryForm({
   const difference = cents(totalDebit - totalCredit)
   const canSave =
     description.trim().length > 0 && filled.length >= 2 && !incomplete && difference === 0 && totalDebit > 0
+  const empty = totalDebit === 0 && totalCredit === 0
+  const dirty =
+    description.trim().length > 0 ||
+    reference.trim().length > 0 ||
+    lines.some((line) => line.account_id || line.debit || line.credit || line.description.trim())
 
   function reset() {
     setDate(today())
@@ -118,7 +121,12 @@ export function JournalEntryForm({
     setLines((prev) => (prev.length > 2 ? prev.filter((_, i) => i !== index) : prev))
   }
 
+  // Cerrar conserva el borrador; descartarlo es una decisión explícita.
   function close() {
+    onClose()
+  }
+
+  function discard() {
     reset()
     onClose()
   }
@@ -129,6 +137,7 @@ export function JournalEntryForm({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
+          if (save.isPending) return
           if (canSave) save.mutate()
         }}
       >
@@ -218,6 +227,7 @@ export function JournalEntryForm({
                   <td className="px-1 py-1.5 text-center">
                     <button
                       type="button"
+                      tabIndex={-1}
                       aria-label={`Quitar la línea ${index + 1}`}
                       className="rounded p-1 text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-30"
                       disabled={lines.length <= 2}
@@ -237,6 +247,8 @@ export function JournalEntryForm({
                 <td className="px-2 py-2 text-xs" colSpan={2}>
                   {incomplete ? (
                     <span className="text-neg">Hay líneas sin cuenta o sin importe</span>
+                  ) : empty ? (
+                    <span className="text-muted">Captura al menos dos líneas</span>
                   ) : difference === 0 && totalDebit > 0 ? (
                     <span className="text-pos">cargos = abonos ✓</span>
                   ) : (
@@ -256,6 +268,11 @@ export function JournalEntryForm({
           </Button>
           <div className="flex items-center gap-3">
             {error ? <p className="text-sm text-neg">{error}</p> : null}
+            {dirty ? (
+              <Button type="button" variant="ghost" onClick={discard}>
+                Descartar borrador
+              </Button>
+            ) : null}
             <Button type="button" variant="secondary" onClick={close}>
               Cancelar
             </Button>

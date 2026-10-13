@@ -375,6 +375,10 @@ export interface JournalEntry {
   reversed: boolean
   /** Id de la póliza que este reverso deshace, o null. */
   reversal_of: string | null
+  /** La póliza espejo que la deshizo, o null. */
+  reversed_by: { id: string; folio: string; date: string } | null
+  /** Folio de la póliza que este reverso deshace, o null. */
+  reversal_of_folio: string | null
   lines: JournalLine[]
 }
 
@@ -393,6 +397,8 @@ export interface LedgerAccount {
   system: boolean
   /** Tiene al menos una línea en el ledger; una cuenta así no se desactiva. */
   has_movements: boolean
+  /** Acepta pólizas manuales (de detalle, activa y sin saldo espejo de un módulo); lo decide el backend. */
+  manual_allowed: boolean
 }
 
 export interface TrialBalanceRow {

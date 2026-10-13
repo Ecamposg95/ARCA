@@ -54,10 +54,15 @@ export function AccountingPage() {
     else params.delete('nueva')
     setSearchParams(params, { replace: true })
   }
-  function selectCreated(entry: JournalEntry) {
-    setPeriod(periodContaining(entry.date))
+  // Abre una póliza en el diario aunque esté fuera del periodo visible. Sin
+  // fecha (la original de un reverso) se busca en todo el libro.
+  function showEntry(id: string, dateIso: string | null) {
+    setPeriod(dateIso ? periodContaining(dateIso) : 'all')
     setOffset(0)
-    setSearchParams({ poliza: entry.id }, { replace: true })
+    setSearchParams({ poliza: id }, { replace: true })
+  }
+  function selectCreated(entry: JournalEntry) {
+    showEntry(entry.id, entry.date)
   }
 
   const accountsQuery = useQuery({
@@ -178,6 +183,7 @@ export function AccountingPage() {
             onOffsetChange={setOffset}
             accountLabel={accountLabel}
             onReversed={selectCreated}
+            onNavigate={showEntry}
           />
         )
       ) : null}
@@ -296,14 +302,18 @@ export function AccountingPage() {
                       Reactivar
                     </Button>
                   ) : account.parent_id && !account.system ? (
-                    <Button
-                      variant="ghost"
-                      disabled={account.has_movements || toggleActive.isPending}
-                      title={account.has_movements ? 'Tiene movimientos; no se puede desactivar' : undefined}
-                      onClick={() => toggleActive.mutate(account)}
-                    >
-                      Desactivar
-                    </Button>
+                    account.has_movements ? (
+                      // Un botón deshabilitado no muestra su tooltip (pointer-events-none): se dice en texto.
+                      <span className="text-xs text-muted">Con movimientos</span>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        disabled={toggleActive.isPending}
+                        onClick={() => toggleActive.mutate(account)}
+                      >
+                        Desactivar
+                      </Button>
+                    )
                   ) : null}
                 </td>
               </tr>
