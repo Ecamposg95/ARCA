@@ -31,6 +31,7 @@ from app.services.accounting.sat import (
     render_catalogo,
     sat_filename,
 )
+from app.services.accounting.engine import lock_organization
 from app.services.accounting.engine import trial_balance as compute_trial_balance
 from app.services.accounting.rules import (
     MODULE_CONTROLLED_CODES,
@@ -440,7 +441,7 @@ def create_opening_balance(
     """Saldos iniciales por cuenta. Las reglas viven en rules.opening_entry."""
     # FOR UPDATE sobre la empresa: dos aperturas simultáneas se serializan y la
     # segunda ya ve la primera ("Ya existe una póliza de apertura").
-    db.query(Organization.id).filter(Organization.id == org_id).with_for_update().one()
+    lock_organization(db, org_id)
     try:
         entry = opening_entry(
             db,

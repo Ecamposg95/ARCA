@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.fiscal_year import FiscalYearLock
 from app.models.period import PeriodLock
-from app.services.accounting.engine import account_type_balance
+from app.services.accounting.engine import TWO_PLACES, account_type_balance, lock_organization
 from app.services.accounting.rules import reversal_of, year_close_entry
 
 
@@ -209,6 +209,9 @@ def close_year(
     notes: str | None = None,
 ) -> FiscalYearLock:
     """Traspasa el resultado del año a 3200 y pone el candado anual. Hace commit."""
+    # Antes de revisar el estado: dos cierres simultáneos asentarían dos pólizas
+    # de cierre que ninguna pantalla puede deshacer.
+    lock_organization(db, organization_id)
     if date_type(year, 12, 31) >= date_type.today():
         raise ValueError(f"El ejercicio {year} todavía no termina.")
     if is_year_closed(db, organization_id, year):
@@ -246,6 +249,8 @@ def reopen_year(
     user_id: str | None = None,
 ) -> FiscalYearLock:
     """Quita el candado anual y revierte la póliza de cierre al 31 de diciembre. Hace commit."""
+    # Mismo candado que el cierre: dos reaperturas simultáneas duplicarían el reverso.
+    lock_organization(db, organization_id)
     lock = _year_lock(db, organization_id, year, live=True)
     if lock is None:
         raise ValueError(f"El ejercicio {year} no está cerrado.")
@@ -274,6 +279,17 @@ def reopen_year(
     db.commit()
     db.refresh(lock)
     return lock
+
+
+def entry_folio(db: Session, organization_id: str, entry_id: str | None) -> str | None:
+    """Folio de una póliza de la empresa, o None si no hay póliza."""
+    if not entry_id:
+        return None
+    return (
+        db.query(JournalEntry.folio)
+        .filter(JournalEntry.id == entry_id, JournalEntry.organization_id == organization_id)
+        .scalar()
+    )
 
 
 def list_years(db: Session, organization_id: str) -> list[dict]:
@@ -324,9 +340,9 @@ def list_years(db: Session, organization_id: str) -> list[dict]:
             {
                 "year": year,
                 "entries": entries or 0,
-                "revenue": revenue,
-                "expenses": expenses,
-                "result": revenue - expenses,
+                "revenue": revenue.quantize(TWO_PLACES),
+                "expenses": expenses.quantize(TWO_PLACES),
+                "result": (revenue - expenses).quantize(TWO_PLACES),
                 "closed": is_closed_year,
                 "can_close": end < today and not is_closed_year and blocked_by is None,
                 "blocked_by": blocked_by if not is_closed_year else None,

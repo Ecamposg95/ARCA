@@ -297,8 +297,8 @@ def test_closing_moves_the_result_to_retained_earnings(client):
 
 def test_a_loss_is_charged_to_retained_earnings(client):
     headers, _org_id, account, category = _setup(client)
-    _income(client, headers, account, category, date(LAST_YEAR, 6, 15), amount="1000")
-    _expense(client, headers, account, category, date(LAST_YEAR, 7, 20), amount="4000")
+    assert _income(client, headers, account, category, date(LAST_YEAR, 6, 15), amount="1000").status_code == 201
+    assert _expense(client, headers, account, category, date(LAST_YEAR, 7, 20), amount="4000").status_code == 201
 
     body = _close(client, headers, LAST_YEAR).json()
     lines = _lines_by_code(client, headers, _entry(client, headers, body["closing_entry_id"]))
@@ -463,8 +463,8 @@ def test_december_profit_survives_the_close_for_the_dashboard(client, db):
     from app.services.accounting.engine import account_type_balance
 
     headers, org_id, account, category = _setup(client)
-    _income(client, headers, account, category, date(LAST_YEAR, 12, 10))
-    _close(client, headers, LAST_YEAR)
+    assert _income(client, headers, account, category, date(LAST_YEAR, 12, 10)).status_code == 201
+    assert _close(client, headers, LAST_YEAR).status_code == 200
 
     december = {"start": date(LAST_YEAR, 12, 1), "end": date(LAST_YEAR, 12, 31)}
     assert account_type_balance(db, org_id, "REVENUE", **december) == Decimal("5000")
@@ -496,3 +496,19 @@ def test_viewers_cannot_touch_years_and_years_are_bounded(client):
 
     assert _close(client, headers, 1999).status_code == 422
     assert _close(client, headers, 2101).status_code == 422
+
+
+def test_reopening_with_a_two_character_reason_is_rejected(client):
+    headers, _org_id, _account, _category = _last_year_with_profit(client)
+    assert _close(client, headers, LAST_YEAR).status_code == 200
+
+    assert _reopen(client, headers, LAST_YEAR, reason="ok").status_code == 422
+    # Sigue cerrado: el rechazo no tocó nada.
+    items = client.get("/api/periods/years", headers=headers).json()["items"]
+    assert next(item for item in items if item["year"] == LAST_YEAR)["closed"] is True
+
+
+def test_an_empty_year_reports_money_with_two_decimals(client):
+    headers, _org_id, _account, _category = _setup(client)
+    items = client.get("/api/periods/years", headers=headers).json()["items"]
+    assert (items[0]["revenue"], items[0]["expenses"], items[0]["result"]) == ("0.00", "0.00", "0.00")

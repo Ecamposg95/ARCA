@@ -194,3 +194,13 @@ def test_openings_are_isolated_by_company(client):
     headers_b, _acc_b = _setup(client, email="otra@example.com")
     assert _open(client, headers_a, [_line(acc_a["1191"], "100")]).status_code == 201
     assert client.get("/api/accounting/opening-balance", headers=headers_b).json()["entry"] is None
+
+
+def test_an_opening_dated_inside_a_closed_year_is_rejected(client):
+    headers, acc = _setup(client)
+    assert (
+        client.post(f"/api/periods/years/{OPENING_DATE.year}/close", headers=headers, json={}).status_code == 200
+    )
+    response = _open(client, headers, [_line(acc["1191"], "100")], when=OPENING_DATE)
+    assert response.status_code == 400
+    assert "ejercicio" in response.json()["detail"]
