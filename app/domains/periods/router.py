@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.periods import service
+from app.models.accounting import JournalEntry
 from app.models.organization import ACCOUNTING_ROLES
 from app.models.user import User
 from app.security.deps import get_current_org_id, get_current_user, require_role
@@ -64,3 +65,72 @@ def reopen_period(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {"year": lock.year, "month": lock.month, "closed": False}
+
+
+# --- Ejercicios (C-2) ---
+
+
+class YearClose(BaseModel):
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class YearReopen(BaseModel):
+    # Reabrir un ejercicio cerrado revierte su póliza de cierre: el motivo queda guardado.
+    reason: str = Field(min_length=3, max_length=500)
+
+
+def _year_read(item: dict) -> dict:
+    """Montos como texto, igual que el resto de la API de dinero."""
+    return {
+        **item,
+        "revenue": str(item["revenue"]),
+        "expenses": str(item["expenses"]),
+        "result": str(item["result"]),
+    }
+
+
+@router.get("/years")
+def list_years(
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _role: None = Depends(require_role(ACCOUNTING_ROLES)),
+):
+    items = [_year_read(item) for item in service.list_years(db, org_id)]
+    return {"items": items, "total": len(items), "limit": len(items), "offset": 0}
+
+
+@router.post("/years/{year}/close")
+def close_year(
+    payload: YearClose,
+    year: int = Path(ge=2000, le=2100),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+    _role: None = Depends(require_role(ACCOUNTING_ROLES)),
+):
+    try:
+        lock = service.close_year(db, org_id, year, user_id=user.id, notes=payload.notes)
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    folio = None
+    if lock.closing_entry_id:
+        folio = db.query(JournalEntry.folio).filter(JournalEntry.id == lock.closing_entry_id).scalar()
+    return {"year": lock.year, "closed": True, "closing_entry_id": lock.closing_entry_id, "closing_folio": folio}
+
+
+@router.post("/years/{year}/reopen")
+def reopen_year(
+    payload: YearReopen,
+    year: int = Path(ge=2000, le=2100),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+    _role: None = Depends(require_role(ACCOUNTING_ROLES)),
+):
+    try:
+        lock = service.reopen_year(db, org_id, year, payload.reason, user_id=user.id)
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"year": lock.year, "closed": False}

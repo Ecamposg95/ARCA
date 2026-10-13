@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import date as date_type
 from decimal import Decimal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
@@ -34,6 +35,7 @@ from app.services.accounting.coa import (
 )
 from app.services.accounting.engine import (
     TWO_PLACES,
+    YEAR_CLOSE_SOURCE,
     AccountingError,
     LineSpec,
     post_journal_entry,
@@ -800,4 +802,76 @@ def opening_entry(
         source_id=opening_source_id(organization_id),
         created_by=created_by,
         kind="DIARIO",
+    )
+
+
+# --- Cierre de ejercicio (C-2) ---
+
+RESULT_TYPES = ("REVENUE", "EXPENSE")
+
+
+def year_close_entry(
+    db: Session,
+    organization_id: str,
+    year: int,
+    created_by: str | None = None,
+) -> JournalEntry | None:
+    """Póliza de cierre: deja en cero cada cuenta de resultados y traspasa la
+    utilidad (o la pérdida) a Resultados Acumulados (3200), fechada el 31 de diciembre.
+
+    El neto de cada cuenta incluye los cierres y reaperturas previos del mismo
+    año, que se anulan entre sí: recerrar un año reabierto produce el cierre
+    correcto. Sin cuentas con neto regresa None (el año se cierra sin póliza).
+    Entra aunque diciembre esté cerrado por mes (`bypass_period_lock`): el
+    módulo de periodos es dueño del candado. No hace commit.
+    """
+    start, end = date_type(year, 1, 1), date_type(year, 12, 31)
+    rows = (
+        db.query(
+            Account.code,
+            func.coalesce(func.sum(JournalEntryLine.debit), 0),
+            func.coalesce(func.sum(JournalEntryLine.credit), 0),
+        )
+        .join(JournalEntryLine, JournalEntryLine.account_id == Account.id)
+        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+        .filter(
+            Account.organization_id == organization_id,
+            Account.type.in_(RESULT_TYPES),
+            Account.parent_id.isnot(None),
+            JournalEntry.organization_id == organization_id,
+            JournalEntry.status == "POSTED",
+            JournalEntry.date >= start,
+            JournalEntry.date <= end,
+        )
+        .group_by(Account.code)
+        .order_by(Account.code)
+        .all()
+    )
+    lines: list[LineSpec] = []
+    result = Decimal("0")  # acreedor positivo: utilidad
+    for code, debit, credit in rows:
+        net = Decimal(debit or 0) - Decimal(credit or 0)
+        if net > 0:  # saldo deudor (gasto): se abona
+            lines.append(LineSpec(code, credit=net))
+            result -= net
+        elif net < 0:  # saldo acreedor (ingreso): se carga
+            lines.append(LineSpec(code, debit=-net))
+            result += -net
+    if not lines:
+        return None
+    if result > 0:
+        lines.append(LineSpec(CODE_RETAINED_EARNINGS, credit=result, description="Utilidad del ejercicio"))
+    elif result < 0:
+        lines.append(LineSpec(CODE_RETAINED_EARNINGS, debit=-result, description="Pérdida del ejercicio"))
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=end,
+        description=f"Cierre del ejercicio {year}",
+        lines=lines,
+        source_type=YEAR_CLOSE_SOURCE,
+        source_id=f"year_close:{year}",
+        created_by=created_by,
+        kind="DIARIO",
+        bypass_period_lock=True,
     )

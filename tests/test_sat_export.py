@@ -243,8 +243,8 @@ def test_a_viewer_cannot_download(client):
 
 
 def test_prior_year_results_open_the_year_in_retained_earnings(client):
-    """ARCA no tiene cierre anual: el XML lo hace virtual. Ingresos y gastos de
-    años anteriores no arrastran saldo; su resultado neto abre en 3200."""
+    """Sin cierre real del año anterior, el XML lo hace virtual. Ingresos y gastos
+    de años anteriores no arrastran saldo; su resultado neto abre en 3200."""
     headers, account, category = _setup(client)
     _income(client, headers, account, category, amount="11600", when=date(TODAY.year - 1, 6, 15))
     _expense(client, headers, account, category, amount="2320", when=date(TODAY.year - 1, 7, 20))
@@ -263,3 +263,30 @@ def test_prior_year_results_open_the_year_in_retained_earnings(client):
     assert rows["2190"]["@SaldoIni"] == Decimal("1600.00")
     leaves = [row for code, row in rows.items() if len(code) == 4 and code[1:] != "000"]
     assert sum(r["@Debe"] for r in leaves) == sum(r["@Haber"] for r in leaves)
+
+
+def test_a_real_year_close_replaces_the_virtual_one(client):
+    """Con el ejercicio anterior cerrado de verdad, la balanza deja de simular:
+    enero abre 3200 con la póliza real y diciembre la trae dentro."""
+    headers, account, category = _setup(client)
+    last_year = TODAY.year - 1
+    _income(client, headers, account, category, amount="11600", when=date(last_year, 6, 15))
+    _expense(client, headers, account, category, amount="2320", when=date(last_year, 7, 20))
+    closed = client.post(f"/api/periods/years/{last_year}/close", headers=headers, json={})
+    assert closed.status_code == 200, closed.text
+
+    january = _balanza(client, headers, year=TODAY.year, month=1)
+    assert january["3200"]["@SaldoIni"] == Decimal("8000.00")  # 10,000 − 2,000, de la póliza real
+    assert "4100" not in january and "5300" not in january  # resultados en cero, sin arrastre
+
+    december = _balanza(client, headers, year=last_year, month=12)
+    ventas = december["4100"]
+    assert (ventas["@SaldoIni"], ventas["@Debe"], ventas["@SaldoFin"]) == (
+        Decimal("10000.00"),
+        Decimal("10000.00"),
+        Decimal("0.00"),
+    )
+    assert december["5300"]["@Haber"] == Decimal("2000.00")
+    assert december["3200"]["@Haber"] == Decimal("8000.00")
+    leaves = [row for code, row in december.items() if len(code) == 4 and code[1:] != "000"]
+    assert sum(r["@Debe"] for r in leaves) == sum(r["@Haber"] for r in leaves) > 0
