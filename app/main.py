@@ -1,4 +1,4 @@
-"""ONE Finance — Financial Operating System (Atlas Tech).
+"""Atlas ONE Finance — administración financiera y contable (Atlas Tech).
 
 App FastAPI única: API bajo /api/*, SPA React servida por catch-all (registrado al final).
 """
@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="ONE Finance API",
+        title="Atlas ONE Finance API",
         version="0.1.0",
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url=None,

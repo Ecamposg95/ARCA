@@ -143,9 +143,9 @@ export function AppLayout() {
         <div className="flex items-center gap-2.5 px-5 pb-5 pt-5">
           <ArcaMark />
           <div className="min-w-0">
-            <div className="font-display text-lg font-bold leading-none tracking-tight">ONE Finance</div>
+            <div className="font-display text-base font-bold leading-none tracking-tight">Atlas ONE Finance</div>
             <div className="figures mt-1 text-[9px] uppercase tracking-[0.2em] text-rail-muted">
-              Financial OS
+              Finanzas y contabilidad
             </div>
           </div>
         </div>

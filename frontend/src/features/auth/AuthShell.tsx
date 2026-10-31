@@ -8,10 +8,10 @@ export function AuthShell({ children, footer }: { children: ReactNode; footer?: 
       <div className="w-full max-w-[400px]">
         <header className="arca-rise mb-7 text-center">
           <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.04em] text-rail-ink">
-            ONE Finance
+            Atlas ONE Finance
           </div>
           <p className="figures mt-2.5 text-[10px] uppercase tracking-[0.24em] text-rail-muted">
-            Financial OS · Atlas Tech
+            Administración financiera y contable
           </p>
         </header>
 

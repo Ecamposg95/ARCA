@@ -1,8 +1,8 @@
-# ONE Finance
+# Atlas ONE Finance
 
 > Antes ARCA. El repo, la carpeta y la infraestructura de Railway (proyecto y servicio `ARCA`, dominio `arca-production-…`) conservan el nombre anterior.
 
-**Financial Operating System by Atlas Tech**
+**Plataforma de administración financiera y contable de Atlas Tech**
 
 ONE Finance permite a un emprendedor o pequeña empresa operar sus finanzas sin conocimientos contables: registra ventas, gastos, cobros y pagos en su propio lenguaje, y por debajo un motor contable formal (partida doble, auditable) produce estados financieros exactos.
 
