@@ -1,4 +1,4 @@
-"""Código agrupador: cada cuenta de ARCA sabe cómo la clasifica el SAT."""
+"""Código agrupador: cada cuenta de ONE Finance sabe cómo la clasifica el SAT."""
 
 from tests.helpers import auth_headers, register
 

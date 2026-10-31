@@ -298,7 +298,7 @@ export function AccountsPage() {
               hint={
                 form.type === 'CREDIT_CARD'
                   ? 'Lo que ya debes en esta tarjeta hoy.'
-                  : 'Con cuánto arranca esta cuenta en ARCA.'
+                  : 'Con cuánto arranca esta cuenta en ONE Finance.'
               }
               value={form.opening_balance}
               onChange={(event) => setForm({ ...form, opening_balance: event.target.value })}

@@ -1,4 +1,4 @@
-"""ARCA — Financial Operating System (Atlas Tech).
+"""ONE Finance — Financial Operating System (Atlas Tech).
 
 App FastAPI única: API bajo /api/*, SPA React servida por catch-all (registrado al final).
 """
@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="ARCA API",
+        title="ONE Finance API",
         version="0.1.0",
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url=None,
@@ -79,7 +79,7 @@ def create_app() -> FastAPI:
     _register_routers(app)
     _mount_frontend(app)
 
-    logger.info("ARCA iniciada (env=%s)", settings.env)
+    logger.info("ONE Finance iniciada (env=%s)", settings.env)
     return app
 
 

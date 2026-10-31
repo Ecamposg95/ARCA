@@ -1,4 +1,4 @@
-"""Fixtures de tests ARCA — modo dual (patrón Atlas/dasic).
+"""Fixtures de tests ONE Finance — modo dual (patrón Atlas/dasic).
 
 - Con TEST_DATABASE_URL: PostgreSQL real + `alembic upgrade head` (modo CI).
 - Sin ella: SQLite en memoria + create_all (modo local rápido).
@@ -52,7 +52,7 @@ else:
 
 def pytest_report_header(config):
     mode = "PostgreSQL (migraciones reales)" if TEST_DATABASE_URL else "SQLite en memoria (create_all)"
-    return f"ARCA tests — modo BD: {mode}"
+    return f"ONE Finance tests — modo BD: {mode}"
 
 
 def pytest_collection_modifyitems(config, items):

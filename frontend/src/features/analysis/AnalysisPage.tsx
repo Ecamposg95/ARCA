@@ -1,4 +1,4 @@
-/** Análisis — el terminal financiero de ARCA, en modo mercado.
+/** Análisis — el terminal financiero de ONE Finance, en modo mercado.
  *
  *  Superficie deliberadamente negra en ambos temas (scope .terminal), velas
  *  semanales del efectivo con verde/rojo de mercado, volumen bajo la curva,
@@ -28,7 +28,7 @@ import { api } from '@/api/client'
 import { formatCompact, formatDate, formatMoney } from '@/lib/format'
 import type { AgingReport, CashProjection, DashboardSummary, NetWorth } from '@/types/api'
 
-/* Verde/rojo de mercado para DIRECCIÓN (sube/baja); teal/oro de ARCA para
+/* Verde/rojo de mercado para DIRECCIÓN (sube/baja); teal/oro de ONE Finance para
  * NATURALEZA (entra/sale). Dos lenguajes, nunca revueltos en el mismo trazo. */
 const MKT = { up: '#0ecb81', down: '#f6465d' }
 const C = { in: '#2c9aa6', out: '#c29938', risk: '#f6465d' }

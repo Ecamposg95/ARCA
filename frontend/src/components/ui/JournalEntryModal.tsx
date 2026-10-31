@@ -4,7 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { formatDate, formatMoney } from '@/lib/format'
 import type { JournalEntry, LedgerAccount, Page } from '@/types/api'
 
-/** "Así lo registró ARCA": la póliza de una operación, sin salir de la lista.
+/** "Así lo registró ONE Finance": la póliza de una operación, sin salir de la lista.
  *  Es el puente entre el lenguaje del empresario y la partida doble. */
 export function JournalEntryModal({
   sourceType,

@@ -1,6 +1,6 @@
 """Catálogo contable inicial (task pack §17), sembrado por organización.
 
-El emprendedor nunca configura esto; ARCA lo crea al dar de alta la empresa.
+El emprendedor nunca configura esto; ONE Finance lo crea al dar de alta la empresa.
 """
 
 from __future__ import annotations
@@ -213,7 +213,7 @@ def set_account_active(db: Session, account: Account, active: bool) -> Account:
         account.active = True
         return account
     if account.system:
-        raise CatalogError("Las cuentas que ARCA sembró no se desactivan.")
+        raise CatalogError("Las cuentas que ONE Finance sembró no se desactivan.")
     if account_has_movements(db, account.id):
         raise CatalogError(f"La cuenta {account.code} tiene movimientos; no se puede desactivar.")
     account.active = False

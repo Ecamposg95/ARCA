@@ -1,4 +1,4 @@
-"""Apertura: los saldos con los que la empresa llega a ARCA, cuadrados contra capital."""
+"""Apertura: los saldos con los que la empresa llega a ONE Finance, cuadrados contra capital."""
 
 from datetime import date, timedelta
 from decimal import Decimal

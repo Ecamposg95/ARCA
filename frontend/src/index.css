@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens ARCA — paleta Atlas Cortex, HSL con canal separado para permitir alpha (bg-surface/60).
+/* Tokens ONE Finance — paleta Atlas Cortex, HSL con canal separado para permitir alpha (bg-surface/60).
    Fuente de los valores: atlas-cortex frontend/tailwind.config.js (brand.* / dark.*). */
 :root {
   --bg: 210 25% 98%; /* #fafbfc */

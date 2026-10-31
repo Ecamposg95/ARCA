@@ -578,7 +578,7 @@ def manual_entry(
     reference = (reference or "").strip() or None
     if reference and reference.startswith(REVERSAL_PREFIX):
         raise AccountingError(
-            f"La referencia no puede empezar con '{REVERSAL_PREFIX}'; esa marca la pone ARCA al revertir."
+            f"La referencia no puede empezar con '{REVERSAL_PREFIX}'; esa marca la pone ONE Finance al revertir."
         )
 
     wanted = {line.account_id for line in lines}
@@ -729,7 +729,7 @@ def opening_entry(
     description: str | None = None,
     created_by: str | None = None,
 ) -> JournalEntry:
-    """Póliza de apertura: los saldos con los que la empresa llega a ARCA.
+    """Póliza de apertura: los saldos con los que la empresa llega a ONE Finance.
 
     Cada cuenta de balance entra en su naturaleza (activo al cargo; pasivo y
     capital al abono) y la diferencia va a la cuenta de cuadre. Las cuentas con

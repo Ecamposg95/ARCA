@@ -158,7 +158,7 @@ export function DebtDetailPanel({
 
           <section>
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Así lo registró ARCA
+              Así lo registró ONE Finance
             </h3>
             {entriesQuery.isLoading ? (
               <div className="h-16 animate-pulse rounded-lg bg-surface-2" />

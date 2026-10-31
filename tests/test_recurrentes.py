@@ -1,4 +1,4 @@
-"""Recurrentes (F-03): lo que se paga igual cada mes, ARCA lo propone solo.
+"""Recurrentes (F-03): lo que se paga igual cada mes, ONE Finance lo propone solo.
 
 El borrador es una propuesta más de la bandeja: la aprobación humana sigue
 siendo el único camino a la contabilidad, y la generación es idempotente por
@@ -75,7 +75,7 @@ def test_generation_drops_a_draft_in_the_inbox(client):
     assert inbox["total"] == 1
     draft = inbox["items"][0]
     assert draft["kind"] == "EXPENSE"
-    assert draft["agent_name"] == "ARCA · Recurrentes"
+    assert draft["agent_name"] == "ONE Finance · Recurrentes"
     assert Decimal(str(draft["payload"]["amount"])) == Decimal("18560")
 
 

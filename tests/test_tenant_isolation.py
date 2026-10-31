@@ -1,4 +1,4 @@
-"""El test más importante de ARCA: Org A jamás ve datos de Org B, ni con UUIDs conocidos."""
+"""El test más importante de ONE Finance: Org A jamás ve datos de Org B, ni con UUIDs conocidos."""
 
 from tests.helpers import auth_headers, register
 

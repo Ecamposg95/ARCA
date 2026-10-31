@@ -1,4 +1,4 @@
-/** Misión en vivo — el teatro agéntico de ARCA, al estilo Mission Control de
+/** Misión en vivo — el teatro agéntico de ONE Finance, al estilo Mission Control de
  *  Atlas Cortex: roster con estados que brillan, feed con timestamps, compuerta
  *  de aprobación humana y brief ejecutivo final.
  *

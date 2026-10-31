@@ -1,4 +1,4 @@
-"""Recurrentes: ARCA propone lo que se repite; el humano sigue aprobando.
+"""Recurrentes: ONE Finance propone lo que se repite; el humano sigue aprobando.
 
 La generación es idempotente por (regla, AAAA-MM) vía `AgentProposal.origin`,
 sin importar qué pasó con el borrador: si el humano lo rechazó, regenerar no
@@ -17,7 +17,7 @@ from app.models.agent import AgentProposal
 from app.models.recurring import RecurringRule
 
 # Nombre visible en la bandeja cuando propone el sistema, no una llave.
-RECURRING_AUTHOR = "ARCA · Recurrentes"
+RECURRING_AUTHOR = "ONE Finance · Recurrentes"
 
 
 def origin_key(rule_id: str, year: int, month: int) -> str:

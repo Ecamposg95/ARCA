@@ -34,7 +34,7 @@ const SOURCE_LABELS: Record<string, string> = {
 /** Orígenes que se revierten a mano desde aquí (rules.HAND_REVERSIBLE_SOURCES). */
 const HAND_REVERSIBLE = new Set(['manual', 'opening'])
 
-/** Marca que ARCA pone en `reference` al revertir; no es una referencia del usuario. */
+/** Marca que ONE Finance pone en `reference` al revertir; no es una referencia del usuario. */
 const REVERSAL_PREFIX = 'reversal:'
 
 /** Abre otra póliza en el diario. `dateIso` null: fecha desconocida, se busca en todo el libro. */

@@ -241,7 +241,7 @@ export function PortfolioPage() {
             step="0.01"
             inputMode="decimal"
             placeholder="0.00"
-            hint="ARCA crea su catálogo contable, sus categorías y la cuenta Caja con este saldo."
+            hint="ONE Finance crea su catálogo contable, sus categorías y la cuenta Caja con este saldo."
             value={form.initial_cash}
             onChange={(event) => setForm({ ...form, initial_cash: event.target.value })}
           />

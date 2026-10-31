@@ -564,7 +564,7 @@ export function OperationsPage({ config }: { config: Config }) {
                 {contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id)}
               </td>
               <td className="px-4 py-2.5 text-muted">{categoryName(item.category_id)}</td>
-              {/* Con qué se movió el dinero: es la pregunta que da origen a ARCA. */}
+              {/* Con qué se movió el dinero: es la pregunta que da origen a ONE Finance. */}
               <td className="whitespace-nowrap px-4 py-2.5 text-muted">
                 {accountLabel(item.financial_account_id)}
               </td>
@@ -698,7 +698,7 @@ export function OperationsPage({ config }: { config: Config }) {
       <JournalEntryModal
         sourceType={config.kind === 'income' ? 'income' : 'expense'}
         sourceId={entryFor?.id ?? null}
-        title={`Así lo registró ARCA · ${entryFor?.description ?? ''}`}
+        title={`Así lo registró ONE Finance · ${entryFor?.description ?? ''}`}
         open={entryFor !== null}
         onClose={() => setEntryFor(null)}
       />

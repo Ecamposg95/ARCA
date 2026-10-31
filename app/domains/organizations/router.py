@@ -100,7 +100,7 @@ class MemberInvite(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=200)
     role: str = Field(default=ROLE_MEMBER)
-    # Contraseña inicial: ARCA todavía no manda correos, así que se entrega a mano.
+    # Contraseña inicial: ONE Finance todavía no manda correos, así que se entrega a mano.
     password: str = Field(min_length=8, max_length=128)
 
 

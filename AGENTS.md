@@ -1,8 +1,8 @@
-# AGENTS.md — Reglas para agentes que trabajan en ARCA
+# AGENTS.md — Reglas para agentes que trabajan en ONE Finance (antes ARCA)
 
-## Qué es ARCA
+## Qué es ONE Finance
 
-Financial Operating System de Atlas Tech. Un emprendedor registra operaciones en su lenguaje ("vendí", "gasté", "me deben") y ARCA produce por debajo finanzas y contabilidad formales. **North Star:** que el usuario entienda su negocio sin saber contabilidad, con un ledger de partida doble correcto y auditable debajo de cada cifra.
+Financial Operating System de Atlas Tech. Un emprendedor registra operaciones en su lenguaje ("vendí", "gasté", "me deben") y ONE Finance produce por debajo finanzas y contabilidad formales. **North Star:** que el usuario entienda su negocio sin saber contabilidad, con un ledger de partida doble correcto y auditable debajo de cada cifra.
 
 ```text
 OPERACIÓN → EVENTO FINANCIERO → MOVIMIENTO → CONTABILIDAD → ESTADOS FINANCIEROS

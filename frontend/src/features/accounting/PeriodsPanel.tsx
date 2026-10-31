@@ -78,7 +78,7 @@ function OpeningBalanceCard({ onShowEntry }: { onShowEntry?: (id: string) => voi
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-base font-semibold">Saldos iniciales</h3>
-              <p className="mt-1 text-sm text-muted">Trae los saldos con los que la empresa llega a ARCA.</p>
+              <p className="mt-1 text-sm text-muted">Trae los saldos con los que la empresa llega a ONE Finance.</p>
             </div>
             <Button disabled={accountsLoading} onClick={() => setFormOpen(true)}>
               Capturar saldos iniciales

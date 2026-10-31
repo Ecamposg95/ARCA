@@ -15,7 +15,7 @@ const BUSINESS_TYPES = [
   { value: 'other', label: 'Otro' },
 ]
 
-/** Onboarding §30: pasos cortos; ARCA configura catálogo y cuenta inicial por debajo. */
+/** Onboarding §30: pasos cortos; ONE Finance configura catálogo y cuenta inicial por debajo. */
 export function RegisterPage() {
   const navigate = useNavigate()
   const setSession = useAuthStore((state) => state.setSession)
@@ -109,7 +109,7 @@ export function RegisterPage() {
       ),
     },
     {
-      title: '¿Con cuánto dinero inicia ARCA?',
+      title: '¿Con cuánto dinero inicia ONE Finance?',
       valid: true,
       body: (
         <TextInput
@@ -227,7 +227,7 @@ export function RegisterPage() {
       <h1 className="mt-5 font-display text-lg font-bold tracking-tight">{current.title}</h1>
       {step === 0 ? (
         <p className="mt-1 text-sm text-muted">
-          Registras lo que pasa en tu negocio; ARCA lleva las finanzas y la contabilidad.
+          Registras lo que pasa en tu negocio; ONE Finance lleva las finanzas y la contabilidad.
         </p>
       ) : null}
 

@@ -393,7 +393,7 @@ export interface LedgerAccount {
   contpaqi_code: string | null
   /** Código agrupador del SAT (Anexo 24), o null. */
   sat_code: string | null
-  /** La sembró ARCA al crear la empresa; las reglas la usan y no se desactiva. */
+  /** La sembró ONE Finance al crear la empresa; las reglas la usan y no se desactiva. */
   system: boolean
   /** Tiene al menos una línea en el ledger; una cuenta así no se desactiva. */
   has_movements: boolean

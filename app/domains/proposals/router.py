@@ -73,7 +73,7 @@ def list_proposals(
         # Sin llave y con origen recurrente, propuso el sistema: la bandeja
         # debe decir quién, igual que con cualquier agente.
         if row.agent_key_id is None and (row.origin or "").startswith("recurring:"):
-            item.agent_name = "ARCA · Recurrentes"
+            item.agent_name = "ONE Finance · Recurrentes"
         else:
             item.agent_name = key_names.get(row.agent_key_id)
         items.append(item)

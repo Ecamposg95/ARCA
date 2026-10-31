@@ -279,7 +279,7 @@ export function AssetsPage() {
           {assets.length === 0 ? (
             <EmptyState
               title="Sin activos registrados"
-              message="Una laptop, un vehículo o el mobiliario no son gasto del mes: se usan durante años. Regístralos aquí y ARCA los deprecia solo."
+              message="Una laptop, un vehículo o el mobiliario no son gasto del mes: se usan durante años. Regístralos aquí y ONE Finance los deprecia solo."
               action={<Button onClick={() => setAssetModal(true)}>Nuevo activo</Button>}
             />
           ) : (
@@ -349,7 +349,7 @@ export function AssetsPage() {
           {loans.length === 0 ? (
             <EmptyState
               title="Sin préstamos registrados"
-              message="Registra tus créditos para que ARCA separe cuánto de cada pago baja la deuda y cuánto es interés. Sin eso, un crédito distorsiona tu resultado."
+              message="Registra tus créditos para que ONE Finance separe cuánto de cada pago baja la deuda y cuánto es interés. Sin eso, un crédito distorsiona tu resultado."
               action={<Button onClick={() => setLoanModal(true)}>Nuevo préstamo</Button>}
             />
           ) : (
@@ -601,7 +601,7 @@ export function AssetsPage() {
         >
           {error ? <p className="text-sm text-neg">{error}</p> : null}
           <p className="text-sm text-muted">
-            ARCA separa sola cuánto de este pago baja la deuda y cuánto es interés.
+            ONE Finance separa sola cuánto de este pago baja la deuda y cuánto es interés.
           </p>
           <TextInput
             label="¿Cuánto pagaste?"

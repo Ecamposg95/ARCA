@@ -1,4 +1,4 @@
-"""Mixins base de ARCA (convención Atlas, con las deudas conocidas corregidas):
+"""Mixins base de ONE Finance (convención Atlas, con las deudas conocidas corregidas):
 
 - PK UUID string en todas las tablas.
 - organization_id NOT NULL en tablas de negocio (nunca nullable).

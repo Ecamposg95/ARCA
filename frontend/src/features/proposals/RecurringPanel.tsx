@@ -1,4 +1,4 @@
-/** Recurrentes: lo que se paga igual cada mes, ARCA lo propone solo.
+/** Recurrentes: lo que se paga igual cada mes, ONE Finance lo propone solo.
  *
  *  La regla no registra nada. Genera borradores en la Bandeja y la aprobación
  *  humana sigue siendo la única puerta a la contabilidad.
@@ -155,7 +155,7 @@ export function RecurringPanel() {
     <div>
       <PageHeader
         title="Propuestas"
-        description="Lo que se repite cada mes: ARCA lo propone solo y tú apruebas."
+        description="Lo que se repite cada mes: ONE Finance lo propone solo y tú apruebas."
         actions={
           <div className="flex gap-2">
             {rules.length > 0 ? (
@@ -192,7 +192,7 @@ export function RecurringPanel() {
       ) : rules.length === 0 ? (
         <EmptyState
           title="Nada se repite todavía"
-          message="La renta, la nómina, las igualas: registra una vez lo que se paga igual cada mes y ARCA te lo propondrá solo. Tú nada más apruebas."
+          message="La renta, la nómina, las igualas: registra una vez lo que se paga igual cada mes y ONE Finance te lo propondrá solo. Tú nada más apruebas."
           action={<Button onClick={() => setModalOpen(true)}>Nueva regla</Button>}
         />
       ) : (

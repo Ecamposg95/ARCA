@@ -88,7 +88,7 @@ export function ContpaqiExport({
                   : `${unmapped.length} cuentas sin equivalente en CONTPAQi`}
               </p>
               <p className="mt-1 text-muted">
-                Saldrán con su código de ARCA. Si en tu CONTPAQi tienen otro número, captúralo en
+                Saldrán con su código de ONE Finance. Si en tu CONTPAQi tienen otro número, captúralo en
                 el{' '}
                 <Link
                   to="/contabilidad?vista=catalogo"

@@ -1,4 +1,4 @@
-"""Cuenta equivalente: cada cuenta de ARCA sabe cómo se llama en CONTPAQi."""
+"""Cuenta equivalente: cada cuenta de ONE Finance sabe cómo se llama en CONTPAQi."""
 
 from tests.helpers import auth_headers, register
 

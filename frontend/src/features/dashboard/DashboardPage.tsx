@@ -336,7 +336,7 @@ export function DashboardPage() {
         <div className="mt-4 rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center">
           <h3 className="font-display text-lg font-semibold">Registra tu primera operación</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-            Captura una venta o un gasto y ARCA irá armando tus números, tus reportes y tu
+            Captura una venta o un gasto y ONE Finance irá armando tus números, tus reportes y tu
             contabilidad por ti.
           </p>
           <div className="mt-5 flex justify-center gap-3">

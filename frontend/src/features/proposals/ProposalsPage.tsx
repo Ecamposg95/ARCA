@@ -241,7 +241,7 @@ export function ProposalsPage() {
       ) : items.length === 0 ? (
         <EmptyState
           title={statusFilter === 'PROPOSED' ? 'Sin propuestas pendientes' : 'Nada por aquí'}
-          message="Cuando un agente conectado a ARCA detecte una operación (una venta, un gasto, una factura), la verás aquí para aprobarla o rechazarla con un clic."
+          message="Cuando un agente conectado a ONE Finance detecte una operación (una venta, un gasto, una factura), la verás aquí para aprobarla o rechazarla con un clic."
         />
       ) : (
         <div className="space-y-3">

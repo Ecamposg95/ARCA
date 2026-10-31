@@ -122,7 +122,7 @@ def test_mapped_accounts_use_the_contpaqi_number_and_the_rest_keep_arcas(client)
     vouchers = _vouchers(_export(client, headers).content.decode(ENCODING))
     used = {m["account"] for v in vouchers for m in v["moves"]}
     assert "40101000" in used and "4100" not in used
-    assert "1100" in used  # sin equivalente: sale con el código de ARCA
+    assert "1100" in used  # sin equivalente: sale con el código de ONE Finance
 
     preview = client.get("/api/accounting/contpaqi/preview", headers=headers, params=MONTH).json()
     assert preview["entries"] == len(vouchers)

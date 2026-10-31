@@ -30,7 +30,7 @@ class Account(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     active = Column(Boolean, nullable=False, default=True)
     system = Column(Boolean, nullable=False, default=False)
     # Número de la misma cuenta en el CONTPAQi del contador (sin guiones). Con
-    # esto las pólizas exportadas caen en SU catálogo, no en el de ARCA.
+    # esto las pólizas exportadas caen en SU catálogo, no en el de ONE Finance.
     contpaqi_code = Column(String(30), nullable=True)
     # Código agrupador del SAT (Anexo 24): cómo clasifica el fisco esta cuenta.
     sat_code = Column(String(10), nullable=True)

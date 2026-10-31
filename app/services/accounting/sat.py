@@ -1,6 +1,6 @@
 """Contabilidad electrónica (Anexo 24 de la RMF): catálogo y balanza en XML 1.3.
 
-Lo que ARCA sabe hacer aquí es producir los dos XML válidos contra los esquemas
+Lo que ONE Finance sabe hacer aquí es producir los dos XML válidos contra los esquemas
 oficiales del SAT y cuadrados con el libro. El sello con la e.firma y el envío
 al buzón tributario los hace el contador con su herramienta: los XML salen sin
 `Sello`, `noCertificado` ni `Certificado` (opcionales en el esquema).
@@ -35,7 +35,7 @@ RFC_PATTERN = re.compile(r"^[A-ZÑ&]{3,4}[0-9]{2}[0-1][0-9][0-3][0-9][A-Z0-9]?[A
 # Cuentas de activo con naturaleza acreedora (contra-activos). Hoy sólo una.
 CONTRA_ACCOUNT_CODES = {"1490"}
 
-# Código agrupador por defecto para el catálogo que ARCA siembra (coa.DEFAULT_CHART).
+# Código agrupador por defecto para el catálogo que ONE Finance siembra (coa.DEFAULT_CHART).
 # Son defaults razonables para una pyme; el contador los corrige cuenta por cuenta.
 DEFAULT_SAT_CODES = {
     "1000": "100",

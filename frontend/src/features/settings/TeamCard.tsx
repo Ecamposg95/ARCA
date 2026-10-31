@@ -1,5 +1,5 @@
 /** Equipo: el backend distingue cinco roles desde el día uno; hasta ahora no
- *  había forma de asignarlos, así que ARCA era de un solo usuario en la práctica. */
+ *  había forma de asignarlos, así que ONE Finance era de un solo usuario en la práctica. */
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -176,7 +176,7 @@ export function TeamCard() {
             required
           />
           <p className="text-xs text-muted">
-            ARCA todavía no manda correos: entrégale esta contraseña y pídele que la cambie.
+            ONE Finance todavía no manda correos: entrégale esta contraseña y pídele que la cambie.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>

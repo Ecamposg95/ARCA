@@ -79,7 +79,7 @@ class Movement:
 
 @dataclass(frozen=True)
 class Voucher:
-    folio: str  # folio de ARCA: Ig-2026-09-0007
+    folio: str  # folio de ONE Finance: Ig-2026-09-0007
     kind: str  # INGRESO | EGRESO | DIARIO
     date: date
     concept: str
@@ -129,7 +129,7 @@ _REFERENCE_WIDTH = next(field.width for field in MOVEMENT_LAYOUT if field.name =
 
 
 def _reference(folio: str) -> str:
-    """El folio de ARCA en la Referencia, para rastrear cada movimiento.
+    """El folio de ONE Finance en la Referencia, para rastrear cada movimiento.
 
     Sin el año, para que quepa: Ig-2026-09-0007 → Ig-09-0007. Pasado el 9999 ya
     no cabe con guiones y se compacta (Ig0910000) en vez de recortarse: recortado

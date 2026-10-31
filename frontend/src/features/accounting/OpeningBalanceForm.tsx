@@ -1,4 +1,4 @@
-/** Saldos iniciales: la empresa llega a ARCA con lo que traía en CONTPAQi.
+/** Saldos iniciales: la empresa llega a ONE Finance con lo que traía en CONTPAQi.
  *
  *  Una rejilla con las cuentas de balance que admiten captura; cada saldo va en
  *  la naturaleza de su cuenta y la diferencia la absorbe la cuenta de cuadre

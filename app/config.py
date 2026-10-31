@@ -1,4 +1,4 @@
-"""Configuración de ARCA.
+"""Configuración de ONE Finance.
 
 Patrón Atlas (dasic): dataclass congelada + lru_cache, fail-fast en producción.
 Sin fallback de secreto en producción, nunca.
