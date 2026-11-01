@@ -1,10 +1,10 @@
-# CLAUDE.md — Atlas ONE Finance (antes ARCA)
+# CLAUDE.md — Atlas ONE Finance (motor ARCA)
 
 Lee `AGENTS.md` primero: ahí viven los invariantes financieros que NUNCA se rompen (partida doble, tenant isolation, Decimal para dinero, saldos solo vía `record_transaction`, reglas contables solo en `app/services/accounting/rules.py`).
 
 ## Contexto rápido
 
-- **Qué es:** Atlas ONE Finance (antes ARCA; repo, carpeta e infraestructura Railway siguen llamándose ARCA). Plataforma de administración financiera y contable para pymes mexicanas. UX en lenguaje de empresario (español); motor contable formal por debajo. Spec: `docs/TASK_PACK.md`; estado: `docs/MVP_STATUS.md`.
+- **Qué es:** Atlas ONE Finance, suite del ecosistema Atlas ONE; ARCA es su motor financiero-contable (de ahí el nombre del repo, el paquete y la infra). En copy visible al usuario escribe "ONE Finance", nunca "ARCA". Visión: `docs/ATLAS_ONE_FINANCE_VISION.md`. Plataforma de administración financiera y contable para pymes mexicanas. UX en lenguaje de empresario (español); motor contable formal por debajo. Spec: `docs/TASK_PACK.md`; estado: `docs/MVP_STATUS.md`.
 - **Stack:** FastAPI 0.127 + SQLAlchemy 2 + Pydantic v2 + Alembic + PostgreSQL · React 18 + TS + Vite + Tailwind + TanStack Query v5 + Zustand · Railway (Railpack).
 - **Layout:** dominios en `app/domains/<x>/` (router/service/schemas); modelos en `app/models/` (registrar módulos nuevos en su `__init__.py` o create_all/autogenerate los omiten); motor contable en `app/services/accounting/`.
 

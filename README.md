@@ -1,6 +1,6 @@
 # Atlas ONE Finance
 
-> Antes ARCA. El repo, la carpeta y la infraestructura de Railway (proyecto y servicio `ARCA`, dominio `arca-production-…`) conservan el nombre anterior.
+> **Atlas ONE Finance** es el producto (suite de administración financiera y contable del ecosistema Atlas ONE); **ARCA** es su motor financiero-contable: libro mayor, motor de pólizas, reglas contables y reportes. Por eso el repo, el paquete y la infraestructura de Railway se llaman ARCA. Visión completa: `docs/ATLAS_ONE_FINANCE_VISION.md`.
 
 **Plataforma de administración financiera y contable de Atlas Tech**
 
