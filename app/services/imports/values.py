@@ -31,6 +31,11 @@ def parse_money(value) -> Decimal:
     if text in ("", "-", "$ -", "$-", "$"):
         return Decimal("0")
     negative = text.startswith("(") and text.endswith(")")
+    # "1.240,00" (europeo): el último separador es el decimal; "1,240" sola es miles.
+    if "," in text and "." in text and text.rfind(",") > text.rfind("."):
+        text = text.replace(".", "").replace(",", ".")
+    else:
+        text = text.replace(",", "")
     digits = _NON_NUMERIC.sub("", text)
     if digits in ("", "-", ".", "-."):
         raise ValueError(f"No es un monto: {text}")
@@ -50,7 +55,8 @@ def parse_date(value) -> date_type:
     text = clean_text(value)
     if not text:
         raise ValueError("Falta la fecha.")
-    head = text.split(" ")[0]
+    # "2026-10-07 09:30:00" y el ISO "2026-10-07T00:00:00" de una celda de Excel.
+    head = re.split(r"[ T]", text)[0]
     for fmt in _DATE_FORMATS:
         try:
             return datetime.strptime(head, fmt).date()
