@@ -5,6 +5,7 @@ import {
   Activity,
   Bot,
   ArrowLeftRight,
+  Banknote,
   BarChart3,
   BookOpen,
   Briefcase,
@@ -52,6 +53,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet },
+      { to: '/caja', label: 'Caja', icon: Banknote },
       { to: '/patrimonio', label: 'Patrimonio', icon: Landmark },
     ],
   },

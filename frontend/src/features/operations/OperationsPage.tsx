@@ -41,6 +41,13 @@ import type { Expense, Income, Page } from '@/types/api'
 
 type Operation = Income & Expense
 
+const PAYMENT_OPTIONS = [
+  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
+]
+
 interface Config {
   kind: 'income' | 'expense'
   endpoint: string
@@ -116,6 +123,7 @@ export function OperationsPage({ config }: { config: Config }) {
     retention_iva: '',
     contact_id: '',
     financial_account_id: '',
+    payment_method: '',
     tax_rate: defaultTaxRate,
     paid: true,
     notes: '',
@@ -167,6 +175,8 @@ export function OperationsPage({ config }: { config: Config }) {
 
   const { data: accounts } = useAccounts()
   const { hasUnits } = useDimensions()
+  // El procesador de pagos de la empresa (el más antiguo activo), si tiene.
+  const processor = (accounts ?? []).find((account) => account.type === 'PROCESSOR' && account.active)
   // Sólo los proyectos abiertos: etiquetar contra uno cerrado ensucia el reporte.
   const { data: projects } = useQuery({
     queryKey: ['projects', 'ACTIVE'],
@@ -234,6 +244,7 @@ export function OperationsPage({ config }: { config: Config }) {
       if (form.retention_isr) payload.retention_isr = form.retention_isr
       if (form.retention_iva) payload.retention_iva = form.retention_iva
       if (form.financial_account_id) payload.financial_account_id = form.financial_account_id
+      if (form.payment_method) payload.payment_method = form.payment_method
       if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
       if (form.fiscal_entity_id) payload.fiscal_entity_id = form.fiscal_entity_id
       if (form.notes) payload.notes = form.notes
@@ -275,6 +286,7 @@ export function OperationsPage({ config }: { config: Config }) {
       retention_iva: '',
       contact_id: '',
       financial_account_id: '',
+      payment_method: '',
       tax_rate: defaultTaxRate,
       paid: true,
       notes: '',
@@ -846,6 +858,26 @@ export function OperationsPage({ config }: { config: Config }) {
             />
             {config.kind === 'income' ? 'Ya me pagaron' : 'Ya lo pagué'}
           </label>
+          {form.paid && config.kind === 'income' && processor ? (
+            // Sólo si hay terminal: con tarjeta, el dinero cae al procesador (no
+            // está en el banco todavía). La cuenta se puede cambiar después.
+            <SelectInput
+              label="¿Cómo te pagaron?"
+              placeholder="Elige cómo"
+              options={PAYMENT_OPTIONS}
+              value={form.payment_method}
+              onChange={(event) => {
+                const method = event.target.value
+                const isCard = method === 'TARJETA_DEBITO' || method === 'TARJETA_CREDITO'
+                setForm({
+                  ...form,
+                  payment_method: method,
+                  financial_account_id: isCard ? processor.id : form.financial_account_id,
+                  business_unit_id: isCard ? processor.business_unit_id ?? form.business_unit_id : form.business_unit_id,
+                })
+              }}
+            />
+          ) : null}
           {form.paid ? (
             <SelectInput
               label={config.accountLabel}

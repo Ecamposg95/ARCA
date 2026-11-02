@@ -9,14 +9,22 @@ import { Modal } from '@/components/ui/Modal'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
+import { SettlementsModal } from '@/features/accounts/SettlementsModal'
 import { formatMoney, today } from '@/lib/format'
 import { useAccounts, useDimensions } from '@/lib/hooks'
+import type { FinancialAccount } from '@/types/api'
 
 const TYPE_LABELS: Record<string, string> = {
   CASH: 'Efectivo',
   BANK: 'Banco',
   CREDIT_CARD: 'Tarjeta de crédito',
+  PROCESSOR: 'Procesador de pagos (NetPay, Mercado Pago)',
   OTHER: 'Otra',
+}
+
+/** 0.0350 → "3.5": la tasa se enseña en porcentaje, sin ceros de relleno. */
+function formatRate(rate: string): string {
+  return String(Number((Number(rate) * 100).toFixed(2)))
 }
 
 export function AccountsPage() {
@@ -31,8 +39,13 @@ export function AccountsPage() {
     institution: '',
     credit_limit: '',
     business_unit_id: '',
+    fee_rate: '',
+    settlement_days: '',
+    settlement_account_id: '',
   })
   const [error, setError] = useState<string | null>(null)
+  // El procesador cuyas liquidaciones se están viendo o registrando.
+  const [settling, setSettling] = useState<FinancialAccount | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
   // La tarjeta que se está pagando, con el formulario del traspaso.
   const [payingCard, setPayingCard] = useState<{ id: string; name: string } | null>(null)
@@ -68,6 +81,12 @@ export function AccountsPage() {
       if (form.institution) payload.institution = form.institution
       if (form.type === 'CREDIT_CARD' && form.credit_limit) payload.credit_limit = form.credit_limit
       if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
+      if (form.type === 'PROCESSOR') {
+        // La tasa se captura en porcentaje (3.5) y viaja como fracción (0.035).
+        if (form.fee_rate) payload.fee_rate = (Number(form.fee_rate) / 100).toFixed(4)
+        if (form.settlement_days) payload.settlement_days = Number(form.settlement_days)
+        if (form.settlement_account_id) payload.settlement_account_id = form.settlement_account_id
+      }
       await api.post('/accounts', payload)
     },
     onSuccess: () => {
@@ -81,7 +100,17 @@ export function AccountsPage() {
 
   function closeModal() {
     setModalOpen(false)
-    setForm({ name: '', type: 'BANK', opening_balance: '', institution: '', credit_limit: '', business_unit_id: '' })
+    setForm({
+      name: '',
+      type: 'BANK',
+      opening_balance: '',
+      institution: '',
+      credit_limit: '',
+      business_unit_id: '',
+      fee_rate: '',
+      settlement_days: '',
+      settlement_account_id: '',
+    })
     setError(null)
     if (searchParams.has('nueva')) {
       searchParams.delete('nueva')
@@ -89,10 +118,14 @@ export function AccountsPage() {
     }
   }
 
-  const activos = (accounts ?? []).filter((account) => account.active && !account.is_liability)
+  const activos = (accounts ?? []).filter((account) => account.active && account.available)
+  const procesadores = (accounts ?? []).filter((account) => account.active && account.type === 'PROCESSOR')
   const pasivos = (accounts ?? []).filter((account) => account.active && account.is_liability)
-  // Nunca sumar una tarjeta al disponible: su saldo es deuda, no dinero.
+  const bancos = activos.filter((account) => account.type === 'BANK')
+  // Nunca sumar una tarjeta al disponible: su saldo es deuda, no dinero. Ni un
+  // procesador: ese dinero es tuyo, pero todavía no está en el banco.
   const total = activos.reduce((sum, account) => sum + Number(account.current_balance), 0)
+  const enTransito = procesadores.reduce((sum, account) => sum + Number(account.current_balance), 0)
   const deuda = pasivos.reduce((sum, account) => sum + Number(account.current_balance), 0)
 
   return (
@@ -118,6 +151,12 @@ export function AccountsPage() {
               <span className="text-sm text-muted">Disponible</span>
               <Money value={total} size="lg" />
             </Card>
+            {procesadores.length > 0 ? (
+              <Card className="flex items-center justify-between">
+                <span className="text-sm text-muted">Por recibir de procesadores</span>
+                <Money value={enTransito} size="lg" tone="muted" />
+              </Card>
+            ) : null}
             {pasivos.length > 0 ? (
               <Card className="flex items-center justify-between">
                 <span className="text-sm text-muted">Deuda en tarjetas</span>
@@ -128,6 +167,7 @@ export function AccountsPage() {
 
           {[
             { title: 'Dónde está tu dinero', items: activos, liability: false },
+            { title: 'En tránsito: cobrado con tarjeta, aún no depositado', items: procesadores, liability: false },
             { title: 'Lo que debes', items: pasivos, liability: true },
           ]
             .filter((group) => group.items.length > 0)
@@ -170,6 +210,14 @@ export function AccountsPage() {
                               </span>
                             </div>
                           ) : null}
+                          {account.type === 'PROCESSOR' ? (
+                            <div className="mt-1.5 text-xs text-muted">
+                              {account.fee_rate
+                                ? `Comisión ${formatRate(account.fee_rate)} %`
+                                : 'Sin comisión pactada'}
+                              {account.settlement_days !== null ? ` · liquida en ${account.settlement_days} días` : ''}
+                            </div>
+                          ) : null}
                         </div>
                         <div className="text-right">
                           <Money
@@ -188,6 +236,18 @@ export function AccountsPage() {
                       </div>
                       <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
                         <span className="text-xs text-muted">Ver movimientos →</span>
+                        {account.type === 'PROCESSOR' ? (
+                          <Button
+                            variant="secondary"
+                            className="!px-2.5 !py-1 text-xs"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setSettling(account)
+                            }}
+                          >
+                            Registrar liquidación
+                          </Button>
+                        ) : null}
                         {group.liability && Number(account.current_balance) > 0 ? (
                           <Button
                             variant="secondary"
@@ -270,6 +330,16 @@ export function AccountsPage() {
         </form>
       </Modal>
 
+      {settling ? (
+        <SettlementsModal
+          // Clave por id: al cambiar de procesador el formulario arranca limpio.
+          key={settling.id}
+          processor={settling}
+          banks={bancos}
+          onClose={() => setSettling(null)}
+        />
+      ) : null}
+
       <Modal title="Nueva cuenta de dinero" open={modalOpen} onClose={closeModal}>
         <form
           onSubmit={(event) => {
@@ -315,6 +385,43 @@ export function AccountsPage() {
             value={form.institution}
             onChange={(event) => setForm({ ...form, institution: event.target.value })}
           />
+          {form.type === 'PROCESSOR' ? (
+            <>
+              <p className="text-xs text-muted">
+                Lo que cobres con esta terminal no cuenta como disponible hasta que lo liquides al banco.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <TextInput
+                  label="Comisión pactada (%)"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="3.5"
+                  hint="Precarga la comisión de cada liquidación."
+                  value={form.fee_rate}
+                  onChange={(event) => setForm({ ...form, fee_rate: event.target.value })}
+                />
+                <TextInput
+                  label="Días en que deposita"
+                  type="number"
+                  min="0"
+                  max="365"
+                  step="1"
+                  placeholder="2"
+                  value={form.settlement_days}
+                  onChange={(event) => setForm({ ...form, settlement_days: event.target.value })}
+                />
+              </div>
+              <SelectInput
+                label="Banco donde liquida"
+                placeholder="Elige el banco"
+                options={bancos.map((bank) => ({ value: bank.id, label: bank.name }))}
+                value={form.settlement_account_id}
+                onChange={(event) => setForm({ ...form, settlement_account_id: event.target.value })}
+              />
+            </>
+          ) : null}
           {hasUnits ? (
             <SelectInput
               label="Unidad (opcional)"

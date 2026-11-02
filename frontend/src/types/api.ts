@@ -74,7 +74,7 @@ export interface AuthResponse {
 export interface FinancialAccount {
   id: string
   name: string
-  type: 'CASH' | 'BANK' | 'CREDIT_CARD' | 'OTHER'
+  type: 'CASH' | 'BANK' | 'CREDIT_CARD' | 'PROCESSOR' | 'OTHER'
   currency: string
   opening_balance: string
   current_balance: string
@@ -82,12 +82,80 @@ export interface FinancialAccount {
   last_four: string | null
   credit_limit: string | null
   is_liability: boolean
+  /** false en un procesador de pagos: el cobro es tuyo pero aún no llega al banco. */
+  available: boolean
   available_credit: string | null
   active: boolean
   /** A qué unidad pertenece la caja; las operaciones pagadas con ella la heredan. */
   business_unit_id: string | null
   business_unit_name: string | null
+  /** Sólo procesadores: comisión pactada (0.0350 = 3.5 %), días en que deposita y banco destino. */
+  fee_rate: string | null
+  settlement_days: number | null
+  settlement_account_id: string | null
   created_at: string
+}
+
+/** Liquidación de un procesador: el neto pasa al banco y la comisión es gasto. */
+export interface Settlement {
+  id: string
+  processor_account_id: string
+  bank_account_id: string
+  date: string
+  gross_amount: string
+  fee_amount: string
+  net_amount: string
+  reference: string | null
+  notes: string | null
+  status: 'ACTIVE' | 'CANCELLED'
+  transfer_group_id: string
+  expense_id: string | null
+  created_by: string | null
+  cancelled_at: string | null
+  created_at: string
+}
+
+export type CashCutStatus = 'OPEN' | 'COUNTED' | 'DELIVERED' | 'CANCELLED'
+
+/** Corte de caja de un día: esperado vs contado, diferencia y entrega. */
+export interface CashCut {
+  id: string
+  financial_account_id: string
+  account_name: string | null
+  business_unit_id: string | null
+  business_unit_name: string | null
+  date: string
+  opening_balance: string
+  inflows: string
+  outflows: string
+  expected_closing: string
+  counted_amount: string | null
+  difference: string | null
+  explanation: string | null
+  status: CashCutStatus
+  delivered_amount: string | null
+  delivered_to_account_id: string | null
+  delivered_to_account_name: string | null
+  delivered_by: string | null
+  delivered_by_name: string | null
+  delivered_at: string | null
+  received_by: string | null
+  received_by_name: string | null
+  received_at: string | null
+  transfer_group_id: string | null
+  adjustment_transaction_id: string | null
+  closed_at: string | null
+  cancelled_at: string | null
+  created_at: string
+}
+
+export interface TodayCashRow {
+  account_id: string
+  account_name: string
+  business_unit_id: string | null
+  business_unit_name: string | null
+  current_balance: string
+  cut: CashCut | null
 }
 
 export interface Category {
@@ -208,6 +276,8 @@ export interface Transaction extends Dimensioned {
 
 export interface DashboardSummary {
   cash: number
+  /** Por recibir de procesadores de pago: cobrado con tarjeta, aún no depositado. */
+  in_transit_total: number
   card_debt: number
   monthly_revenue: number
   monthly_expenses: number
