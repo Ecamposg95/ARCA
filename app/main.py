@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
 from app.database import engine
+from app.services.dimensions import DimensionNotFoundError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +52,11 @@ def create_app() -> FastAPI:
     async def value_error_handler(_request: Request, exc: ValueError):
         # Errores de dominio (reglas financieras) llegan como ValueError con mensaje humano.
         return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    @app.exception_handler(DimensionNotFoundError)
+    async def dimension_not_found_handler(_request: Request, exc: DimensionNotFoundError):
+        # Una unidad o contribuyente ajeno o inexistente: 404, como cualquier recurso.
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(_request: Request, exc: IntegrityError):

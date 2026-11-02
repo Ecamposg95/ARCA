@@ -1,12 +1,13 @@
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String
 
 from app.database import Base
+from app.models.dimensions import BusinessUnitDimension, FiscalEntityDimension
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 EXPENSE_STATUSES = ("PENDING", "PAID", "CANCELLED")
 
 
-class Expense(Base, UUIDPKMixin, TenantMixin, AuditMixin):
+class Expense(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension, FiscalEntityDimension):
     """Operación de negocio "compré / gasté / pagué". Al pagarse genera
     FinancialTransaction + póliza contable (nunca directamente aquí)."""
 

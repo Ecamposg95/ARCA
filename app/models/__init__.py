@@ -8,10 +8,12 @@ autogenerate de Alembic).
 from app.models.accounting import Account, JournalEntry, JournalEntryLine  # noqa: F401
 from app.models.agent import AgentActionLog, AgentKey, AgentProposal  # noqa: F401
 from app.models.assistant import AiUsage, AssistantAction, AssistantConversation, AssistantMessage  # noqa: F401
+from app.models.business_unit import BusinessUnit  # noqa: F401
 from app.models.category import Category  # noqa: F401
 from app.models.contact import Customer, Vendor  # noqa: F401
 from app.models.expense import Expense  # noqa: F401
 from app.models.financial_account import FinancialAccount  # noqa: F401
+from app.models.fiscal_entity import FiscalEntity  # noqa: F401
 from app.models.fiscal_year import FiscalYearLock  # noqa: F401
 from app.models.fixed_asset import FixedAsset  # noqa: F401
 from app.models.income import Income  # noqa: F401

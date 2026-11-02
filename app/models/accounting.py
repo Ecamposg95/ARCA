@@ -8,6 +8,7 @@ pasa por ahí. Las pólizas nunca se borran físicamente.
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, Numeric, String, UniqueConstraint
 
 from app.database import Base
+from app.models.dimensions import BusinessUnitDimension, FiscalEntityDimension
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 ACCOUNT_TYPES = ("ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE")
@@ -36,7 +37,10 @@ class Account(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     sat_code = Column(String(10), nullable=True)
 
 
-class JournalEntry(Base, UUIDPKMixin, TenantMixin, AuditMixin):
+class JournalEntry(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension, FiscalEntityDimension):
+    """Póliza. Hereda unidad y entidad de la operación que la originó para que
+    balanza, resultados y tablero se filtren directo desde el libro."""
+
     __tablename__ = "journal_entries"
     __table_args__ = (UniqueConstraint("organization_id", "folio", name="uq_journal_entry_org_folio"),)
 

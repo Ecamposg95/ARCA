@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String
 
 from app.database import Base
+from app.models.dimensions import BusinessUnitDimension, FiscalEntityDimension
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 # Estados persistidos. OVERDUE se CALCULA (due_date < hoy con saldo pendiente),
@@ -8,7 +9,7 @@ from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 RECEIVABLE_STATUSES = ("OPEN", "PARTIAL", "PAID", "CANCELLED")
 
 
-class Receivable(Base, UUIDPKMixin, TenantMixin, AuditMixin):
+class Receivable(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension, FiscalEntityDimension):
     """Cuenta por cobrar. Se contabiliza al emitirse (devengo §18):
     Cargo 1200 / Abono ingreso. Los cobros solo mueven 1100 ↔ 1200."""
 

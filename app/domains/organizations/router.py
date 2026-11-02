@@ -81,7 +81,21 @@ def get_current_organization(
     org_id: str = Depends(get_current_org_id),
 ):
     organization = db.get(Organization, org_id)
-    return OrganizationRead.model_validate(organization)
+    return _organization_read(db, organization)
+
+
+def _organization_read(db: Session, organization: Organization) -> OrganizationRead:
+    from app.models.business_unit import BusinessUnit
+    from app.models.fiscal_entity import FiscalEntity
+
+    item = OrganizationRead.model_validate(organization)
+    item.has_business_units = (
+        db.query(BusinessUnit.id).filter(BusinessUnit.organization_id == organization.id).first() is not None
+    )
+    item.has_fiscal_entities = (
+        db.query(FiscalEntity.id).filter(FiscalEntity.organization_id == organization.id).first() is not None
+    )
+    return item
 
 
 @router.patch("/current", response_model=OrganizationRead)

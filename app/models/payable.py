@@ -1,12 +1,13 @@
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String
 
 from app.database import Base
+from app.models.dimensions import BusinessUnitDimension, FiscalEntityDimension
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 PAYABLE_STATUSES = ("OPEN", "PARTIAL", "PAID", "CANCELLED")
 
 
-class Payable(Base, UUIDPKMixin, TenantMixin, AuditMixin):
+class Payable(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension, FiscalEntityDimension):
     """Cuenta por pagar. Se contabiliza al registrarse (devengo §18):
     Cargo gasto / Abono 2100. Los pagos solo mueven 2100 ↔ 1100."""
 
