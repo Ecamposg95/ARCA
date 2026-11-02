@@ -7,14 +7,17 @@ import { TAX_RATES } from '@/lib/taxes'
 import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
+import { ApprovalsCard } from '@/features/settings/ApprovalsCard'
 import { AssistantCard } from '@/features/settings/AssistantCard'
 import { DimensionsCard } from '@/features/settings/DimensionsCard'
 import { TeamCard } from '@/features/settings/TeamCard'
+import { useActiveRole } from '@/lib/companies'
 import { useAuthStore } from '@/stores/authStore'
 import type { AgentKey, Organization } from '@/types/api'
 
 export function SettingsPage() {
   const { organization, user } = useAuthStore()
+  const role = useActiveRole()
   const [form, setForm] = useState({
     name: organization?.name ?? '',
     legal_name: organization?.legal_name ?? '',
@@ -95,6 +98,7 @@ export function SettingsPage() {
       </Card>
 
       <DimensionsCard />
+      {role === 'OWNER' || role === 'ADMIN' ? <ApprovalsCard /> : null}
       <TeamCard />
       <AgentKeysSection />
       <AssistantCard />
