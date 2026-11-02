@@ -10,7 +10,18 @@ from app.database import Base
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 AGENT_SCOPES = ("READ", "PROPOSE")
-PROPOSAL_KINDS = ("INCOME", "EXPENSE", "RECEIVABLE", "PAYABLE")
+# Los cuatro primeros los proponen agentes y asistente (payload = schema Create).
+# Los tres últimos nacen de la autorización por monto: pagar un gasto pendiente,
+# pagar una cuenta por pagar y traspasar entre cajas.
+PROPOSAL_KINDS = (
+    "INCOME",
+    "EXPENSE",
+    "RECEIVABLE",
+    "PAYABLE",
+    "EXPENSE_PAYMENT",
+    "PAYABLE_PAYMENT",
+    "TRANSFER",
+)
 PROPOSAL_STATUSES = ("PROPOSED", "APPROVED", "REJECTED")
 
 
@@ -44,7 +55,12 @@ class AgentProposal(Base, UUIDPKMixin, TenantMixin, AuditMixin):
     result_id = Column(String(36), nullable=True)
     # Clave de idempotencia para propuestas generadas por el sistema:
     # `recurring:{regla}:{AAAA-MM}`. Un mes no se propone dos veces.
+    # El asistente usa `assistant:{conversación}:{tool_use}` y la autorización
+    # por monto `approval:{usuario}:{uuid}`.
     origin = Column(String(64), nullable=True, index=True)
+    # Quién capturó la operación que espera autorización. Nulo en lo que
+    # proponen agentes, asistente o sistema.
+    requested_by = Column(String(36), ForeignKey("users.id"), nullable=True)
 
 
 class AgentActionLog(Base, UUIDPKMixin, TenantMixin, AuditMixin):
