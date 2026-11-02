@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from decimal import Decimal
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -34,6 +35,12 @@ class Settings:
     access_token_expire_minutes: int
     refresh_token_expire_days: int
     docs_enabled: bool
+    # Asistente sobre Claude (spec 2026-11-02). La llave NO vive aquí: se lee
+    # en el momento de construir el cliente, para que aparezca sin reiniciar nada.
+    ai_model: str
+    ai_effort: str
+    ai_max_tokens: int
+    ai_budget_default_usd: Decimal
 
     @property
     def is_production(self) -> bool:
@@ -72,6 +79,10 @@ def _build_settings() -> Settings:
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720")),
         refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30")),
         docs_enabled=os.getenv("DOCS_ENABLED", "false" if is_production else "true").lower() == "true",
+        ai_model=os.getenv("AI_MODEL", "claude-opus-5-5"),
+        ai_effort=os.getenv("AI_EFFORT", "medium"),
+        ai_max_tokens=int(os.getenv("AI_MAX_TOKENS", "16000")),
+        ai_budget_default_usd=Decimal(os.getenv("AI_BUDGET_DEFAULT_USD", "20")),
     )
 
 

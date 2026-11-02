@@ -20,7 +20,7 @@ _Actualizado: 2026-10-13 (C-2 apertura y cierre anual, prod `0f23acb`)_
 
 ## In Progress
 
-- (nada)
+- **Asistente ONE Finance sobre Claude** (spec 2026-11-02): página `/asistente` (conversaciones, hilo, chips de pasos, tarjeta Aprobar/Rechazar), runtime manual calcado de Cortex (`app/services/ai/`: `claude-opus-5-5`, thinking adaptativo, effort medium, caché de prompt, herramientas strict del catálogo de 18), corre como el usuario logueado y sólo propone (`AgentProposal` con `origin assistant:…`), presupuesto USD por empresa y mes (`ai_usage`, tope en Configuración→Agentes), `GET /api/assistant/status` sin llave → `sin_llave`. 31 tests con cliente falso. **Pendiente: poner `ANTHROPIC_API_KEY` en Railway** (sin llave la plataforma vive y la página avisa).
 
 - M2 Business Finance: CxC y CxP con devengo (§18), cobros/pagos parciales, OVERDUE calculado, cancelación con asiento de reversa (`reversal_of`), dashboard con saldos reales, páginas Por cobrar / Por pagar. 54+ tests.
 - Tema visual Atlas Cortex (teal #2c9aa6, Plus Jakarta Sans + JetBrains Mono, dark tokens definidos).

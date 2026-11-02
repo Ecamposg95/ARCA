@@ -44,6 +44,8 @@ class OrganizationRead(BaseModel):
     timezone: str
     business_type: str | None
     default_tax_rate: Decimal
+    ai_budget_usd: Decimal | None = None
+    ai_enabled: bool = True
 
 
 class MembershipRead(BaseModel):

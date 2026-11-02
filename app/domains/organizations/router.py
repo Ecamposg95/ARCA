@@ -28,6 +28,12 @@ class OrganizationUpdate(BaseModel):
     tax_id: str | None = Field(default=None, max_length=20)
     business_type: str | None = Field(default=None, max_length=50)
     default_tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    # Asistente sobre Claude: sólo el dueño mueve el tope o el apagador.
+    ai_budget_usd: Decimal | None = Field(default=None, ge=0, le=100000, allow_inf_nan=False)
+    ai_enabled: bool | None = None
+
+
+AI_FIELDS = ("ai_budget_usd", "ai_enabled")
 
 
 class OrganizationCreate(BaseModel):
@@ -83,10 +89,13 @@ def update_current_organization(
     payload: OrganizationUpdate,
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _membership=Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
+    membership=Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
 ):
     organization = db.get(Organization, org_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if any(field in changes for field in AI_FIELDS) and membership.role != ROLE_OWNER:
+        raise HTTPException(status_code=403, detail="Sólo el dueño puede cambiar el presupuesto del asistente.")
+    for field, value in changes.items():
         setattr(organization, field, value)
     db.commit()
     db.refresh(organization)
