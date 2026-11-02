@@ -18,6 +18,7 @@ from app.models.organization import (
 from app.models.user import User
 from app.security.passwords import hash_password
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services import approvals
 from app.services.onboarding import provision_organization
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -146,6 +147,40 @@ def update_import_settings(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+# --- Autorización por monto (spec 2026-11-02) ---------------------------------
+
+
+class ApprovalSettings(BaseModel):
+    """Vacío = sin autorización / sin límite. Se guarda tal cual, inclusive el null."""
+
+    approval_threshold: Decimal | None = Field(default=None, gt=0, allow_inf_nan=False)
+    member_capture_limit: Decimal | None = Field(default=None, gt=0, allow_inf_nan=False)
+
+
+@router.get("/current/approvals", response_model=ApprovalSettings)
+def get_approval_settings(
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _role: None = Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
+):
+    return ApprovalSettings.model_validate(db.get(Organization, org_id), from_attributes=True)
+
+
+@router.patch("/current/approvals", response_model=ApprovalSettings)
+def update_approval_settings(
+    payload: ApprovalSettings,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _role: None = Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
+):
+    organization = db.get(Organization, org_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(organization, field, value)
+    db.commit()
+    db.refresh(organization)
+    return ApprovalSettings.model_validate(organization, from_attributes=True)
+
+
 # --- Equipo: el backend ya distinguía cinco roles, pero no había forma de usarlos ---
 
 
@@ -158,7 +193,9 @@ class MemberInvite(BaseModel):
 
 
 class MemberRoleUpdate(BaseModel):
-    role: str
+    role: str | None = None
+    # Facultad de autorizar lo que alcanza el umbral. El dueño la tiene fija.
+    can_authorize: bool | None = None
 
 
 class MemberRead(BaseModel):
@@ -168,6 +205,19 @@ class MemberRead(BaseModel):
     email: str
     role: str
     is_you: bool
+    can_authorize: bool = False
+
+
+def _member_read(member: OrganizationMember, account: User, viewer_id: str) -> MemberRead:
+    return MemberRead(
+        id=member.id,
+        user_id=account.id,
+        name=account.name,
+        email=account.email,
+        role=member.role,
+        is_you=account.id == viewer_id,
+        can_authorize=approvals.can_authorize(member),
+    )
 
 
 @router.get("/current/members")
@@ -183,17 +233,7 @@ def list_members(
         .order_by(OrganizationMember.created_at)
         .all()
     )
-    items = [
-        MemberRead(
-            id=member.id,
-            user_id=member.user_id,
-            name=account.name,
-            email=account.email,
-            role=member.role,
-            is_you=account.id == user.id,
-        )
-        for member, account in rows
-    ]
+    items = [_member_read(member, account, user.id) for member, account in rows]
     return {"items": items, "total": len(items), "limit": len(items), "offset": 0}
 
 
@@ -233,14 +273,7 @@ def invite_member(
     db.add(member)
     db.commit()
     db.refresh(member)
-    return MemberRead(
-        id=member.id,
-        user_id=account.id,
-        name=account.name,
-        email=account.email,
-        role=member.role,
-        is_you=False,
-    )
+    return _member_read(member, account, viewer_id="")
 
 
 @router.patch("/current/members/{member_id}", response_model=MemberRead)
@@ -252,7 +285,10 @@ def update_member_role(
     user: User = Depends(get_current_user),
     _role: None = Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
 ):
-    if payload.role not in VALID_ROLES or payload.role == ROLE_OWNER:
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="No hay nada que cambiar.")
+    if "role" in changes and (payload.role not in VALID_ROLES or payload.role == ROLE_OWNER):
         raise HTTPException(status_code=400, detail="Ese permiso no se puede asignar.")
 
     member = (
@@ -263,20 +299,17 @@ def update_member_role(
     if member is None:
         raise HTTPException(status_code=404, detail="Esa persona no está en tu equipo.")
     if member.role == ROLE_OWNER:
-        raise HTTPException(status_code=400, detail="No puedes cambiar el permiso del dueño.")
+        detail = "El dueño siempre autoriza." if "can_authorize" in changes else "No puedes cambiar el permiso del dueño."
+        raise HTTPException(status_code=400, detail=detail)
 
-    member.role = payload.role
+    if "role" in changes:
+        member.role = payload.role
+    if "can_authorize" in changes:
+        member.can_authorize = bool(payload.can_authorize)
     db.commit()
     db.refresh(member)
     account = db.get(User, member.user_id)
-    return MemberRead(
-        id=member.id,
-        user_id=account.id,
-        name=account.name,
-        email=account.email,
-        role=member.role,
-        is_you=account.id == user.id,
-    )
+    return _member_read(member, account, user.id)
 
 
 @router.delete("/current/members/{member_id}", status_code=204)

@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
 from app.database import engine
+from app.services.approvals import CaptureLimitExceeded, NotAnAuthorizer
 from app.services.dimensions import DimensionNotFoundError
 
 logging.basicConfig(
@@ -57,6 +58,15 @@ def create_app() -> FastAPI:
     async def dimension_not_found_handler(_request: Request, exc: DimensionNotFoundError):
         # Una unidad o contribuyente ajeno o inexistente: 404, como cualquier recurso.
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(CaptureLimitExceeded)
+    async def capture_limit_handler(_request: Request, exc: CaptureLimitExceeded):
+        # El auxiliar pasó de su límite: no es un error de datos, es de permisos.
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+    @app.exception_handler(NotAnAuthorizer)
+    async def not_an_authorizer_handler(_request: Request, exc: NotAnAuthorizer):
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(_request: Request, exc: IntegrityError):

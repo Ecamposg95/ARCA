@@ -15,6 +15,7 @@ interface Member {
   email: string
   role: string
   is_you: boolean
+  can_authorize: boolean
 }
 
 /** Los nombres que ve el usuario dicen lo que la persona PUEDE HACER,
@@ -73,6 +74,14 @@ export function TeamCard() {
     onError: (err) => window.alert(errorMessage(err)),
   })
 
+  const setAuthorize = useMutation({
+    mutationFn: async ({ id, can_authorize }: { id: string; can_authorize: boolean }) => {
+      await api.patch(`/organizations/current/members/${id}`, { can_authorize })
+    },
+    onSuccess: invalidate,
+    onError: (err) => window.alert(errorMessage(err)),
+  })
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/organizations/current/members/${id}`)
@@ -87,7 +96,8 @@ export function TeamCard() {
     <Card className="mt-6 max-w-lg">
       <h2 className="font-display text-lg font-semibold">Equipo</h2>
       <p className="mt-1 text-sm text-muted">
-        Quién entra a tu empresa y qué puede hacer. Tú decides el permiso de cada quien.
+        Quién entra a tu empresa y qué puede hacer. Tú decides el permiso de cada quien. "Autoriza"
+        marca a quien aprueba lo que alcanza el umbral de Autorizaciones; el dueño siempre.
       </p>
 
       <div className="mt-4 divide-y divide-border">
@@ -101,11 +111,26 @@ export function TeamCard() {
               <p className="truncate text-xs text-muted">{member.email}</p>
             </div>
             {member.role === 'OWNER' ? (
-              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
-                {ROLE_LABELS.OWNER}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                  {ROLE_LABELS.OWNER}
+                </span>
+                <span className="text-xs text-muted">Autoriza siempre</span>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={member.can_authorize}
+                    disabled={setAuthorize.isPending}
+                    onChange={(event) =>
+                      setAuthorize.mutate({ id: member.id, can_authorize: event.target.checked })
+                    }
+                  />
+                  Autoriza
+                </label>
                 <select
                   value={member.role}
                   onChange={(event) =>

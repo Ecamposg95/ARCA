@@ -24,6 +24,11 @@ class Organization(Base, UUIDPKMixin, AuditMixin):
     # Importación: {toronja: {bank_account_id, processor_account_id,
     # receivable_customer_id, income_category_id}}. Vacío hasta configurarse.
     import_settings = Column(JSON, nullable=False, default=dict)
+    # Autorización por monto (spec 2026-11-02): lo que alcance el umbral va a la
+    # bandeja antes de registrarse (null = nadie autoriza nada); el auxiliar
+    # (MEMBER) no captura por encima de su límite (null = sin límite).
+    approval_threshold = Column(Numeric(14, 2), nullable=True)
+    member_capture_limit = Column(Numeric(14, 2), nullable=True)
 
 
 ROLE_OWNER = "OWNER"
@@ -46,3 +51,6 @@ class OrganizationMember(Base, UUIDPKMixin, AuditMixin):
     organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     role = Column(String(20), nullable=False, default=ROLE_MEMBER)
+    # Facultad de autorizar lo que alcanza el umbral. El OWNER autoriza siempre,
+    # diga lo que diga esta bandera: `services.approvals.can_authorize` decide.
+    can_authorize = Column(Boolean, nullable=False, default=False)

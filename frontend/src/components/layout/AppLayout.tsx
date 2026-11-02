@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   Bot,
@@ -23,10 +22,11 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { api } from '@/api/client'
+import { usePendingCount } from '@/lib/approvals'
 import { useActiveRole, useCompanies } from '@/lib/companies'
 import { ArcaMark } from '@/components/ui/ArcaMark'
 import { CommandPalette } from '@/components/ui/CommandPalette'
+import { Toasts } from '@/components/ui/Toasts'
 import { AppFooter } from '@/components/layout/AppFooter'
 import { AppHeader } from '@/components/layout/AppHeader'
 
@@ -116,11 +116,8 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const { data: pendingProposals } = useQuery({
-    queryKey: ['proposals-count'],
-    queryFn: async () => (await api.get<{ count: number }>('/proposals/pending-count')).data.count,
-    refetchInterval: 60_000,
-  })
+  // El badge cuenta agentes, asistente y lo que espera autorización por igual.
+  const pendingProposals = usePendingCount().data?.count
 
   // Mantiene al día las empresas y el rol del usuario. La autoridad siempre es
   // el backend: el rol aquí sólo decide qué navegación se enseña.
@@ -203,6 +200,7 @@ export function AppLayout() {
       </aside>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <Toasts />
 
       {/* Encabezado y pie fijos; sólo el contenido central se desplaza. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

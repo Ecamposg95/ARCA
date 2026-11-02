@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
+import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
+import { handlePendingApproval } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -238,7 +240,8 @@ export function OperationsPage({ config }: { config: Config }) {
       if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
       if (form.fiscal_entity_id) payload.fiscal_entity_id = form.fiscal_entity_id
       if (form.notes) payload.notes = form.notes
-      await api.post(config.endpoint, payload)
+      // 202: alcanzó el umbral y espera autorización. El formulario se cierra igual.
+      handlePendingApproval(await api.post(config.endpoint, payload))
     },
     onSuccess: () => {
       invalidate()
@@ -249,7 +252,9 @@ export function OperationsPage({ config }: { config: Config }) {
 
   const payMutation = useMutation({
     mutationFn: async ({ id, accountId }: { id: string; accountId: string }) => {
-      await api.post(`${config.endpoint}/${id}/pay`, { financial_account_id: accountId })
+      handlePendingApproval(
+        await api.post(`${config.endpoint}/${id}/pay`, { financial_account_id: accountId }),
+      )
     },
     onSuccess: invalidate,
     onError: (err) => window.alert(errorMessage(err)),
@@ -296,9 +301,11 @@ export function OperationsPage({ config }: { config: Config }) {
       selectedPending,
       (item) => item.description,
       async (item) => {
-        await api.post(`${config.endpoint}/${item.id}/pay`, {
-          financial_account_id: batchAccountId,
-        })
+        handlePendingApproval(
+          await api.post(`${config.endpoint}/${item.id}/pay`, {
+            financial_account_id: batchAccountId,
+          }),
+        )
       },
       errorMessage,
     )
@@ -348,6 +355,7 @@ export function OperationsPage({ config }: { config: Config }) {
 
   return (
     <div>
+      {config.kind === 'expense' ? <ApprovalNotice /> : null}
       <PageHeader
         title={config.title}
         description={config.description}
