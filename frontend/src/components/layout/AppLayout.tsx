@@ -11,6 +11,7 @@ import {
   Building2,
   CalendarClock,
   HandCoins,
+  Inbox,
   LayoutDashboard,
   Sparkles,
   TrendingDown,
@@ -40,6 +41,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     label: null,
     items: [
       { to: '/', label: 'Inicio', icon: LayoutDashboard },
+      { to: '/asistente', label: 'Asistente', icon: Sparkles },
       { to: '/analisis', label: 'Análisis', icon: Activity },
       { to: '/agentes', label: 'Agentes', icon: Bot },
       { to: '/despacho', label: 'Mis empresas', icon: Briefcase },
@@ -80,7 +82,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
         icon: BookOpen,
         roles: ['OWNER', 'ADMIN', 'ACCOUNTANT'],
       },
-      { to: '/propuestas', label: 'Propuestas', icon: Sparkles },
+      { to: '/propuestas', label: 'Propuestas', icon: Inbox },
     ],
   },
 ]

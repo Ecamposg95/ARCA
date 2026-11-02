@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, LogOut, Menu, Plus, Settings, Search } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronDown, LogOut, Menu, Plus, Settings, Search, Sparkles } from 'lucide-react'
+import { api } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { useDismiss } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
+import type { AssistantStatus } from '@/types/api'
 
 const MENU_ITEM =
   'flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2'
@@ -26,6 +29,13 @@ export function AppHeader({
 
   const quickRef = useDismiss(() => setQuickOpen(false))
   const userRef = useDismiss(() => setUserOpen(false))
+
+  // El botón existe aunque no haya llave: el aviso de por qué vive en la página.
+  const { data: assistant } = useQuery({
+    queryKey: ['assistant-status'],
+    queryFn: async () => (await api.get<AssistantStatus>('/assistant/status')).data,
+    staleTime: 60_000,
+  })
 
   const initials = (user?.name ?? '?')
     .split(' ')
@@ -57,6 +67,19 @@ export function AppHeader({
         <kbd className="figures rounded border border-border bg-surface px-1.5 text-[10px]">
           Ctrl K
         </kbd>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => navigate('/asistente')}
+        title={assistant && !assistant.available ? 'El asistente se activa cuando se conecte la llave de Claude.' : 'Asistente'}
+        aria-label="Asistente"
+        className={`flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-surface-2 ${
+          assistant?.available ? 'text-accent' : 'text-muted'
+        }`}
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Asistente</span>
       </button>
 
       <div className="relative" ref={quickRef}>

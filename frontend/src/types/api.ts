@@ -24,6 +24,8 @@ export interface Organization {
   timezone: string
   business_type: string | null
   default_tax_rate: string
+  ai_budget_usd: string | null
+  ai_enabled: boolean
 }
 
 export interface AuthResponse {
@@ -494,4 +496,79 @@ export interface PortfolioItem {
 export interface SatCode {
   code: string
   name: string
+}
+
+// --- Asistente ONE Finance sobre Claude (spec 2026-11-02) ---
+
+export interface AssistantStatus {
+  available: boolean
+  reason: 'sin_llave' | 'deshabilitado' | 'sin_presupuesto' | null
+  model: string
+  model_name: string
+  budget_usd: string
+  spent_usd: string
+  remaining_usd: string
+}
+
+export interface AssistantConversationLite {
+  id: string
+  title: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AssistantStep {
+  name: string
+  ok: boolean
+  summary: string | null
+}
+
+export interface AssistantAction {
+  id: string
+  tool_name: string
+  summary: string
+  args: Record<string, unknown>
+  proposal_id: string | null
+  proposal_kind: 'INCOME' | 'EXPENSE' | 'RECEIVABLE' | 'PAYABLE' | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  resolved_at: string | null
+  created_at: string
+}
+
+export interface AssistantMessage {
+  id: string
+  role: 'user' | 'assistant'
+  text: string | null
+  steps: AssistantStep[]
+  actions: AssistantAction[]
+  stop_reason: string | null
+  input_tokens: number
+  output_tokens: number
+  cost_usd: string
+  created_at: string
+}
+
+export interface AssistantConversation {
+  id: string
+  title: string | null
+  busy: boolean
+  messages: AssistantMessage[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AssistantUsageRow {
+  key: string
+  label: string
+  calls: number
+  cost_usd: string
+}
+
+export interface AssistantUsage {
+  month: string
+  budget_usd: string
+  total_usd: string
+  calls: number
+  by_user: AssistantUsageRow[]
+  by_day: AssistantUsageRow[]
 }
