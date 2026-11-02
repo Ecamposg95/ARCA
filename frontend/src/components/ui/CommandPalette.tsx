@@ -24,6 +24,7 @@ const NAVIGATE: Command[] = [
   { label: 'Mis empresas', hint: 'Ir a', to: '/despacho', keywords: 'despacho cartera clientes cambiar empresa contador' },
   { label: 'Cuentas de dinero', hint: 'Ir a', to: '/cuentas', keywords: 'bancos tarjetas' },
   { label: 'Patrimonio', hint: 'Ir a', to: '/patrimonio', keywords: 'activos prestamos creditos' },
+  { label: 'Importar', hint: 'Ir a', to: '/importar', keywords: 'toronja excel csv subir archivo ventas' },
   { label: 'Ingresos', hint: 'Ir a', to: '/ingresos', keywords: 'ventas' },
   { label: 'Gastos', hint: 'Ir a', to: '/gastos', keywords: 'compras' },
   { label: 'Por cobrar', hint: 'Ir a', to: '/por-cobrar', keywords: 'cxc cartera facturas' },

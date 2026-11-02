@@ -53,6 +53,14 @@ def _validate_vendor(db: Session, org_id: str, vendor_id: str) -> None:
 
 
 def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expense:
+    expense = build_expense(db, org_id, payload, created_by)
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
+def build_expense(db: Session, org_id: str, payload, created_by: str) -> Expense:
+    """Crea el gasto (y lo paga si viene PAID) en la transacción del caller, sin commit."""
     _validate_category(db, org_id, payload.category_id)
     if payload.vendor_id:
         _validate_vendor(db, org_id, payload.vendor_id)
@@ -89,9 +97,6 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
 
     if payload.status == "PAID":
         _apply_payment(db, org_id, expense, payload.financial_account_id, payload.date, created_by)
-
-    db.commit()
-    db.refresh(expense)
     return expense
 
 

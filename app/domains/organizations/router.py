@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.auth.schemas import OrganizationRead
+from app.domains.imports.schemas import ImportSettingsRead, ImportSettingsUpdate
 from app.models.organization import (
     Organization,
     OrganizationMember,
@@ -115,6 +116,35 @@ def update_current_organization(
     db.commit()
     db.refresh(organization)
     return OrganizationRead.model_validate(organization)
+
+
+# --- Importación: cuentas destino de Toronja ---
+
+
+@router.get("/current/import-settings", response_model=ImportSettingsRead)
+def get_import_settings(
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    from app.domains.imports.service import get_import_settings as read_settings
+
+    return ImportSettingsRead.model_validate(read_settings(db, org_id))
+
+
+@router.patch("/current/import-settings", response_model=ImportSettingsRead)
+def update_import_settings(
+    payload: ImportSettingsUpdate,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _role: None = Depends(require_role((ROLE_OWNER, ROLE_ADMIN))),
+):
+    from app.domains.imports.service import update_import_settings as write_settings
+
+    toronja = payload.toronja.model_dump(exclude_unset=True) if payload.toronja is not None else None
+    try:
+        return ImportSettingsRead.model_validate(write_settings(db, org_id, toronja))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # --- Autorización por monto (spec 2026-11-02) ---------------------------------

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Column, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Numeric, String, UniqueConstraint
 
 from app.database import Base
 from app.models.mixins import AuditMixin, UUIDPKMixin
@@ -21,6 +21,9 @@ class Organization(Base, UUIDPKMixin, AuditMixin):
     # Asistente sobre Claude: tope mensual en USD (null = AI_BUDGET_DEFAULT_USD) y apagador.
     ai_budget_usd = Column(Numeric(10, 2), nullable=True)
     ai_enabled = Column(Boolean, nullable=False, default=True)
+    # Importación: {toronja: {bank_account_id, processor_account_id,
+    # receivable_customer_id, income_category_id}}. Vacío hasta configurarse.
+    import_settings = Column(JSON, nullable=False, default=dict)
     # Autorización por monto (spec 2026-11-02): lo que alcance el umbral va a la
     # bandeja antes de registrarse (null = nadie autoriza nada); el auxiliar
     # (MEMBER) no captura por encima de su límite (null = sin límite).

@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Table'
 import { ApprovalsCard } from '@/features/settings/ApprovalsCard'
 import { AssistantCard } from '@/features/settings/AssistantCard'
 import { DimensionsCard } from '@/features/settings/DimensionsCard'
+import { ImportSettingsCard } from '@/features/settings/ImportSettingsCard'
 import { TeamCard } from '@/features/settings/TeamCard'
 import { useActiveRole } from '@/lib/companies'
 import { useAuthStore } from '@/stores/authStore'
@@ -98,6 +99,7 @@ export function SettingsPage() {
       </Card>
 
       <DimensionsCard />
+      <ImportSettingsCard />
       {role === 'OWNER' || role === 'ADMIN' ? <ApprovalsCard /> : null}
       <TeamCard />
       <AgentKeysSection />
