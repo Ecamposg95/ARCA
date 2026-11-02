@@ -206,6 +206,15 @@ def test_max_tokens_y_refusal_producen_los_textos_definidos(db, world):
     res = _run(db, world, "a", fake)
     assert res.final.text == R.TEXT_MAX_TOKENS and res.final.stop_reason == "max_tokens"
     assert db.query(AgentActionLog).count() == 0        # el tool_use truncado NO se ejecuta
+    # El siguiente turno reenvía ese tool_use cerrado con un tool_result de cancelación:
+    # sin él, el API rechaza el historial con 400.
+    fake_next = FakeAnthropic([_turn([_text("sigo")], stop_reason="end_turn")])
+    _run(db, world, "otra", fake_next)
+    msgs = fake_next.requests[0]["messages"]
+    cierre = msgs[2]["content"]
+    assert msgs[1]["content"][1]["type"] == "tool_use" and msgs[2]["role"] == "user"
+    assert cierre[0]["type"] == "tool_result" and cierre[0]["tool_use_id"] == "t" and cierre[0]["is_error"] is True
+    assert msgs[3]["content"][1]["text"] == "otra"
 
     fake = FakeAnthropic([_turn([], stop_reason="refusal")])
     res = _run(db, world, "b", fake)

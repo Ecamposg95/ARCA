@@ -334,16 +334,21 @@ def run_turn(
         history.append({"role": "assistant", "content": content})
         result.assistant_messages.append(row)
 
-        if stop_reason == "refusal":
-            row.text = TEXT_REFUSAL
-            db.commit()
-            return result
-        if stop_reason == "max_tokens":
-            # Un tool_use cortado trae argumentos truncados: jamás se ejecuta.
-            row.text = TEXT_MAX_TOKENS
-            db.commit()
-            return result
         tool_uses = [b for b in content if b.get("type") == "tool_use"]
+        if stop_reason in ("refusal", "max_tokens"):
+            # Un tool_use cortado trae argumentos truncados: jamás se ejecuta. Pero
+            # el API exige que cada tool_use del historial tenga su tool_result, así
+            # que se cierra con un resultado de cancelación (historial append-only).
+            row.text = TEXT_REFUSAL if stop_reason == "refusal" else TEXT_MAX_TOKENS
+            if tool_uses:
+                cancelled = [
+                    ToolOutcome(b.get("name", ""), False, "Cancelado: la respuesta se cortó y la herramienta no se ejecutó.")
+                    .as_result(b.get("id", ""))
+                    for b in tool_uses
+                ]
+                _row(conversation, "user", cancelled, None)
+            db.commit()
+            return result
         if not tool_uses:
             if not row.text:
                 row.text = "No tengo nada que agregar."
