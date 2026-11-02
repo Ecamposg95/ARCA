@@ -22,17 +22,17 @@ IN_TRANSIT = ("1110", "Cobros en tránsito", "ASSET", "1000", "107.05")
 
 
 def upgrade() -> None:
-    op.add_column("financial_accounts", sa.Column("fee_rate", sa.Numeric(6, 4), nullable=True))
-    op.add_column("financial_accounts", sa.Column("settlement_days", sa.Integer(), nullable=True))
-    op.add_column(
-        "financial_accounts",
-        sa.Column(
-            "settlement_account_id",
-            sa.String(36),
-            sa.ForeignKey("financial_accounts.id", name="fk_financial_accounts_settlement_account"),
-            nullable=True,
-        ),
-    )
+    # Batch: en PostgreSQL son ALTER normales; en SQLite (pruebas locales) copia y mueve.
+    with op.batch_alter_table("financial_accounts") as batch:
+        batch.add_column(sa.Column("fee_rate", sa.Numeric(6, 4), nullable=True))
+        batch.add_column(sa.Column("settlement_days", sa.Integer(), nullable=True))
+        batch.add_column(sa.Column("settlement_account_id", sa.String(36), nullable=True))
+        batch.create_foreign_key(
+            "fk_financial_accounts_settlement_account",
+            "financial_accounts",
+            ["settlement_account_id"],
+            ["id"],
+        )
 
     op.create_table(
         "processor_settlements",
