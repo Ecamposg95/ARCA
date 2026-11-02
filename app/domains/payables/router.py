@@ -1,16 +1,19 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.payables import service
 from app.domains.payables.schemas import DebtCancel, PayableCreate, PayableRead, PaymentCreate
+from app.models.contact import Vendor
 from app.models.organization import WRITE_ROLES
 from app.models.payable import Payable
 from app.models.user import User
 from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services import approvals
 
 router = APIRouter(prefix="/payables", tags=["payables"])
 
@@ -89,13 +92,34 @@ def pay_payable(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
     user: User = Depends(get_current_user),
-    _membership=Depends(require_role(WRITE_ROLES)),
+    membership=Depends(require_role(WRITE_ROLES)),
 ):
     payable = _get_payable(db, org_id, payable_id)
+    waiting = approvals.gate(
+        db,
+        membership=membership,
+        user=user,
+        amount=payload.amount,
+        kind="PAYABLE_PAYMENT",
+        payload={"payable_id": payable.id, **payload.model_dump(mode="json")},
+        summary=_payment_summary(db, org_id, payable, payload.amount),
+    )
+    if waiting is not None:
+        return JSONResponse(status_code=202, content=approvals.pending_body(db, waiting))
     payable = service.pay_payable(
         db, org_id, payable, payload.amount, payload.financial_account_id, payload.date, user.id
     )
     return PayableRead.model_validate(payable)
+
+
+def _payment_summary(db: Session, org_id: str, payable: Payable, amount) -> str:
+    row = (
+        db.query(Vendor.name)
+        .filter(Vendor.id == payable.vendor_id, Vendor.organization_id == org_id)
+        .first()
+    )
+    recipient = f" a {row[0]}" if row else ""
+    return f"Pago de {approvals.money(amount)}{recipient} · {payable.description}"
 
 
 @router.post("/{payable_id}/cancel", response_model=PayableRead)
