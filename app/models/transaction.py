@@ -28,6 +28,8 @@ PAYMENT_METHODS = (
     "TRANSFERENCIA",
     "TARJETA_DEBITO",
     "TARJETA_CREDITO",
+    # Tarjeta sin distinguir débito de crédito: así agrupa Toronja lo que cae al procesador.
+    "TARJETA",
     "DOMICILIACION",
     "CHEQUE",
     "PASARELA",

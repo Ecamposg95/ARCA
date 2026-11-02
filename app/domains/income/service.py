@@ -59,6 +59,17 @@ def _validate_customer(db: Session, org_id: str, customer_id: str) -> None:
 
 
 def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
+    income = build_income(db, org_id, payload, created_by)
+    db.commit()
+    db.refresh(income)
+    return income
+
+
+def build_income(db: Session, org_id: str, payload, created_by: str) -> Income:
+    """Crea el ingreso (y lo cobra si viene PAID) en la transacción del caller.
+
+    No hace commit: la importación crea decenas en un solo lote, todos o ninguno.
+    """
     _validate_category(db, org_id, payload.category_id)
     if payload.customer_id:
         _validate_customer(db, org_id, payload.customer_id)
@@ -90,10 +101,16 @@ def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
     event_bus.publish("income.created", {"income_id": income.id, "organization_id": org_id})
 
     if payload.status == "PAID":
-        _apply_payment(db, org_id, income, payload.financial_account_id, payload.date, created_by)
-
-    db.commit()
-    db.refresh(income)
+        _apply_payment(
+            db,
+            org_id,
+            income,
+            payload.financial_account_id,
+            payload.date,
+            created_by,
+            payment_method=getattr(payload, "payment_method", None),
+            reference=getattr(payload, "reference", None),
+        )
     return income
 
 
@@ -122,6 +139,8 @@ def _apply_payment(
     financial_account_id: str | None,
     paid_date: date_type,
     user_id: str,
+    payment_method: str | None = None,
+    reference: str | None = None,
 ) -> None:
     account_id = financial_account_id or income.financial_account_id
     if not account_id:
@@ -137,9 +156,11 @@ def _apply_payment(
         amount=income.amount,
         date=paid_date,
         description=income.description,
+        reference=reference,
         source_type="income",
         source_id=income.id,
         created_by=user_id,
+        payment_method=payment_method,
     )
     category = _validate_category(db, org_id, income.category_id)
     entry = income_paid_entry(

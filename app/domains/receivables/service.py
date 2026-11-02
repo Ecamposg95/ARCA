@@ -55,6 +55,14 @@ def _validate_customer(db: Session, org_id: str, customer_id: str) -> None:
 
 
 def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Receivable:
+    receivable = build_receivable(db, org_id, payload, created_by)
+    db.commit()
+    db.refresh(receivable)
+    return receivable
+
+
+def build_receivable(db: Session, org_id: str, payload, created_by: str) -> Receivable:
+    """Crea y contabiliza la CxC en la transacción del caller, sin commit."""
     category = _validate_category(db, org_id, payload.category_id)
     _validate_customer(db, org_id, payload.customer_id)
     validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
@@ -95,8 +103,6 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
     )
     tag_entry(entry, receivable.business_unit_id, receivable.fiscal_entity_id)
     event_bus.publish("receivable.created", {"receivable_id": receivable.id, "organization_id": org_id})
-    db.commit()
-    db.refresh(receivable)
     return receivable
 
 
