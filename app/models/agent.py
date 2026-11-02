@@ -52,7 +52,9 @@ class AgentActionLog(Base, UUIDPKMixin, TenantMixin, AuditMixin):
 
     __tablename__ = "agent_action_logs"
 
-    agent_key_id = Column(String(36), ForeignKey("agent_keys.id"), nullable=False, index=True)
+    # Nullable: el asistente del chat corre como el usuario logueado, sin llave.
+    agent_key_id = Column(String(36), ForeignKey("agent_keys.id"), nullable=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     tool = Column(String(100), nullable=False)
     arguments = Column(JSON, nullable=True)
     success = Column(Boolean, nullable=False, default=True)
