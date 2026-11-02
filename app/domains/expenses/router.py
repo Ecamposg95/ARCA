@@ -36,6 +36,8 @@ def list_expenses(
     q: str | None = Query(default=None, max_length=200),
     category_id: str | None = None,
     project_id: str | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     sort: str | None = Query(default=None, max_length=30),
     non_deductible: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
@@ -57,6 +59,10 @@ def list_expenses(
         query = query.filter(Expense.category_id == category_id)
     if project_id:
         query = query.filter(Expense.project_id == project_id)
+    if business_unit_id:
+        query = query.filter(Expense.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        query = query.filter(Expense.fiscal_entity_id == fiscal_entity_id)
     if non_deductible:
         # LISR 27-III: efectivo por más de $2,000. El mismo criterio que calcula
         # el aviso en el schema, expresado como filtro.

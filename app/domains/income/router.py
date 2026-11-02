@@ -36,6 +36,8 @@ def list_income(
     q: str | None = Query(default=None, max_length=200),
     category_id: str | None = None,
     project_id: str | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -56,6 +58,10 @@ def list_income(
         query = query.filter(Income.category_id == category_id)
     if project_id:
         query = query.filter(Income.project_id == project_id)
+    if business_unit_id:
+        query = query.filter(Income.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        query = query.filter(Income.fiscal_entity_id == fiscal_entity_id)
     query = apply_sort(
         query,
         sort,

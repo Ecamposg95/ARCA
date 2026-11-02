@@ -14,8 +14,11 @@ from app.models.transaction import FinancialTransaction
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.models.accounting import JournalEntry
+from app.models.fiscal_entity import FiscalEntity
 from app.services.accounting.rules import transfer_entry
 from app.services.accounting.coa import ledger_code_for
+from app.services.dimensions import tag_entry, transaction_filters, validate_dimensions
 from app.services.running_balance import running_balances
 from app.services.transactions import get_locked_account, record_transaction
 
@@ -40,6 +43,12 @@ class TransactionRead(BaseModel):
     created_at: datetime
     # Sólo se llena al filtrar por una cuenta: el acumulado entre bancos no significa nada.
     running_balance: Decimal | None = None
+    # Unidad de la cuenta al registrar. La entidad viene de la póliza de la
+    # operación (un movimiento no declara impuestos, su operación sí).
+    business_unit_id: str | None = None
+    business_unit_name: str | None = None
+    fiscal_entity_id: str | None = None
+    fiscal_entity_name: str | None = None
 
 
 class TransferCreate(BaseModel):
@@ -48,6 +57,28 @@ class TransferCreate(BaseModel):
     amount: Decimal = Field(gt=0, allow_inf_nan=False)
     date: date_type
     description: str | None = Field(default=None, max_length=500)
+    # Dimensiones de la póliza del traspaso. Cada pierna del movimiento lleva
+    # la unidad de su propia cuenta, venga lo que venga aquí.
+    business_unit_id: str | None = None
+    fiscal_entity_id: str | None = None
+
+
+def _fill_fiscal_entities(db: Session, org_id: str, items: list[TransactionRead]) -> None:
+    """Entidad fiscal de cada movimiento, vía la póliza de su operación, en una consulta."""
+    keys = {key for item in items for key in (item.source_id,) if key}
+    if not keys:
+        return
+    rows = (
+        db.query(JournalEntry.source_id, FiscalEntity.id, FiscalEntity.name)
+        .join(FiscalEntity, FiscalEntity.id == JournalEntry.fiscal_entity_id)
+        .filter(JournalEntry.organization_id == org_id, JournalEntry.source_id.in_(keys))
+        .all()
+    )
+    by_source = {source_id: (entity_id, name) for source_id, entity_id, name in rows}
+    for item in items:
+        match = by_source.get(item.source_id)
+        if match:
+            item.fiscal_entity_id, item.fiscal_entity_name = match
 
 
 @router.get("")
@@ -60,12 +91,17 @@ def list_transactions(
     source_id: str | None = Query(default=None, max_length=64),
     start: date_type | None = None,
     end: date_type | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    query = db.query(FinancialTransaction).filter(FinancialTransaction.organization_id == org_id)
+    query = db.query(FinancialTransaction).filter(
+        FinancialTransaction.organization_id == org_id,
+        *transaction_filters(business_unit_id, fiscal_entity_id),
+    )
     if account_id:
         query = query.filter(FinancialTransaction.financial_account_id == account_id)
     if transaction_type:
@@ -84,6 +120,7 @@ def list_transactions(
         FinancialTransaction.id.desc(),
     )
     page = paginate(query, limit, offset, TransactionRead)
+    _fill_fiscal_entities(db, org_id, page["items"])
 
     if account_id:
         balances = running_balances(db, org_id, account_id, [item.id for item in page["items"]])
@@ -105,6 +142,7 @@ def create_transfer(
 
     origin = get_locked_account(db, org_id, payload.from_account_id)
     destination = get_locked_account(db, org_id, payload.to_account_id)
+    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
     if is_liability(destination.type):
         default_description = f"Pago de {destination.name} desde {origin.name}"
     else:
@@ -136,7 +174,7 @@ def create_transfer(
         transfer_group_id=group_id,
         created_by=user.id,
     )
-    transfer_entry(
+    entry = transfer_entry(
         db,
         org_id,
         description=description,
@@ -149,6 +187,10 @@ def create_transfer(
         from_account_code=ledger_code_for(origin.type),
         to_account_code=ledger_code_for(destination.type),
     )
+    # La póliza lleva la unidad indicada; si no viene y ambas cajas son de la
+    # misma unidad, esa. Entre unidades distintas no es de ninguna.
+    same_unit = origin.business_unit_id if origin.business_unit_id == destination.business_unit_id else None
+    tag_entry(entry, payload.business_unit_id or same_unit, payload.fiscal_entity_id)
     db.commit()
     db.refresh(outgoing)
     db.refresh(incoming)

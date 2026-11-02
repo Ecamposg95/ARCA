@@ -17,46 +17,58 @@ def _default_month_range() -> tuple[date_type, date_type]:
     return today.replace(day=1), today
 
 
+def dimension_params(
+    business_unit_id: str | None = Query(default=None),
+    fiscal_entity_id: str | None = Query(default=None),
+) -> dict:
+    """Filtros opcionales por unidad y contribuyente. Sin ellos, el reporte es el de siempre."""
+    return {"business_unit_id": business_unit_id, "fiscal_entity_id": fiscal_entity_id}
+
+
 @router.get("/profit-loss")
 def profit_loss(
     start: date_type | None = Query(default=None),
     end: date_type | None = Query(default=None),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
     default_start, default_end = _default_month_range()
-    return service.profit_loss(db, org_id, start or default_start, end or default_end)
+    return service.profit_loss(db, org_id, start or default_start, end or default_end, **dims)
 
 
 @router.get("/balance-sheet")
 def balance_sheet(
     as_of: date_type | None = Query(default=None),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    return service.balance_sheet(db, org_id, as_of or date.today())
+    return service.balance_sheet(db, org_id, as_of or date.today(), **dims)
 
 
 @router.get("/cash-flow")
 def cash_flow(
     start: date_type | None = Query(default=None),
     end: date_type | None = Query(default=None),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
     default_start, default_end = _default_month_range()
-    return service.cash_flow(db, org_id, start or default_start, end or default_end)
+    return service.cash_flow(db, org_id, start or default_start, end or default_end, **dims)
 
 
 @router.get("/iva")
 def vat(
     start: date_type | None = Query(default=None),
     end: date_type | None = Query(default=None),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
     default_start, default_end = _default_month_range()
-    return service.vat_report(db, org_id, start or default_start, end or default_end)
+    return service.vat_report(db, org_id, start or default_start, end or default_end, **dims)
 
 
 @router.get("/cash-projection")
@@ -91,6 +103,7 @@ def export_csv(
     report: str,
     start: date_type | None = Query(default=None),
     end: date_type | None = Query(default=None),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
@@ -100,7 +113,7 @@ def export_csv(
     end = end or default_end
 
     if report == "profit-loss":
-        data = service.profit_loss(db, org_id, start, end)
+        data = service.profit_loss(db, org_id, start, end, **dims)
         rows = [["INGRESOS", "", ""]]
         rows += [[line["code"], line["name"], line["amount"]] for line in data["revenue"]]
         rows.append(["", "Total de ingresos", data["total_revenue"]])
@@ -112,7 +125,7 @@ def export_csv(
         name = f"estado-de-resultados-{start}-a-{end}"
 
     elif report == "balance-sheet":
-        data = service.balance_sheet(db, org_id, end)
+        data = service.balance_sheet(db, org_id, end, **dims)
         rows = [["ACTIVO", "", ""]]
         rows += [[line["code"], line["name"], line["amount"]] for line in data["assets"]]
         rows.append(["", "Total de activo", data["total_assets"]])
@@ -140,7 +153,7 @@ def export_csv(
 
         rows = [
             [row["code"], row["name"], row["debit"], row["credit"]]
-            for row in trial_balance(db, org_id, end)
+            for row in trial_balance(db, org_id, end, **dims)
         ]
         headers = ["Cuenta", "Concepto", "Cargos", "Abonos"]
         name = f"balanza-de-comprobacion-{end}"
@@ -158,16 +171,18 @@ def export_csv(
 @router.get("/cash-series")
 def cash_series(
     days: int = Query(default=90, ge=7, le=366),
+    business_unit_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    return service.cash_series(db, org_id, days)
+    return service.cash_series(db, org_id, days, business_unit_id=business_unit_id)
 
 
 @router.get("/category-series")
 def category_series(
     months: int = Query(default=6, ge=2, le=24),
+    dims: dict = Depends(dimension_params),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    return service.category_series(db, org_id, months)
+    return service.category_series(db, org_id, months, **dims)

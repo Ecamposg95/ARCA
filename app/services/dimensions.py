@@ -10,12 +10,14 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from sqlalchemy import exists, or_
 from sqlalchemy.orm import Session
 
 from app.models.accounting import JournalEntry
 from app.models.business_unit import BusinessUnit
 from app.models.financial_account import FinancialAccount
 from app.models.fiscal_entity import FiscalEntity
+from app.models.transaction import FinancialTransaction
 
 
 class DimensionNotFoundError(LookupError):
@@ -110,4 +112,34 @@ def entry_filters(business_unit_id: str | None, fiscal_entity_id: str | None) ->
         conditions.append(JournalEntry.business_unit_id == business_unit_id)
     if fiscal_entity_id:
         conditions.append(JournalEntry.fiscal_entity_id == fiscal_entity_id)
+    return conditions
+
+
+def movement_entry_match():
+    """Une un movimiento con las pólizas de su operación: mismo `source_id`
+    (los reversos lo conservan) o, en un traspaso, el grupo del traspaso."""
+    return or_(
+        JournalEntry.source_id == FinancialTransaction.source_id,
+        JournalEntry.source_id == FinancialTransaction.transfer_group_id,
+    )
+
+
+def transaction_filters(business_unit_id: str | None, fiscal_entity_id: str | None) -> list:
+    """Condiciones sobre `FinancialTransaction` para movimientos, flujo y tablero.
+
+    La unidad vive en el movimiento. La entidad no: se resuelve por la póliza
+    de la operación que lo originó (un movimiento no declara impuestos, su
+    operación sí).
+    """
+    conditions = []
+    if business_unit_id:
+        conditions.append(FinancialTransaction.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        conditions.append(
+            exists().where(
+                JournalEntry.organization_id == FinancialTransaction.organization_id,
+                JournalEntry.fiscal_entity_id == fiscal_entity_id,
+                movement_entry_match(),
+            )
+        )
     return conditions

@@ -13,6 +13,7 @@ from app.models.accounting import Account, DEBIT_NORMAL_TYPES, JournalEntry, Jou
 from app.models.financial_account import FinancialAccount
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
 from app.services.accounting.engine import account_type_balance, not_year_close
+from app.services.dimensions import entry_filters, transaction_filters
 
 
 def _lines_by_account(
@@ -22,10 +23,12 @@ def _lines_by_account(
     start: date_type | None = None,
     end: date_type | None = None,
     include_closing: bool = False,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
 ) -> list[dict]:
     """Saldo por cuenta de los tipos pedidos. Sin `include_closing` ignora las
     pólizas de cierre anual: el estado de resultados de un año cerrado sigue
-    mostrando sus ventas y sus gastos."""
+    mostrando sus ventas y sus gastos. Unidad y entidad filtran la póliza."""
     query = (
         db.query(
             Account.code,
@@ -40,6 +43,7 @@ def _lines_by_account(
             Account.organization_id == organization_id,
             JournalEntry.status == "POSTED",
             Account.type.in_(account_types),
+            *entry_filters(business_unit_id, fiscal_entity_id),
         )
         .group_by(Account.code, Account.name, Account.type)
         .order_by(Account.code)
@@ -62,9 +66,17 @@ def _lines_by_account(
     return rows
 
 
-def profit_loss(db: Session, organization_id: str, start: date_type, end: date_type) -> dict:
-    revenue_lines = _lines_by_account(db, organization_id, ("REVENUE",), start, end)
-    expense_lines = _lines_by_account(db, organization_id, ("EXPENSE",), start, end)
+def profit_loss(
+    db: Session,
+    organization_id: str,
+    start: date_type,
+    end: date_type,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
+    dims = {"business_unit_id": business_unit_id, "fiscal_entity_id": fiscal_entity_id}
+    revenue_lines = _lines_by_account(db, organization_id, ("REVENUE",), start, end, **dims)
+    expense_lines = _lines_by_account(db, organization_id, ("EXPENSE",), start, end, **dims)
     total_revenue = sum((row["amount"] for row in revenue_lines), Decimal("0"))
     total_expenses = sum((row["amount"] for row in expense_lines), Decimal("0"))
     return {
@@ -78,20 +90,27 @@ def profit_loss(db: Session, organization_id: str, start: date_type, end: date_t
     }
 
 
-def balance_sheet(db: Session, organization_id: str, as_of: date_type) -> dict:
+def balance_sheet(
+    db: Session,
+    organization_id: str,
+    as_of: date_type,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
     # El balance es el libro: incluye las pólizas de cierre. Tras cerrar un año,
     # 3200 trae su resultado y "3999" sólo muestra lo que aún no se cierra.
-    assets = _lines_by_account(db, organization_id, ("ASSET",), end=as_of, include_closing=True)
-    liabilities = _lines_by_account(db, organization_id, ("LIABILITY",), end=as_of, include_closing=True)
-    equity = _lines_by_account(db, organization_id, ("EQUITY",), end=as_of, include_closing=True)
+    dims = {"business_unit_id": business_unit_id, "fiscal_entity_id": fiscal_entity_id}
+    assets = _lines_by_account(db, organization_id, ("ASSET",), end=as_of, include_closing=True, **dims)
+    liabilities = _lines_by_account(db, organization_id, ("LIABILITY",), end=as_of, include_closing=True, **dims)
+    equity = _lines_by_account(db, organization_id, ("EQUITY",), end=as_of, include_closing=True, **dims)
 
     total_assets = sum((row["amount"] for row in assets), Decimal("0"))
     total_liabilities = sum((row["amount"] for row in liabilities), Decimal("0"))
     total_equity_accounts = sum((row["amount"] for row in equity), Decimal("0"))
 
     # Resultado del ejercicio (ingresos - gastos) vive en capital hasta el cierre.
-    revenue = account_type_balance(db, organization_id, "REVENUE", end=as_of, include_closing=True)
-    expenses = account_type_balance(db, organization_id, "EXPENSE", end=as_of, include_closing=True)
+    revenue = account_type_balance(db, organization_id, "REVENUE", end=as_of, include_closing=True, **dims)
+    expenses = account_type_balance(db, organization_id, "EXPENSE", end=as_of, include_closing=True, **dims)
     period_result = revenue - expenses
     if period_result != 0:
         equity = [*equity, {"code": "3999", "name": "Resultado del periodo", "type": "EQUITY", "amount": period_result}]
@@ -109,7 +128,14 @@ def balance_sheet(db: Session, organization_id: str, as_of: date_type) -> dict:
     }
 
 
-def cash_flow(db: Session, organization_id: str, start: date_type, end: date_type) -> dict:
+def cash_flow(
+    db: Session,
+    organization_id: str,
+    start: date_type,
+    end: date_type,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
     def _flows(until: date_type | None, since: date_type | None) -> tuple[Decimal, Decimal]:
         query = db.query(
             FinancialTransaction.transaction_type,
@@ -117,6 +143,7 @@ def cash_flow(db: Session, organization_id: str, start: date_type, end: date_typ
         ).filter(
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
+            *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         if since is not None:
             query = query.filter(FinancialTransaction.date >= since)
@@ -131,14 +158,15 @@ def cash_flow(db: Session, organization_id: str, start: date_type, end: date_typ
                 outflows += Decimal(amount or 0)
         return inflows, outflows
 
-    opening_from_accounts = (
-        db.query(func.coalesce(func.sum(FinancialAccount.opening_balance), 0))
-        .filter(
-            FinancialAccount.organization_id == organization_id,
-            FinancialAccount.deleted_at.is_(None),
-        )
-        .scalar()
+    opening_query = db.query(func.coalesce(func.sum(FinancialAccount.opening_balance), 0)).filter(
+        FinancialAccount.organization_id == organization_id,
+        FinancialAccount.deleted_at.is_(None),
     )
+    # Los saldos iniciales son de las cajas: por unidad, sólo las suyas; por
+    # entidad no hay forma de repartirlos, así que no se cuentan.
+    if business_unit_id:
+        opening_query = opening_query.filter(FinancialAccount.business_unit_id == business_unit_id)
+    opening_from_accounts = opening_query.scalar() if not fiscal_entity_id else 0
     inflows_before, outflows_before = _flows(until=None, since=None)
     # opening = saldos iniciales + neto de movimientos ANTERIORES al periodo
     inflows_pre, outflows_pre = _flows(until=None, since=start)
@@ -156,8 +184,16 @@ def cash_flow(db: Session, organization_id: str, start: date_type, end: date_typ
     }
 
 
-def vat_report(db: Session, organization_id: str, start: date_type, end: date_type) -> dict:
-    """IVA del periodo por flujo de efectivo: sólo lo cobrado y lo pagado se declara."""
+def vat_report(
+    db: Session,
+    organization_id: str,
+    start: date_type,
+    end: date_type,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
+    """IVA del periodo por flujo de efectivo: sólo lo cobrado y lo pagado se declara.
+    Por contribuyente es el insumo de su declaración; por unidad, informativo."""
     from app.services.accounting.coa import (
         CODE_VAT_CHARGED_COLLECTED,
         CODE_VAT_CHARGED_PENDING,
@@ -179,6 +215,7 @@ def vat_report(db: Session, organization_id: str, start: date_type, end: date_ty
                 JournalEntry.status == "POSTED",
                 Account.code == code,
                 JournalEntry.date <= until,
+                *entry_filters(business_unit_id, fiscal_entity_id),
             )
         )
         if since is not None:
@@ -514,8 +551,10 @@ def net_worth(db: Session, organization_id: str, months: int = 12) -> dict:
     }
 
 
-def cash_series(db: Session, organization_id: str, days: int = 90) -> dict:
+def cash_series(db: Session, organization_id: str, days: int = 90, business_unit_id: str | None = None) -> dict:
     """La historia diaria del efectivo, reconstruida hacia atrás desde hoy.
+
+    Con `business_unit_id`, sólo las cajas de esa unidad: la curva de Morelos.
 
     Se parte del saldo ACTUAL de las cuentas de activo —la cifra que el usuario
     puede verificar a ojo en su tablero— y se desanda con los movimientos por
@@ -533,17 +572,15 @@ def cash_series(db: Session, organization_id: str, days: int = 90) -> dict:
     today = date_type.today()
     start = today - timedelta(days=days - 1)
 
-    accounts = (
-        db.query(FinancialAccount)
-        .filter(
-            FinancialAccount.organization_id == organization_id,
-            FinancialAccount.deleted_at.is_(None),
-            FinancialAccount.active.is_(True),
-            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
-        )
-        .order_by(FinancialAccount.created_at)
-        .all()
+    accounts_query = db.query(FinancialAccount).filter(
+        FinancialAccount.organization_id == organization_id,
+        FinancialAccount.deleted_at.is_(None),
+        FinancialAccount.active.is_(True),
+        FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
     )
+    if business_unit_id:
+        accounts_query = accounts_query.filter(FinancialAccount.business_unit_id == business_unit_id)
+    accounts = accounts_query.order_by(FinancialAccount.created_at).all()
     account_ids = [account.id for account in accounts]
 
     # Un solo query agrupado por (cuenta, día): alimenta la curva global y las
@@ -655,10 +692,22 @@ def cash_series(db: Session, organization_id: str, days: int = 90) -> dict:
     }
 
 
-def category_series(db: Session, organization_id: str, months: int = 6) -> dict:
+def category_series(
+    db: Session,
+    organization_id: str,
+    months: int = 6,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
     """Gasto pagado por categoría y mes, SIN IVA — consistente con el P&L."""
     from app.models.category import Category
     from app.models.expense import Expense
+
+    dimension_filters = []
+    if business_unit_id:
+        dimension_filters.append(Expense.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        dimension_filters.append(Expense.fiscal_entity_id == fiscal_entity_id)
 
     today = date_type.today()
     index = today.year * 12 + (today.month - 1) - (months - 1)
@@ -681,6 +730,7 @@ def category_series(db: Session, organization_id: str, months: int = 6) -> dict:
             Expense.organization_id == organization_id,
             Expense.status == "PAID",
             Expense.date >= start,
+            *dimension_filters,
         )
         .group_by(Category.name, month_expr)
         .all()

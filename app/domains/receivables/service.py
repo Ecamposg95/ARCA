@@ -20,6 +20,7 @@ from app.services.accounting.rules import (
     reversal_of,
 )
 from app.services.reversals import reverse_operation
+from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -56,6 +57,7 @@ def _validate_customer(db: Session, org_id: str, customer_id: str) -> None:
 def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Receivable:
     category = _validate_category(db, org_id, payload.category_id)
     _validate_customer(db, org_id, payload.customer_id)
+    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
     issue_date = payload.date or date.today()
 
     tax = resolve_tax(db, org_id, payload)
@@ -71,6 +73,8 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
         due_date=payload.due_date,
         category_id=payload.category_id,
         project_id=payload.project_id,
+        business_unit_id=payload.business_unit_id,
+        fiscal_entity_id=payload.fiscal_entity_id,
         notes=payload.notes,
         created_by=created_by,
     )
@@ -78,7 +82,7 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
     db.flush()
 
     # Devengo: la CxC reconoce el ingreso al emitirse (task pack §18)
-    receivable_created_entry(
+    entry = receivable_created_entry(
         db,
         org_id,
         description=receivable.description,
@@ -89,6 +93,7 @@ def create_receivable(db: Session, org_id: str, payload, created_by: str) -> Rec
         created_by=created_by,
         tax_amount=Decimal(receivable.tax_amount),
     )
+    tag_entry(entry, receivable.business_unit_id, receivable.fiscal_entity_id)
     event_bus.publish("receivable.created", {"receivable_id": receivable.id, "organization_id": org_id})
     db.commit()
     db.refresh(receivable)
@@ -134,7 +139,7 @@ def collect_receivable(
         source_id=receivable.id,
         created_by=user_id,
     )
-    receivable_collected_entry(
+    entry = receivable_collected_entry(
         db,
         org_id,
         description=f"Cobro: {receivable.description}",
@@ -144,6 +149,13 @@ def collect_receivable(
         created_by=user_id,
         cash_account_code=account_ledger_code(db, org_id, financial_account_id),
         tax_amount=tax_now,
+    )
+    # El cobro es de la misma unidad que la cuenta por cobrar; si ésta no trae,
+    # de la caja donde entró el dinero.
+    tag_entry(
+        entry,
+        inherit_business_unit(db, org_id, receivable.business_unit_id, financial_account_id),
+        receivable.fiscal_entity_id,
     )
     receivable.amount_paid = Decimal(receivable.amount_paid) + amount
     receivable.tax_collected = Decimal(receivable.tax_collected) + tax_now
@@ -189,7 +201,7 @@ def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id:
         .first()
     )
     if original is not None:
-        reversal_of(
+        mirror = reversal_of(
             db,
             org_id,
             original,
@@ -197,6 +209,7 @@ def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id:
             date=date.today(),
             created_by=user_id,
         )
+        tag_entry(mirror, original.business_unit_id, original.fiscal_entity_id)
     receivable.status = "CANCELLED"
     receivable.cancelled_at = datetime.now(timezone.utc)
     receivable.cancelled_by = user_id
