@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
+import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
+import { handlePendingApproval } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -134,7 +136,8 @@ export function DebtsPage({ config }: { config: Config }) {
   const [detailFor, setDetailFor] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
-  const [search, setSearch] = useState('')
+  // `?q=` llega desde Importar: "ver los adeudos que acabo de registrar".
+  const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [dimensions, setDimensionsState] = useState(EMPTY_DIMENSIONS)
   const setDimensions = (next: Partial<typeof dimensions>) => {
     setDimensionsState({ ...dimensions, ...next })
@@ -225,7 +228,9 @@ export function DebtsPage({ config }: { config: Config }) {
   const payMutation = useMutation({
     mutationFn: async () => {
       if (!payTarget) return
-      await api.post(`${config.endpoint}/${payTarget.id}/${config.payEndpoint}`, payForm)
+      handlePendingApproval(
+        await api.post(`${config.endpoint}/${payTarget.id}/${config.payEndpoint}`, payForm),
+      )
     },
     onSuccess: () => {
       invalidate()
@@ -324,6 +329,7 @@ export function DebtsPage({ config }: { config: Config }) {
 
   return (
     <div>
+      {config.kind === 'payables' ? <ApprovalNotice /> : null}
       <PageHeader
         title={config.title}
         description={config.description}

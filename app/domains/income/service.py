@@ -60,7 +60,20 @@ def _validate_customer(db: Session, org_id: str, customer_id: str) -> None:
 
 
 def create_income(db: Session, org_id: str, payload, created_by: str, commit: bool = True) -> Income:
-    """`commit=False` deja el ingreso dentro de la transacción del caller."""
+    """`commit=False` deja el ingreso dentro de la transacción del caller (una
+    liquidación o un corte lo registran junto con otras operaciones)."""
+    income = build_income(db, org_id, payload, created_by)
+    if commit:
+        db.commit()
+        db.refresh(income)
+    return income
+
+
+def build_income(db: Session, org_id: str, payload, created_by: str) -> Income:
+    """Crea el ingreso (y lo cobra si viene PAID) en la transacción del caller.
+
+    No hace commit: la importación crea decenas en un solo lote, todos o ninguno.
+    """
     _validate_category(db, org_id, payload.category_id)
     if payload.customer_id:
         _validate_customer(db, org_id, payload.customer_id)
@@ -99,13 +112,9 @@ def create_income(db: Session, org_id: str, payload, created_by: str, commit: bo
             payload.financial_account_id,
             payload.date,
             created_by,
-            payment_method=payload.payment_method,
+            payment_method=getattr(payload, "payment_method", None),
+            reference=getattr(payload, "reference", None),
         )
-
-    if not commit:
-        return income
-    db.commit()
-    db.refresh(income)
     return income
 
 
@@ -157,6 +166,7 @@ def _apply_payment(
     paid_date: date_type,
     user_id: str,
     payment_method: str | None = None,
+    reference: str | None = None,
 ) -> None:
     account_id = financial_account_id or income.financial_account_id
     if not account_id and payment_method in CARD_METHODS:
@@ -176,6 +186,7 @@ def _apply_payment(
         amount=income.amount,
         date=paid_date,
         description=income.description,
+        reference=reference,
         source_type="income",
         source_id=income.id,
         created_by=user_id,

@@ -133,3 +133,24 @@ def reverse_transfer(
         date=date,
         user_id=user_id,
     )
+
+
+def create_transfer_from_payload(db: Session, organization_id: str, payload, user_id: str) -> list[FinancialTransaction]:
+    """El traspaso que captura una persona (o aprueba la bandeja): registra y
+    confirma. Devuelve [salida, entrada]."""
+    transfer = create_transfer(
+        db,
+        organization_id,
+        from_account_id=payload.from_account_id,
+        to_account_id=payload.to_account_id,
+        amount=payload.amount,
+        date=payload.date,
+        description=payload.description,
+        user_id=user_id,
+        business_unit_id=payload.business_unit_id,
+        fiscal_entity_id=payload.fiscal_entity_id,
+    )
+    db.commit()
+    db.refresh(transfer.outgoing)
+    db.refresh(transfer.incoming)
+    return [transfer.outgoing, transfer.incoming]

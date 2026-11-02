@@ -225,9 +225,22 @@ export interface AgentKey {
   token?: string // solo presente al crear
 }
 
+export type ProposalKind =
+  | 'INCOME'
+  | 'EXPENSE'
+  | 'RECEIVABLE'
+  | 'PAYABLE'
+  | 'EXPENSE_PAYMENT'
+  | 'PAYABLE_PAYMENT'
+  | 'TRANSFER'
+
+/** De dónde salió una propuesta: lo capturó alguien y espera autorización,
+ *  lo propuso un agente, el asistente o ONE Finance (recurrentes). */
+export type ProposalSource = 'approval' | 'agent' | 'assistant' | 'system'
+
 export interface Proposal {
   id: string
-  kind: 'INCOME' | 'EXPENSE' | 'RECEIVABLE' | 'PAYABLE'
+  kind: ProposalKind
   payload: Record<string, unknown>
   summary: string
   evidence: string | null
@@ -236,6 +249,22 @@ export interface Proposal {
   result_id: string | null
   created_at: string
   agent_name: string | null
+  source: ProposalSource | null
+  requested_by_name: string | null
+}
+
+/** Cuerpo del 202: la operación no se registró, espera a quien autoriza. */
+export interface PendingApproval {
+  pending_approval: true
+  proposal_id: string
+  detail: string
+  authorizers: string[]
+}
+
+/** Autorización por monto de la empresa. Vacío = sin autorización / sin límite. */
+export interface ApprovalSettings {
+  approval_threshold: string | null
+  member_capture_limit: string | null
 }
 
 export type DebtDisplayStatus = 'OPEN' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE'
@@ -574,6 +603,8 @@ export interface CashProjection {
 export interface Membership {
   organization_id: string
   role: string
+  /** Facultad efectiva de autorizar (el dueño siempre la tiene). */
+  can_authorize: boolean
 }
 
 export interface MeResponse {
@@ -680,4 +711,65 @@ export interface AssistantUsage {
   calls: number
   by_user: AssistantUsageRow[]
   by_day: AssistantUsageRow[]
+}
+
+// --- Importación -------------------------------------------------------------
+
+export type ImportKind = 'TORONJA' | 'INCOMES' | 'EXPENSES' | 'CASH'
+export type ImportBatchStatus = 'PREVIEW' | 'CONFIRMED' | 'DISCARDED'
+export type ImportRowStatus = 'OK' | 'ERROR' | 'DUPLICATE' | 'SKIPPED' | 'CREATED'
+
+export interface ImportSummary {
+  rows: number
+  ok: number
+  errors: number
+  duplicates: number
+  skipped: number
+  created: number
+  /** Operaciones que se crearán (Toronja agrupa varios tickets en una). */
+  operations: number
+  /** Rango de fechas de lo que entra (AAAA-MM-DD), para enlazar las listas filtradas. */
+  from: string | null
+  to: string | null
+}
+
+export interface ImportRow {
+  id: string
+  row_number: number
+  external_id: string | null
+  payload: Record<string, unknown>
+  status: ImportRowStatus
+  message: string | null
+  result_type: string | null
+  result_id: string | null
+}
+
+export interface ImportBatch {
+  id: string
+  kind: ImportKind
+  filename: string
+  status: ImportBatchStatus
+  mapping: Record<string, string>
+  options: {
+    columns?: string[]
+    sheets?: string[]
+    sheet?: string | null
+    defaults?: Record<string, string>
+  }
+  summary: Partial<ImportSummary>
+  confirmed_at: string | null
+  created_at: string
+}
+
+export interface ImportBatchDetail extends ImportBatch {
+  rows: Page<ImportRow>
+}
+
+export interface ImportSettings {
+  toronja: {
+    bank_account_id: string | null
+    processor_account_id: string | null
+    receivable_customer_id: string | null
+    income_category_id: string | null
+  }
 }

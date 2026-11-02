@@ -2,19 +2,38 @@ from datetime import date as date_type
 
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.expenses import service
 from app.domains.expenses.schemas import ExpenseCancel, ExpenseCreate, ExpensePay, ExpenseRead
+from app.models.contact import Vendor
 from app.models.expense import Expense
 from app.models.organization import WRITE_ROLES
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services import approvals
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
+
+
+def _vendor_name(db: Session, org_id: str, vendor_id: str | None) -> str | None:
+    if not vendor_id:
+        return None
+    row = db.query(Vendor.name).filter(Vendor.id == vendor_id, Vendor.organization_id == org_id).first()
+    return row[0] if row else None
+
+
+def _expense_summary(
+    db: Session, org_id: str, *, amount, vendor_id: str | None, description: str, paying: bool
+) -> str:
+    verb = "Pago de gasto de" if paying else "Gasto de"
+    vendor = _vendor_name(db, org_id, vendor_id)
+    recipient = f" a {vendor}" if vendor else ""
+    return f"{verb} {approvals.money(amount)}{recipient} · {description.strip()}"
 
 
 def _get_expense(db: Session, org_id: str, expense_id: str) -> Expense:
@@ -82,8 +101,28 @@ def create_expense(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
     user: User = Depends(get_current_user),
-    _membership=Depends(require_role(WRITE_ROLES)),
+    membership=Depends(require_role(WRITE_ROLES)),
 ):
+    # Un gasto que nace pendiente no mueve dinero: se evalúa cuando se paga.
+    if payload.status == "PAID":
+        waiting = approvals.gate(
+            db,
+            membership=membership,
+            user=user,
+            amount=payload.amount,
+            kind="EXPENSE",
+            payload=payload.model_dump(mode="json"),
+            summary=_expense_summary(
+                db,
+                org_id,
+                amount=payload.amount,
+                vendor_id=payload.vendor_id,
+                description=payload.description,
+                paying=False,
+            ),
+        )
+        if waiting is not None:
+            return JSONResponse(status_code=202, content=approvals.pending_body(db, waiting))
     expense = service.create_expense(db, org_id, payload, created_by=user.id)
     return ExpenseRead.model_validate(expense)
 
@@ -104,9 +143,27 @@ def pay_expense(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
     user: User = Depends(get_current_user),
-    _membership=Depends(require_role(WRITE_ROLES)),
+    membership=Depends(require_role(WRITE_ROLES)),
 ):
     expense = _get_expense(db, org_id, expense_id)
+    waiting = approvals.gate(
+        db,
+        membership=membership,
+        user=user,
+        amount=expense.amount,
+        kind="EXPENSE_PAYMENT",
+        payload={"expense_id": expense.id, **payload.model_dump(mode="json")},
+        summary=_expense_summary(
+            db,
+            org_id,
+            amount=expense.amount,
+            vendor_id=expense.vendor_id,
+            description=expense.description,
+            paying=True,
+        ),
+    )
+    if waiting is not None:
+        return JSONResponse(status_code=202, content=approvals.pending_body(db, waiting))
     expense = service.pay_expense(db, org_id, expense, payload.financial_account_id, payload.date, user.id)
     return ExpenseRead.model_validate(expense)
 

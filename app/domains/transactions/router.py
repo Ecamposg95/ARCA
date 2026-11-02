@@ -3,18 +3,22 @@ from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.transactions import service
+from app.domains.transactions.schemas import TransferCreate
 from app.models.organization import WRITE_ROLES
+from app.models.financial_account import FinancialAccount
 from app.models.transaction import FinancialTransaction
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.models.accounting import JournalEntry
 from app.models.fiscal_entity import FiscalEntity
+from app.services import approvals
 from app.services.dimensions import transaction_filters
 from app.services.running_balance import running_balances
 
@@ -45,18 +49,6 @@ class TransactionRead(BaseModel):
     business_unit_name: str | None = None
     fiscal_entity_id: str | None = None
     fiscal_entity_name: str | None = None
-
-
-class TransferCreate(BaseModel):
-    from_account_id: str
-    to_account_id: str
-    amount: Decimal = Field(gt=0, allow_inf_nan=False)
-    date: date_type
-    description: str | None = Field(default=None, max_length=500)
-    # Dimensiones de la póliza del traspaso. Cada pierna del movimiento lleva
-    # la unidad de su propia cuenta, venga lo que venga aquí.
-    business_unit_id: str | None = None
-    fiscal_entity_id: str | None = None
 
 
 def _fill_fiscal_entities(db: Session, org_id: str, items: list[TransactionRead]) -> None:
@@ -131,21 +123,33 @@ def create_transfer(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
     user: User = Depends(get_current_user),
-    _membership=Depends(require_role(WRITE_ROLES)),
+    membership=Depends(require_role(WRITE_ROLES)),
 ):
-    transfer = service.create_transfer(
+    waiting = approvals.gate(
         db,
-        org_id,
-        from_account_id=payload.from_account_id,
-        to_account_id=payload.to_account_id,
+        membership=membership,
+        user=user,
         amount=payload.amount,
-        date=payload.date,
-        description=payload.description,
-        user_id=user.id,
-        business_unit_id=payload.business_unit_id,
-        fiscal_entity_id=payload.fiscal_entity_id,
+        kind="TRANSFER",
+        payload=payload.model_dump(mode="json"),
+        summary=_transfer_summary(db, org_id, payload),
     )
-    db.commit()
-    db.refresh(transfer.outgoing)
-    db.refresh(transfer.incoming)
-    return [TransactionRead.model_validate(transfer.outgoing), TransactionRead.model_validate(transfer.incoming)]
+    if waiting is not None:
+        return JSONResponse(status_code=202, content=approvals.pending_body(db, waiting))
+    legs = service.create_transfer_from_payload(db, org_id, payload, user.id)
+    return [TransactionRead.model_validate(leg) for leg in legs]
+
+
+def _transfer_summary(db: Session, org_id: str, payload: TransferCreate) -> str:
+    names = {
+        account.id: account.name
+        for account in db.query(FinancialAccount)
+        .filter(
+            FinancialAccount.organization_id == org_id,
+            FinancialAccount.id.in_((payload.from_account_id, payload.to_account_id)),
+        )
+        .all()
+    }
+    origin = names.get(payload.from_account_id, "?")
+    destination = names.get(payload.to_account_id, "?")
+    return f"Traspaso de {approvals.money(payload.amount)} de {origin} a {destination}"

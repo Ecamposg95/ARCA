@@ -57,6 +57,8 @@ class MembershipRead(BaseModel):
 
     organization_id: str
     role: str
+    # Facultad efectiva (el dueño siempre): el front decide qué avisos enseñar.
+    can_authorize: bool = False
 
 
 class AuthResponse(BaseModel):

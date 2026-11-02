@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
+import { handlePendingApproval } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -91,7 +92,7 @@ export function TransactionsPage() {
 
   const transferMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/transactions/transfer', form)
+      handlePendingApproval(await api.post('/transactions/transfer', form))
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
