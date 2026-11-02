@@ -1,13 +1,38 @@
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import type { Category, Contact, FinancialAccount, Page } from '@/types/api'
+import type { BusinessUnit, Category, Contact, FinancialAccount, FiscalEntity, Page } from '@/types/api'
 
 export function useAccounts() {
   return useQuery({
     queryKey: ['accounts'],
     queryFn: async () => (await api.get<FinancialAccount[]>('/accounts')).data,
   })
+}
+
+/** Unidades y contribuyentes de la empresa. Una empresa sin ninguno no ve
+ *  selectores, filtros ni columnas: `hasUnits` / `hasEntities` lo deciden. */
+export function useDimensions() {
+  const units = useQuery({
+    queryKey: ['business-units'],
+    queryFn: async () => (await api.get<Page<BusinessUnit>>('/business-units?limit=200')).data.items,
+  })
+  const entities = useQuery({
+    queryKey: ['fiscal-entities'],
+    queryFn: async () => (await api.get<Page<FiscalEntity>>('/fiscal-entities?limit=200')).data.items,
+  })
+  const allUnits = units.data ?? []
+  const allEntities = entities.data ?? []
+  return {
+    units: allUnits,
+    entities: allEntities,
+    // Para asignar: sólo activas. Para filtrar: todas (la historia de una
+    // unidad cerrada sigue siendo historia).
+    activeUnits: allUnits.filter((unit) => unit.active),
+    activeEntities: allEntities.filter((entity) => entity.active),
+    hasUnits: allUnits.length > 0,
+    hasEntities: allEntities.length > 0,
+  }
 }
 
 export function useCategories(kind: 'INCOME' | 'EXPENSE') {

@@ -10,8 +10,14 @@ import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table } from '@/components/ui/Table'
 import { TableFooter } from '@/components/ui/Pagination'
+import {
+  DimensionChips,
+  DimensionFilterSelects,
+  dimensionParams,
+  type DimensionValues,
+} from '@/components/ui/DimensionFields'
 import { formatDate, formatMoney, today } from '@/lib/format'
-import { useAccounts } from '@/lib/hooks'
+import { useAccounts, useDimensions } from '@/lib/hooks'
 import type { Page, Transaction } from '@/types/api'
 
 const TYPE_LABELS: Record<string, { label: string; inflow: boolean }> = {
@@ -36,17 +42,37 @@ export function TransactionsPage() {
     else next.delete('cuenta')
     setSearchParams(next, { replace: true })
   }
+  // Unidad y contribuyente también en la URL: "los movimientos de Morelos" se comparten.
+  const dimensions: DimensionValues = {
+    business_unit_id: searchParams.get('unidad') ?? '',
+    fiscal_entity_id: searchParams.get('contribuyente') ?? '',
+  }
+  const setDimensions = (next: Partial<DimensionValues>) => {
+    const merged = { ...dimensions, ...next }
+    const params = new URLSearchParams(searchParams)
+    if (merged.business_unit_id) params.set('unidad', merged.business_unit_id)
+    else params.delete('unidad')
+    if (merged.fiscal_entity_id) params.set('contribuyente', merged.fiscal_entity_id)
+    else params.delete('contribuyente')
+    setSearchParams(params, { replace: true })
+    setOffset(0)
+  }
   const [offset, setOffset] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ from_account_id: '', to_account_id: '', amount: '', date: today() })
 
   const { data: accounts } = useAccounts()
+  const { hasUnits, hasEntities } = useDimensions()
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', accountFilter, offset],
+    queryKey: ['transactions', accountFilter, dimensions, offset],
     queryFn: async () =>
       (
         await api.get<Page<Transaction>>('/transactions', {
-          params: { ...(accountFilter ? { account_id: accountFilter } : {}), offset },
+          params: {
+            ...(accountFilter ? { account_id: accountFilter } : {}),
+            ...dimensionParams(dimensions),
+            offset,
+          },
         })
       ).data,
   })
@@ -102,18 +128,30 @@ export function TransactionsPage() {
           </Button>
         }
       >
-        <div className="max-w-xs">
-          <SelectInput
-            label="Cuenta"
-            placeholder="Todas las cuentas"
-            options={accountOptions}
-            value={accountFilter}
-            onChange={(event) => {
-              setAccountFilter(event.target.value)
-              setOffset(0)
-            }}
-          />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="w-full max-w-xs">
+            <SelectInput
+              label="Cuenta"
+              placeholder="Todas las cuentas"
+              options={accountOptions}
+              value={accountFilter}
+              onChange={(event) => {
+                setAccountFilter(event.target.value)
+                setOffset(0)
+              }}
+            />
+          </div>
+          {hasUnits || hasEntities ? (
+            <div className="flex flex-wrap items-center gap-2 pb-0.5">
+              <DimensionFilterSelects value={dimensions} onChange={setDimensions} />
+            </div>
+          ) : null}
         </div>
+        {dimensions.business_unit_id || dimensions.fiscal_entity_id ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <DimensionChips value={dimensions} onChange={setDimensions} />
+          </div>
+        ) : null}
       </PageHeader>
 
       {isLoading ? (
@@ -131,6 +169,7 @@ export function TransactionsPage() {
             // Repetir el nombre de la cuenta en cada fila cuando ya filtraste por
             // ella no informa: la columna sólo aparece en la vista de todas.
             ...(accountFilter ? [] : ['Cuenta']),
+            ...(hasUnits ? ['Unidad'] : []),
             'Tipo',
             <span key="m" className="block text-right">
               Monto
@@ -160,6 +199,11 @@ export function TransactionsPage() {
                     {accountName(transaction.financial_account_id)}
                   </td>
                 )}
+                {hasUnits ? (
+                  <td className="whitespace-nowrap px-4 py-2.5 text-muted">
+                    {transaction.business_unit_name ?? '—'}
+                  </td>
+                ) : null}
                 <td className="px-4 py-2.5 text-muted">
                   {isCard ? (type.inflow ? 'Pago de tarjeta' : 'Cargo a tarjeta') : type.label}
                 </td>

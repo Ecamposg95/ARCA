@@ -25,8 +25,15 @@ import {
   useRowSelection,
   type BatchOutcome,
 } from '@/components/ui/TableTools'
+import {
+  DimensionChips,
+  DimensionFilterSelects,
+  DimensionSelects,
+  EMPTY_DIMENSIONS,
+  dimensionParams,
+} from '@/components/ui/DimensionFields'
 import { formatDate, formatMoney, today } from '@/lib/format'
-import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
+import { useAccounts, useCategories, useContacts, useDimensions } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
 import type { Debt, Page } from '@/types/api'
 
@@ -128,6 +135,12 @@ export function DebtsPage({ config }: { config: Config }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [search, setSearch] = useState('')
+  const [dimensions, setDimensionsState] = useState(EMPTY_DIMENSIONS)
+  const setDimensions = (next: Partial<typeof dimensions>) => {
+    setDimensionsState({ ...dimensions, ...next })
+    setOffset(0)
+  }
+  const { hasUnits } = useDimensions()
 
   // El orden vive en la URL: una cartera ordenada se comparte tal cual.
   const sort = searchParams.get('orden') ?? ''
@@ -152,6 +165,7 @@ export function DebtsPage({ config }: { config: Config }) {
     category_id: '',
     tax_rate: defaultTaxRate,
     notes: '',
+    ...EMPTY_DIMENSIONS,
   })
   const [payForm, setPayForm] = useState({ amount: '', financial_account_id: '', date: today() })
 
@@ -160,13 +174,14 @@ export function DebtsPage({ config }: { config: Config }) {
   const { data: contacts } = useContacts(config.contactResource)
 
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter, search, sort, offset],
+    queryKey: [config.kind, statusFilter, search, sort, dimensions, offset],
     queryFn: async () =>
       (
         await api.get<Page<Debt>>(config.endpoint, {
           params: {
             ...(statusFilter ? { status: statusFilter } : {}),
             ...(search ? { q: search } : {}),
+            ...dimensionParams(dimensions),
             ...(sort ? { sort } : {}),
             offset,
           },
@@ -196,6 +211,8 @@ export function DebtsPage({ config }: { config: Config }) {
         category_id: form.category_id,
       }
       if (form.notes) payload.notes = form.notes
+      if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
+      if (form.fiscal_entity_id) payload.fiscal_entity_id = form.fiscal_entity_id
       await api.post(config.endpoint, payload)
     },
     onSuccess: () => {
@@ -236,6 +253,7 @@ export function DebtsPage({ config }: { config: Config }) {
       category_id: '',
       tax_rate: defaultTaxRate,
       notes: '',
+      ...EMPTY_DIMENSIONS,
     })
     if (searchParams.has('nueva')) {
       searchParams.delete('nueva')
@@ -331,17 +349,25 @@ export function DebtsPage({ config }: { config: Config }) {
               </button>
             ))}
           </div>
-          <input
-            type="search"
-            placeholder="Buscar por concepto…"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setOffset(0)
-            }}
-            className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <DimensionFilterSelects value={dimensions} onChange={setDimensions} />
+            <input
+              type="search"
+              placeholder="Buscar por concepto…"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setOffset(0)
+              }}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm sm:w-56"
+            />
+          </div>
         </div>
+        {dimensions.business_unit_id || dimensions.fiscal_entity_id ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <DimensionChips value={dimensions} onChange={setDimensions} />
+          </div>
+        ) : null}
       </PageHeader>
 
       {statusFilter === '' && items.length > 0 ? (
@@ -404,6 +430,7 @@ export function DebtsPage({ config }: { config: Config }) {
             config.contactLabel,
             'Concepto',
             <SortableHeader key="v" field="due_date" label="Vence" sort={sort} onSort={setSort} />,
+            ...(hasUnits ? ['Unidad'] : []),
             'Estado',
             <span key="p" className="block text-right">Pagado / Total</span>,
             <span key="s" className="block text-right">
@@ -411,7 +438,7 @@ export function DebtsPage({ config }: { config: Config }) {
             </span>,
             '',
           ]}
-          secondary={[5, 6]}
+          secondary={hasUnits ? [5, 6, 7] : [5, 6]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun="cuentas" />}
         >
           {items.map((debt) => (
@@ -438,6 +465,9 @@ export function DebtsPage({ config }: { config: Config }) {
               <td className={`whitespace-nowrap px-4 py-2.5 ${debt.is_overdue ? 'font-medium text-neg' : 'text-muted'}`}>
                 {formatDate(debt.due_date)}
               </td>
+              {hasUnits ? (
+                <td className="whitespace-nowrap px-4 py-2.5 text-muted">{debt.business_unit_name ?? '—'}</td>
+              ) : null}
               <td className="px-4 py-2.5">
                 <DebtStatusBadge debt={debt} />
               </td>
@@ -596,6 +626,7 @@ export function DebtsPage({ config }: { config: Config }) {
             value={form.category_id}
             onChange={(event) => setForm({ ...form, category_id: event.target.value })}
           />
+          <DimensionSelects value={form} onChange={(next) => setForm({ ...form, ...next })} />
           <TextInput
             label="Notas (opcional)"
             placeholder="Opcional"

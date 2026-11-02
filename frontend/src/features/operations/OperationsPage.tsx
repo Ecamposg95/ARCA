@@ -27,8 +27,15 @@ import {
   useRowSelection,
   type BatchOutcome,
 } from '@/components/ui/TableTools'
+import {
+  DimensionChips,
+  DimensionFilterSelects,
+  DimensionSelects,
+  EMPTY_DIMENSIONS,
+  dimensionParams,
+} from '@/components/ui/DimensionFields'
 import { formatDate, formatMoney, today } from '@/lib/format'
-import { useAccounts, useCategories, useContacts } from '@/lib/hooks'
+import { useAccounts, useCategories, useContacts, useDimensions } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
 import type { Expense, Income, Page } from '@/types/api'
 
@@ -112,6 +119,7 @@ export function OperationsPage({ config }: { config: Config }) {
     tax_rate: defaultTaxRate,
     paid: true,
     notes: '',
+    ...EMPTY_DIMENSIONS,
   })
 
   // Un filtro nuevo debe volver a la primera página: si no, la lista sale vacía
@@ -122,8 +130,9 @@ export function OperationsPage({ config }: { config: Config }) {
     end: '',
     project_id: '',
     non_deductible: false,
+    ...EMPTY_DIMENSIONS,
   })
-  const emptyFilters = { q: '', start: '', end: '', project_id: '', non_deductible: false }
+  const emptyFilters = { q: '', start: '', end: '', project_id: '', non_deductible: false, ...EMPTY_DIMENSIONS }
   const setFilters = (next: Partial<typeof filters>) => {
     setFiltersState({ ...filters, ...next })
     setOffset(0)
@@ -132,7 +141,9 @@ export function OperationsPage({ config }: { config: Config }) {
     Number(Boolean(filters.q)) +
     Number(Boolean(filters.start || filters.end)) +
     Number(Boolean(filters.project_id)) +
-    Number(filters.non_deductible)
+    Number(filters.non_deductible) +
+    Number(Boolean(filters.business_unit_id)) +
+    Number(Boolean(filters.fiscal_entity_id))
   const hasFilters = activeFilterCount > 0
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -155,6 +166,7 @@ export function OperationsPage({ config }: { config: Config }) {
   const retentionTotal = Number(form.retention_isr || 0) + Number(form.retention_iva || 0)
 
   const { data: accounts } = useAccounts()
+  const { hasUnits } = useDimensions()
   // Sólo los proyectos abiertos: etiquetar contra uno cerrado ensucia el reporte.
   const { data: projects } = useQuery({
     queryKey: ['projects', 'ACTIVE'],
@@ -177,6 +189,7 @@ export function OperationsPage({ config }: { config: Config }) {
             ...(filters.end ? { end: filters.end } : {}),
             ...(filters.project_id ? { project_id: filters.project_id } : {}),
             ...(filters.non_deductible ? { non_deductible: true } : {}),
+            ...dimensionParams(filters),
             ...(sort ? { sort } : {}),
             offset,
           },
@@ -221,6 +234,8 @@ export function OperationsPage({ config }: { config: Config }) {
       if (form.retention_isr) payload.retention_isr = form.retention_isr
       if (form.retention_iva) payload.retention_iva = form.retention_iva
       if (form.financial_account_id) payload.financial_account_id = form.financial_account_id
+      if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
+      if (form.fiscal_entity_id) payload.fiscal_entity_id = form.fiscal_entity_id
       if (form.notes) payload.notes = form.notes
       await api.post(config.endpoint, payload)
     },
@@ -263,6 +278,7 @@ export function OperationsPage({ config }: { config: Config }) {
       tax_rate: defaultTaxRate,
       paid: true,
       notes: '',
+      ...EMPTY_DIMENSIONS,
     })
     if (searchParams.has('nuevo')) {
       searchParams.delete('nuevo')
@@ -314,13 +330,15 @@ export function OperationsPage({ config }: { config: Config }) {
   function exportSelection() {
     exportRowsCsv(
       `${config.noun}-seleccion.csv`,
-      ['Fecha', 'Concepto', config.contactResource === 'customers' ? 'Cliente' : 'Proveedor', 'Categoría', 'Cuenta', 'Estado', 'Monto'],
+      ['Fecha', 'Concepto', config.contactResource === 'customers' ? 'Cliente' : 'Proveedor', 'Categoría', 'Cuenta', 'Unidad', 'Contribuyente', 'Estado', 'Monto'],
       selection.selectedItems.map((item) => [
         item.date,
         item.description,
         contactName(config.contactField === 'customer_id' ? item.customer_id : item.vendor_id),
         categoryName(item.category_id),
         accountLabel(item.financial_account_id),
+        item.business_unit_name ?? '',
+        item.fiscal_entity_name ?? '',
         item.status,
         String(item.amount),
       ]),
@@ -391,6 +409,7 @@ export function OperationsPage({ config }: { config: Config }) {
               onRemove={() => setFilters({ non_deductible: false })}
             />
           ) : null}
+          <DimensionChips value={filters} onChange={setFilters} />
           {hasFilters ? (
             <button
               type="button"
@@ -444,6 +463,7 @@ export function OperationsPage({ config }: { config: Config }) {
                 ))}
               </select>
             ) : null}
+            <DimensionFilterSelects value={filters} onChange={setFilters} />
             {config.kind === 'expense' ? (
               <label className="flex cursor-pointer items-center gap-1.5 text-sm">
                 <input
@@ -527,13 +547,15 @@ export function OperationsPage({ config }: { config: Config }) {
             config.contactResource === 'customers' ? 'Cliente' : 'Proveedor',
             'Categoría',
             config.kind === 'income' ? 'Entró a' : 'Se pagó con',
+            // La columna sólo existe si la empresa tiene unidades.
+            ...(hasUnits ? ['Unidad'] : []),
             'Estado',
             <span key="m" className="block text-right">
               <SortableHeader field="amount" label="Monto" sort={sort} onSort={setSort} align="right" />
             </span>,
             '',
           ]}
-          secondary={[4, 5, 6]}
+          secondary={hasUnits ? [4, 5, 6, 7] : [4, 5, 6]}
           footer={<TableFooter page={data!} onOffsetChange={setOffset} noun={config.noun} />}
         >
           {items.map((item) => (
@@ -568,6 +590,11 @@ export function OperationsPage({ config }: { config: Config }) {
               <td className="whitespace-nowrap px-4 py-2.5 text-muted">
                 {accountLabel(item.financial_account_id)}
               </td>
+              {hasUnits ? (
+                <td className="whitespace-nowrap px-4 py-2.5 text-muted">
+                  {item.business_unit_name ?? '—'}
+                </td>
+              ) : null}
               <td className="px-4 py-2.5">
                 <StatusBadge status={item.status} paidLabel={config.paidLabel} />
               </td>
@@ -828,9 +855,23 @@ export function OperationsPage({ config }: { config: Config }) {
                 .filter((account) => account.active)
                 .map((account) => ({ value: account.id, label: account.name }))}
               value={form.financial_account_id}
-              onChange={(event) => setForm({ ...form, financial_account_id: event.target.value })}
+              onChange={(event) => {
+                // La unidad se preselecciona con la de la caja elegida; se puede
+                // cambiar después (un gasto de Morelos pagado desde la central).
+                const account = (accounts ?? []).find((item) => item.id === event.target.value)
+                setForm({
+                  ...form,
+                  financial_account_id: event.target.value,
+                  business_unit_id: account?.business_unit_id ?? form.business_unit_id,
+                })
+              }}
             />
           ) : null}
+          <DimensionSelects
+            value={form}
+            onChange={(next) => setForm({ ...form, ...next })}
+            unitHint={form.paid ? 'Si no eliges, se toma la de la cuenta.' : undefined}
+          />
           <TextInput
             label="Notas (opcional)"
             placeholder="Opcional"
