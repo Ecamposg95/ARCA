@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.events import event_bus
 from app.models.category import Category
 from app.models.contact import Customer
+from app.models.financial_account import FinancialAccount
 from app.models.income import Income
 from app.services.accounting.rules import income_paid_entry
 from app.services.taxes import split_total
@@ -58,10 +59,13 @@ def _validate_customer(db: Session, org_id: str, customer_id: str) -> None:
         raise ValueError("El cliente no existe.")
 
 
-def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
+def create_income(db: Session, org_id: str, payload, created_by: str, commit: bool = True) -> Income:
+    """`commit=False` deja el ingreso dentro de la transacción del caller (una
+    liquidación o un corte lo registran junto con otras operaciones)."""
     income = build_income(db, org_id, payload, created_by)
-    db.commit()
-    db.refresh(income)
+    if commit:
+        db.commit()
+        db.refresh(income)
     return income
 
 
@@ -121,15 +125,37 @@ def pay_income(
     financial_account_id: str | None,
     paid_date: date_type | None,
     user_id: str,
+    payment_method: str | None = None,
 ) -> Income:
     if income.status == "PAID":
         raise ValueError("Este ingreso ya está cobrado.")
     if income.status == "CANCELLED":
         raise ValueError("No puedes cobrar un ingreso cancelado.")
-    _apply_payment(db, org_id, income, financial_account_id, paid_date or income.date, user_id)
+    _apply_payment(
+        db, org_id, income, financial_account_id, paid_date or income.date, user_id, payment_method=payment_method
+    )
     db.commit()
     db.refresh(income)
     return income
+
+
+CARD_METHODS = ("TARJETA_DEBITO", "TARJETA_CREDITO")
+
+
+def default_processor_id(db: Session, org_id: str) -> str | None:
+    """El procesador de pagos de la empresa, si tiene uno activo (el más antiguo)."""
+    return (
+        db.query(FinancialAccount.id)
+        .filter(
+            FinancialAccount.organization_id == org_id,
+            FinancialAccount.type == "PROCESSOR",
+            FinancialAccount.active.is_(True),
+            FinancialAccount.deleted_at.is_(None),
+        )
+        .order_by(FinancialAccount.created_at)
+        .limit(1)
+        .scalar()
+    )
 
 
 def _apply_payment(
@@ -143,6 +169,10 @@ def _apply_payment(
     reference: str | None = None,
 ) -> None:
     account_id = financial_account_id or income.financial_account_id
+    if not account_id and payment_method in CARD_METHODS:
+        # Un cobro con tarjeta no está en el banco: lo tiene el procesador
+        # hasta que liquide. Si la empresa no tiene uno, que elija cuenta.
+        account_id = default_processor_id(db, org_id)
     if not account_id:
         raise ValueError("Indica en qué cuenta recibiste el dinero.")
     # Un ingreso pendiente sin unidad la toma de la cuenta en la que se cobra.
@@ -182,7 +212,14 @@ def _apply_payment(
     event_bus.publish("income.paid", {"income_id": income.id, "organization_id": org_id})
 
 
-def cancel_income(db: Session, income: Income, user_id: str, reason: str | None) -> Income:
+def cancel_income(
+    db: Session,
+    income: Income,
+    user_id: str,
+    reason: str | None,
+    commit: bool = True,
+    reversal_date: date_type | None = None,
+) -> Income:
     if income.status == "CANCELLED":
         raise ValueError("Este ingreso ya está cancelado.")
 
@@ -195,7 +232,7 @@ def cancel_income(db: Session, income: Income, user_id: str, reason: str | None)
             source_type="income",
             source_id=income.id,
             description=f"Reverso: {income.description}",
-            date=date.today(),
+            date=reversal_date or date.today(),
             user_id=user_id,
         )
 
@@ -203,6 +240,8 @@ def cancel_income(db: Session, income: Income, user_id: str, reason: str | None)
     income.cancelled_at = datetime.now(timezone.utc)
     income.cancelled_by = user_id
     income.cancellation_reason = reason
+    if not commit:
+        return income
     db.commit()
     db.refresh(income)
     return income

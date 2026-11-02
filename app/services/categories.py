@@ -48,3 +48,21 @@ def seed_default_categories(db: Session, organization_id: str) -> None:
             )
         )
     db.flush()
+
+
+def ensure_system_category(db: Session, organization_id: str, name: str, kind: str, account_code: str) -> Category:
+    """Categoría que un módulo necesita ("Comisiones de terminal", "Diferencias
+    de caja"): se siembra la primera vez que hace falta. No hace commit."""
+    category = (
+        db.query(Category)
+        .filter(Category.organization_id == organization_id, Category.kind == kind, Category.name == name)
+        .first()
+    )
+    if category is None:
+        category = Category(organization_id=organization_id, name=name, kind=kind, account_code=account_code, system=True)
+        db.add(category)
+        db.flush()
+    elif not category.active:
+        # Si alguien la desactivó, el módulo la necesita de vuelta.
+        category.active = True
+    return category

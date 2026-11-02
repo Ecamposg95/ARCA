@@ -52,10 +52,13 @@ def _validate_vendor(db: Session, org_id: str, vendor_id: str) -> None:
         raise ValueError("El proveedor no existe.")
 
 
-def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expense:
+def create_expense(db: Session, org_id: str, payload, created_by: str, commit: bool = True) -> Expense:
+    """`commit=False` deja el gasto dentro de la transacción del caller (una
+    liquidación o un corte lo registran junto con otras operaciones)."""
     expense = build_expense(db, org_id, payload, created_by)
-    db.commit()
-    db.refresh(expense)
+    if commit:
+        db.commit()
+        db.refresh(expense)
     return expense
 
 
@@ -176,7 +179,18 @@ def _apply_payment(
     event_bus.publish("expense.paid", {"expense_id": expense.id, "organization_id": org_id})
 
 
-def cancel_expense(db: Session, expense: Expense, user_id: str, reason: str | None) -> Expense:
+def cancel_expense(
+    db: Session,
+    expense: Expense,
+    user_id: str,
+    reason: str | None,
+    commit: bool = True,
+    reversal_date: date_type | None = None,
+) -> Expense:
+    """`reversal_date`: el reverso se fecha hoy salvo que el caller necesite
+    otra (el ajuste de un corte se deshace en el día del corte)."""
+    if expense.status == "CANCELLED":
+        raise ValueError("Este gasto ya está cancelado.")
     if expense.status == "PAID":
         reverse_operation(
             db,
@@ -184,15 +198,15 @@ def cancel_expense(db: Session, expense: Expense, user_id: str, reason: str | No
             source_type="expense",
             source_id=expense.id,
             description=f"Reverso: {expense.description}",
-            date=date.today(),
+            date=reversal_date or date.today(),
             user_id=user_id,
         )
-    if expense.status == "CANCELLED":
-        raise ValueError("Este gasto ya está cancelado.")
     expense.status = "CANCELLED"
     expense.cancelled_at = datetime.now(timezone.utc)
     expense.cancelled_by = user_id
     expense.cancellation_reason = reason
+    if not commit:
+        return expense
     db.commit()
     db.refresh(expense)
     return expense

@@ -12,6 +12,9 @@ from app.services.accounting.sat import DEFAULT_SAT_CODES
 
 # Códigos usados por el motor de reglas (app/services/accounting/rules.py)
 CODE_CASH_BANK = "1100"
+# Cobrado con tarjeta pero todavía en manos del procesador (NetPay, Mercado
+# Pago): es activo tuyo, no disponible, hasta que liquida al banco.
+CODE_IN_TRANSIT = "1110"
 CODE_ACCOUNTS_RECEIVABLE = "1200"
 CODE_OTHER_ASSETS = "1300"
 # IVA por flujo de efectivo: lo "pendiente" aún no se declara ante el SAT.
@@ -42,6 +45,7 @@ CODE_INTEREST_EXPENSE = "5900"
 DEFAULT_CHART = (
     ("1000", "Activo", "ASSET", None),
     ("1100", "Caja y Bancos", "ASSET", "1000"),
+    ("1110", "Cobros en tránsito", "ASSET", "1000"),
     ("1200", "Cuentas por Cobrar", "ASSET", "1000"),
     ("1190", "IVA acreditable pagado", "ASSET", "1000"),
     ("1191", "IVA acreditable pendiente de pago", "ASSET", "1000"),
@@ -119,11 +123,16 @@ def ledger_code_for(account_type: str) -> str:
     """Cuenta contable donde vive cada instrumento.
 
     Efectivo y bancos comparten 1100; las tarjetas viven en 2200 porque son
-    deuda, no dinero disponible.
+    deuda, no dinero disponible; un procesador de pagos en 1110 porque el
+    cobro ya es tuyo pero todavía no llega al banco.
     """
     from app.models.financial_account import is_liability
 
-    return CODE_CREDIT_CARDS if is_liability(account_type) else CODE_CASH_BANK
+    if is_liability(account_type):
+        return CODE_CREDIT_CARDS
+    if account_type == "PROCESSOR":
+        return CODE_IN_TRANSIT
+    return CODE_CASH_BANK
 
 
 # --- Catálogo editable (C-1) ---

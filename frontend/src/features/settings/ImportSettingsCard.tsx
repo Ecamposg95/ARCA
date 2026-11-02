@@ -71,6 +71,11 @@ export function ImportSettingsCard() {
   // El dinero cobrado sólo puede caer en una cuenta de activo: una tarjeta de crédito no recibe ventas.
   const moneyAccounts = (accounts ?? []).filter((account) => account.active && !account.is_liability)
   const accountOptions = moneyAccounts.map((account) => ({ value: account.id, label: account.name }))
+  // Las tarjetas caen en el procesador (NetPay): si la empresa ya tiene uno, sólo se ofrecen procesadores.
+  const processors = moneyAccounts.filter((account) => account.type === 'PROCESSOR')
+  const processorOptions = processors.length
+    ? processors.map((account) => ({ value: account.id, label: account.name }))
+    : accountOptions
 
   return (
     <Card className="mt-6 max-w-lg">
@@ -89,7 +94,7 @@ export function ImportSettingsCard() {
         <SelectInput
           label="Tarjetas (procesador, en tránsito)"
           placeholder="Sin configurar"
-          options={accountOptions}
+          options={processorOptions}
           value={form.processor_account_id}
           onChange={(event) => setForm({ ...form, processor_account_id: event.target.value })}
         />

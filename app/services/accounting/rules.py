@@ -23,6 +23,7 @@ from app.services.accounting.coa import (
     CODE_CREDIT_CARDS,
     CODE_DEPRECIATION_EXPENSE,
     CODE_FIXED_ASSETS,
+    CODE_IN_TRANSIT,
     CODE_INTEREST_EXPENSE,
     CODE_ISR_WITHHELD,
     CODE_LOANS_PAYABLE,
@@ -528,6 +529,7 @@ def loan_payment_entry(
 # descuadraría ese espejo, así que se capturan desde su módulo.
 MODULE_CONTROLLED_CODES = {
     CODE_CASH_BANK: "Movimientos",
+    CODE_IN_TRANSIT: "Movimientos",
     CODE_CREDIT_CARDS: "Movimientos",
     CODE_ACCOUNTS_RECEIVABLE: "Por cobrar",
     CODE_ACCOUNTS_PAYABLE: "Por pagar",

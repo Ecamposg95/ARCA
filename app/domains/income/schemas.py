@@ -21,9 +21,10 @@ class IncomeCreate(BaseModel):
     business_unit_id: str | None = None
     fiscal_entity_id: str | None = None
     financial_account_id: str | None = None
-    # Cómo entró el dinero y con qué referencia: viven en el movimiento, no en
-    # el ingreso (lo usa la importación de Toronja para dejar rastro).
-    payment_method: str | None = Field(default=None, max_length=20)
+    # Cómo cobraste y con qué referencia: viven en el movimiento, no en el
+    # ingreso. Con tarjeta y sin cuenta explícita, el dinero cae al procesador
+    # de pagos de la empresa; la importación de Toronja deja aquí su rastro.
+    payment_method: str | None = Field(default=None, max_length=30)
     reference: str | None = Field(default=None, max_length=100)
     status: Literal["PENDING", "PAID"] = "PENDING"
     notes: str | None = Field(default=None, max_length=1000)
@@ -32,6 +33,7 @@ class IncomeCreate(BaseModel):
 class IncomePay(BaseModel):
     financial_account_id: str | None = None
     date: date_type | None = None
+    payment_method: str | None = Field(default=None, max_length=30)
 
 
 class IncomeCancel(BaseModel):

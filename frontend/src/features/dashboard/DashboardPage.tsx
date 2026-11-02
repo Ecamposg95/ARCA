@@ -215,6 +215,8 @@ export function DashboardPage() {
     (account) =>
       account.type !== 'CREDIT_CARD' && Number(account.current_balance) < 0 && account.active,
   )
+  // "Por recibir" sólo existe para quien cobra con terminal: sin procesadores no se enseña.
+  const hasProcessors = (accounts ?? []).some((account) => account.type === 'PROCESSOR' && account.active)
   const resultData = data.revenue_vs_expenses.map((row) => ({
     month: formatMonth(row.month),
     profit: row.revenue - row.expenses,
@@ -240,6 +242,14 @@ export function DashboardPage() {
             <Money value={data.cash} size="xl" />
           </div>
         </div>
+        {hasProcessors ? (
+          <Link to="/cuentas" className="group" title="Cobrado con tarjeta que el procesador aún no deposita">
+            <MetricLabel>Por recibir</MetricLabel>
+            <div className="mt-1.5 group-hover:opacity-80">
+              <Money value={data.in_transit_total} size="lg" tone="muted" />
+            </div>
+          </Link>
+        ) : null}
         {data.card_debt > 0 ? (
           <Link to="/cuentas" className="group">
             <MetricLabel>Deuda en tarjetas</MetricLabel>

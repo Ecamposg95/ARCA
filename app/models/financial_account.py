@@ -1,23 +1,33 @@
-from sqlalchemy import Boolean, Column, Numeric, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, String
 
 from app.database import Base
 from app.models.dimensions import BusinessUnitDimension
 from app.models.mixins import AuditMixin, SoftDeleteMixin, TenantMixin, UUIDPKMixin
 
-FINANCIAL_ACCOUNT_TYPES = ("CASH", "BANK", "CREDIT_CARD", "OTHER")
+FINANCIAL_ACCOUNT_TYPES = ("CASH", "BANK", "CREDIT_CARD", "PROCESSOR", "OTHER")
 
 # La naturaleza decide TODO: cómo se mueve el saldo y en qué cuenta contable vive.
 # Una tarjeta de crédito no guarda tu dinero: registra lo que debes.
-ASSET_ACCOUNT_TYPES = ("CASH", "BANK", "OTHER")
+ASSET_ACCOUNT_TYPES = ("CASH", "BANK", "PROCESSOR", "OTHER")
 LIABILITY_ACCOUNT_TYPES = ("CREDIT_CARD",)
+
+# Disponible es lo que puedes gastar hoy. Un procesador de pagos (NetPay,
+# Mercado Pago) es activo tuyo, pero el dinero llega al banco días después y
+# menos comisión: está en tránsito, y el tablero lo muestra aparte.
+AVAILABLE_ACCOUNT_TYPES = ("CASH", "BANK", "OTHER")
+IN_TRANSIT_ACCOUNT_TYPES = ("PROCESSOR",)
 
 
 def is_liability(account_type: str) -> bool:
     return account_type in LIABILITY_ACCOUNT_TYPES
 
 
+def is_available(account_type: str) -> bool:
+    return account_type in AVAILABLE_ACCOUNT_TYPES
+
+
 class FinancialAccount(Base, UUIDPKMixin, TenantMixin, AuditMixin, SoftDeleteMixin, BusinessUnitDimension):
-    """Dónde existe el dinero (Caja, BBVA Operativa, AMEX...).
+    """Dónde existe el dinero (Caja, BBVA Operativa, AMEX, NetPay...).
 
     current_balance SOLO se modifica vía app/services/transactions.py
     (lock → refresh → re-check). Nunca asignarlo directamente.
@@ -38,3 +48,9 @@ class FinancialAccount(Base, UUIDPKMixin, TenantMixin, AuditMixin, SoftDeleteMix
     active = Column(Boolean, nullable=False, default=True)
     # Sólo para tarjetas: el límite permite calcular el crédito disponible.
     credit_limit = Column(Numeric(14, 2), nullable=True)
+    # Sólo para procesadores: la comisión pactada (0.0350 = 3.5 %), en cuántos
+    # días deposita y a qué banco. La tasa se guarda para validar después
+    # (HU-15); hoy no calcula nada.
+    fee_rate = Column(Numeric(6, 4), nullable=True)
+    settlement_days = Column(Integer, nullable=True)
+    settlement_account_id = Column(String(36), ForeignKey("financial_accounts.id"), nullable=True)

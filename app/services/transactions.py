@@ -34,9 +34,12 @@ def account_ledger_code(db: Session, organization_id: str, financial_account_id:
 
 def default_payment_method(account_type: str) -> str:
     """Método implícito por el instrumento; el usuario puede sobreescribirlo."""
-    return {"CASH": "EFECTIVO", "BANK": "TRANSFERENCIA", "CREDIT_CARD": "TARJETA_CREDITO"}.get(
-        account_type, "OTRO"
-    )
+    return {
+        "CASH": "EFECTIVO",
+        "BANK": "TRANSFERENCIA",
+        "CREDIT_CARD": "TARJETA_CREDITO",
+        "PROCESSOR": "PASARELA",
+    }.get(account_type, "OTRO")
 
 
 def get_locked_account(db: Session, organization_id: str, financial_account_id: str) -> FinancialAccount:

@@ -9,6 +9,7 @@ from app.models.accounting import Account, JournalEntry, JournalEntryLine  # noq
 from app.models.agent import AgentActionLog, AgentKey, AgentProposal  # noqa: F401
 from app.models.assistant import AiUsage, AssistantAction, AssistantConversation, AssistantMessage  # noqa: F401
 from app.models.business_unit import BusinessUnit  # noqa: F401
+from app.models.cash_cut import CashCut  # noqa: F401
 from app.models.category import Category  # noqa: F401
 from app.models.contact import Customer, Vendor  # noqa: F401
 from app.models.expense import Expense  # noqa: F401
@@ -25,6 +26,7 @@ from app.models.period import PeriodLock  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.receivable import Receivable  # noqa: F401
 from app.models.recurring import RecurringRule  # noqa: F401
+from app.models.settlement import ProcessorSettlement  # noqa: F401
 from app.models.transaction import FinancialTransaction  # noqa: F401
 from app.models.user import User  # noqa: F401
 

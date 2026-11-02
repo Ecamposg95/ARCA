@@ -102,7 +102,9 @@ def pay_income(
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
     income = _get_income(db, org_id, income_id)
-    income = service.pay_income(db, org_id, income, payload.financial_account_id, payload.date, user.id)
+    income = service.pay_income(
+        db, org_id, income, payload.financial_account_id, payload.date, user.id, payment_method=payload.payment_method
+    )
     return IncomeRead.model_validate(income)
 
 

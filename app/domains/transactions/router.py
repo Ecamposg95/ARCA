@@ -136,7 +136,7 @@ def create_transfer(
     )
     if waiting is not None:
         return JSONResponse(status_code=202, content=approvals.pending_body(db, waiting))
-    legs = service.create_transfer(db, org_id, payload, user.id)
+    legs = service.create_transfer_from_payload(db, org_id, payload, user.id)
     return [TransactionRead.model_validate(leg) for leg in legs]
 
 

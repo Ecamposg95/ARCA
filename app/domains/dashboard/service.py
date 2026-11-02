@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.expense import Expense
-from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
+from app.models.financial_account import (
+    AVAILABLE_ACCOUNT_TYPES,
+    IN_TRANSIT_ACCOUNT_TYPES,
+    LIABILITY_ACCOUNT_TYPES,
+    FinancialAccount,
+)
 from app.models.payable import Payable
 from app.models.receivable import Receivable
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
@@ -49,12 +54,12 @@ def outstanding(
     return Decimal(total or 0) - Decimal(paid or 0)
 
 
-def _account_balances(db: Session, organization_id: str, asset: bool, business_unit_id: str | None) -> Decimal:
+def _account_balances(db: Session, organization_id: str, types: tuple[str, ...], business_unit_id: str | None) -> Decimal:
     query = db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0)).filter(
         FinancialAccount.organization_id == organization_id,
         FinancialAccount.deleted_at.is_(None),
         FinancialAccount.active.is_(True),
-        FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES) if asset else FinancialAccount.type.notin_(ASSET_ACCOUNT_TYPES),
+        FinancialAccount.type.in_(types),
     )
     # Las cajas son de una unidad; de un contribuyente no (el dinero es uno).
     if business_unit_id:
@@ -66,9 +71,15 @@ def available_cash(db: Session, organization_id: str, business_unit_id: str | No
     """Efectivo disponible: sólo instrumentos de activo.
 
     Sumar el saldo de una tarjeta restaría deuda al efectivo y diría que tienes
-    menos dinero del que tienes.
+    menos dinero del que tienes. Lo que trae un procesador de pagos tampoco
+    cuenta: es tuyo, pero no lo puedes gastar hasta que liquide al banco.
     """
-    return _account_balances(db, organization_id, asset=True, business_unit_id=business_unit_id)
+    return _account_balances(db, organization_id, AVAILABLE_ACCOUNT_TYPES, business_unit_id)
+
+
+def in_transit_total(db: Session, organization_id: str, business_unit_id: str | None = None) -> Decimal:
+    """Por recibir de procesadores: cobrado con tarjeta y aún no depositado."""
+    return _account_balances(db, organization_id, IN_TRANSIT_ACCOUNT_TYPES, business_unit_id)
 
 
 def _month_start(day: date) -> date:
@@ -203,7 +214,8 @@ def summary(
     dims = {"business_unit_id": business_unit_id, "fiscal_entity_id": fiscal_entity_id}
 
     cash = available_cash(db, organization_id, business_unit_id)
-    card_debt = _account_balances(db, organization_id, asset=False, business_unit_id=business_unit_id)
+    in_transit = in_transit_total(db, organization_id, business_unit_id)
+    card_debt = _account_balances(db, organization_id, LIABILITY_ACCOUNT_TYPES, business_unit_id)
 
     monthly_revenue = account_type_balance(db, organization_id, "REVENUE", start=month_start, end=today, **dims)
     monthly_expenses = account_type_balance(db, organization_id, "EXPENSE", start=month_start, end=today, **dims)
@@ -281,6 +293,7 @@ def summary(
 
     return {
         "cash": cash,
+        "in_transit_total": in_transit,
         "card_debt": card_debt,
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,

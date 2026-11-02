@@ -252,20 +252,22 @@ def cash_projection(db: Session, organization_id: str, days: int = 90) -> dict:
     """
     from datetime import timedelta
 
-    from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
+    from app.models.financial_account import AVAILABLE_ACCOUNT_TYPES, FinancialAccount
     from app.models.payable import Payable
     from app.models.receivable import Receivable
 
     today = date_type.today()
     horizon = today + timedelta(days=days)
 
+    # Se parte de lo disponible: lo que un procesador aún no deposita no se
+    # puede gastar mañana.
     opening = Decimal(
         db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
         .filter(
             FinancialAccount.organization_id == organization_id,
             FinancialAccount.deleted_at.is_(None),
             FinancialAccount.active.is_(True),
-            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+            FinancialAccount.type.in_(AVAILABLE_ACCOUNT_TYPES),
         )
         .scalar()
         or 0
@@ -562,11 +564,17 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
     quedaría en el pasado remoto, no en el número que importa.
 
     Las tarjetas no participan: son deuda, y mezclarlas dibujaría una curva de
-    "efectivo" que nadie tiene.
+    "efectivo" que nadie tiene. Los procesadores de pagos tampoco entran a la
+    curva de disponible: van en su propia serie `in_transit`, que sólo
+    aparece si la empresa tiene alguno.
     """
     from datetime import timedelta
 
-    from app.models.financial_account import ASSET_ACCOUNT_TYPES, FinancialAccount
+    from app.models.financial_account import (
+        AVAILABLE_ACCOUNT_TYPES,
+        IN_TRANSIT_ACCOUNT_TYPES,
+        FinancialAccount,
+    )
     from app.models.transaction import INFLOW_TYPES, FinancialTransaction
 
     today = date_type.today()
@@ -576,12 +584,14 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
         FinancialAccount.organization_id == organization_id,
         FinancialAccount.deleted_at.is_(None),
         FinancialAccount.active.is_(True),
-        FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
+        FinancialAccount.type.in_(AVAILABLE_ACCOUNT_TYPES + IN_TRANSIT_ACCOUNT_TYPES),
     )
     if business_unit_id:
         accounts_query = accounts_query.filter(FinancialAccount.business_unit_id == business_unit_id)
-    accounts = accounts_query.order_by(FinancialAccount.created_at).all()
-    account_ids = [account.id for account in accounts]
+    all_accounts = accounts_query.order_by(FinancialAccount.created_at).all()
+    accounts = [account for account in all_accounts if account.type in AVAILABLE_ACCOUNT_TYPES]
+    processors = [account for account in all_accounts if account.type in IN_TRANSIT_ACCOUNT_TYPES]
+    account_ids = [account.id for account in all_accounts]
 
     # Un solo query agrupado por (cuenta, día): alimenta la curva global y las
     # sparklines por cuenta sin N consultas.
@@ -608,12 +618,16 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
     per_account_delta: dict[str, dict[date_type, Decimal]] = {aid: {} for aid in account_ids}
     inflows_by_day: dict[date_type, Decimal] = {}
     outflows_by_day: dict[date_type, Decimal] = {}
+    available_ids = {account.id for account in accounts}
     for account_id, day, tx_type, amount in rows:
         amount = Decimal(amount)
         signed = amount if tx_type in INFLOW_TYPES else -amount
         per_account_delta[account_id][day] = (
             per_account_delta[account_id].get(day, Decimal("0")) + signed
         )
+        # Lo que entra al procesador todavía no es entrada de efectivo.
+        if account_id not in available_ids:
+            continue
         if tx_type in INFLOW_TYPES:
             inflows_by_day[day] = inflows_by_day.get(day, Decimal("0")) + amount
         else:
@@ -630,12 +644,16 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
         balances.reverse()
         return balances
 
+    def total_series(group: list) -> list[Decimal]:
+        now = sum((Decimal(a.current_balance) for a in group), Decimal("0"))
+        deltas: dict[date_type, Decimal] = {}
+        for account in group:
+            for day, value in per_account_delta[account.id].items():
+                deltas[day] = deltas.get(day, Decimal("0")) + value
+        return walk_back(now, deltas)
+
     total_now = sum((Decimal(a.current_balance) for a in accounts), Decimal("0"))
-    total_deltas: dict[date_type, Decimal] = {}
-    for deltas in per_account_delta.values():
-        for day, value in deltas.items():
-            total_deltas[day] = total_deltas.get(day, Decimal("0")) + value
-    balances = walk_back(total_now, total_deltas)
+    balances = total_series(accounts)
 
     points = [
         {
@@ -680,7 +698,7 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
         if avg_monthly_burn > 0:
             runway_months = total_now / avg_monthly_burn
 
-    return {
+    result = {
         "start": start,
         "end": today,
         "points": points,
@@ -690,6 +708,14 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
             runway_months.quantize(Decimal("0.1")) if runway_months is not None else None
         ),
     }
+    if processors:
+        # La serie de tránsito sólo existe si hay procesadores: una empresa
+        # sin NetPay recibe exactamente la respuesta de siempre.
+        result["in_transit"] = [
+            {"date": day, "balance": balance}
+            for day, balance in zip(day_list, total_series(processors), strict=False)
+        ]
+    return result
 
 
 def category_series(

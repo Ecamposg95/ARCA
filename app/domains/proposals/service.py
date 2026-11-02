@@ -25,7 +25,7 @@ from app.domains.proposals.schemas import ExpensePaymentPayload, PayablePaymentP
 from app.domains.receivables.schemas import ReceivableCreate
 from app.domains.receivables.service import create_receivable
 from app.domains.transactions.schemas import TransferCreate
-from app.domains.transactions.service import create_transfer
+from app.domains.transactions.service import create_transfer_from_payload
 from app.models.agent import AgentProposal
 from app.models.expense import Expense
 from app.models.payable import Payable
@@ -76,7 +76,7 @@ def _pay_payable(db: Session, org_id: str, payload: PayablePaymentPayload, user_
 
 def _transfer(db: Session, org_id: str, payload: TransferCreate, user_id: str):
     # El resultado es el movimiento de salida; la entrada comparte su grupo.
-    return create_transfer(db, org_id, payload, user_id)[0]
+    return create_transfer_from_payload(db, org_id, payload, user_id)[0]
 
 
 _EXECUTORS = {
