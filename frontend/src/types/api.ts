@@ -157,9 +157,22 @@ export interface AgentKey {
   token?: string // solo presente al crear
 }
 
+export type ProposalKind =
+  | 'INCOME'
+  | 'EXPENSE'
+  | 'RECEIVABLE'
+  | 'PAYABLE'
+  | 'EXPENSE_PAYMENT'
+  | 'PAYABLE_PAYMENT'
+  | 'TRANSFER'
+
+/** De dónde salió una propuesta: lo capturó alguien y espera autorización,
+ *  lo propuso un agente, el asistente o ONE Finance (recurrentes). */
+export type ProposalSource = 'approval' | 'agent' | 'assistant' | 'system'
+
 export interface Proposal {
   id: string
-  kind: 'INCOME' | 'EXPENSE' | 'RECEIVABLE' | 'PAYABLE'
+  kind: ProposalKind
   payload: Record<string, unknown>
   summary: string
   evidence: string | null
@@ -168,6 +181,22 @@ export interface Proposal {
   result_id: string | null
   created_at: string
   agent_name: string | null
+  source: ProposalSource | null
+  requested_by_name: string | null
+}
+
+/** Cuerpo del 202: la operación no se registró, espera a quien autoriza. */
+export interface PendingApproval {
+  pending_approval: true
+  proposal_id: string
+  detail: string
+  authorizers: string[]
+}
+
+/** Autorización por monto de la empresa. Vacío = sin autorización / sin límite. */
+export interface ApprovalSettings {
+  approval_threshold: string | null
+  member_capture_limit: string | null
 }
 
 export type DebtDisplayStatus = 'OPEN' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE'
@@ -504,6 +533,8 @@ export interface CashProjection {
 export interface Membership {
   organization_id: string
   role: string
+  /** Facultad efectiva de autorizar (el dueño siempre la tiene). */
+  can_authorize: boolean
 }
 
 export interface MeResponse {

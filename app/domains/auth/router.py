@@ -16,6 +16,7 @@ from app.domains.auth.service import authenticate_user, register_user
 from app.models.organization import Organization, OrganizationMember
 from app.models.user import User
 from app.security.deps import get_current_user
+from app.services import approvals
 from app.security.tokens import TokenError, create_access_token, create_refresh_token, decode_token
 
 router = APIRouter(tags=["auth"])
@@ -87,6 +88,11 @@ def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     )
     return MeResponse(
         user=UserRead.model_validate(user),
-        memberships=[MembershipRead.model_validate(m) for m in memberships],
+        memberships=[
+            MembershipRead(
+                organization_id=m.organization_id, role=m.role, can_authorize=approvals.can_authorize(m)
+            )
+            for m in memberships
+        ],
         organizations=[OrganizationRead.model_validate(o) for o in organizations],
     )

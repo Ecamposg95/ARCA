@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
+import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
+import { handlePendingApproval } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -225,7 +227,9 @@ export function DebtsPage({ config }: { config: Config }) {
   const payMutation = useMutation({
     mutationFn: async () => {
       if (!payTarget) return
-      await api.post(`${config.endpoint}/${payTarget.id}/${config.payEndpoint}`, payForm)
+      handlePendingApproval(
+        await api.post(`${config.endpoint}/${payTarget.id}/${config.payEndpoint}`, payForm),
+      )
     },
     onSuccess: () => {
       invalidate()
@@ -324,6 +328,7 @@ export function DebtsPage({ config }: { config: Config }) {
 
   return (
     <div>
+      {config.kind === 'payables' ? <ApprovalNotice /> : null}
       <PageHeader
         title={config.title}
         description={config.description}
