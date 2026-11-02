@@ -7,7 +7,7 @@ from app.domains.financial_accounts.schemas import (
     FinancialAccountRead,
     FinancialAccountUpdate,
 )
-from app.domains.financial_accounts.service import create_financial_account
+from app.domains.financial_accounts.service import create_financial_account, validate_settlement_account
 from app.models.financial_account import FinancialAccount
 from app.models.organization import WRITE_ROLES
 from app.models.user import User
@@ -68,6 +68,9 @@ def create_account(
         credit_limit=payload.credit_limit,
         created_by=user.id,
         business_unit_id=payload.business_unit_id,
+        fee_rate=payload.fee_rate,
+        settlement_days=payload.settlement_days,
+        settlement_account_id=payload.settlement_account_id,
     )
     db.commit()
     db.refresh(account)
@@ -94,6 +97,12 @@ def update_account(
     account = _get_account(db, org_id, account_id)
     changes = payload.model_dump(exclude_unset=True)
     validate_dimensions(db, org_id, changes.get("business_unit_id"), None)
+    if changes.get("settlement_account_id"):
+        validate_settlement_account(db, org_id, changes["settlement_account_id"])
+    if account.type != "PROCESSOR":
+        # Tasa, días y banco destino sólo tienen sentido en un procesador.
+        for field in ("fee_rate", "settlement_days", "settlement_account_id"):
+            changes.pop(field, None)
     for field, value in changes.items():
         setattr(account, field, value)
     db.commit()

@@ -1,26 +1,22 @@
 from datetime import date as date_type
 from datetime import datetime
 from decimal import Decimal
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.domains.transactions import service
 from app.models.organization import WRITE_ROLES
-from app.models.financial_account import is_liability
 from app.models.transaction import FinancialTransaction
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.models.accounting import JournalEntry
 from app.models.fiscal_entity import FiscalEntity
-from app.services.accounting.rules import transfer_entry
-from app.services.accounting.coa import ledger_code_for
-from app.services.dimensions import tag_entry, transaction_filters, validate_dimensions
+from app.services.dimensions import transaction_filters
 from app.services.running_balance import running_balances
-from app.services.transactions import get_locked_account, record_transaction
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -137,61 +133,19 @@ def create_transfer(
     user: User = Depends(get_current_user),
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
-    if payload.from_account_id == payload.to_account_id:
-        raise ValueError("Elige dos cuentas distintas para el traspaso.")
-
-    origin = get_locked_account(db, org_id, payload.from_account_id)
-    destination = get_locked_account(db, org_id, payload.to_account_id)
-    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
-    if is_liability(destination.type):
-        default_description = f"Pago de {destination.name} desde {origin.name}"
-    else:
-        default_description = f"Traspaso de {origin.name} a {destination.name}"
-    description = payload.description or default_description
-    group_id = str(uuid4())
-
-    outgoing = record_transaction(
-        db,
-        organization_id=org_id,
-        financial_account_id=origin.id,
-        transaction_type="TRANSFER_OUT",
-        amount=payload.amount,
-        date=payload.date,
-        description=description,
-        source_type="transfer",
-        transfer_group_id=group_id,
-        created_by=user.id,
-    )
-    incoming = record_transaction(
-        db,
-        organization_id=org_id,
-        financial_account_id=destination.id,
-        transaction_type="TRANSFER_IN",
-        amount=payload.amount,
-        date=payload.date,
-        description=description,
-        source_type="transfer",
-        transfer_group_id=group_id,
-        created_by=user.id,
-    )
-    entry = transfer_entry(
+    transfer = service.create_transfer(
         db,
         org_id,
-        description=description,
+        from_account_id=payload.from_account_id,
+        to_account_id=payload.to_account_id,
         amount=payload.amount,
         date=payload.date,
-        from_account_name=origin.name,
-        to_account_name=destination.name,
-        source_id=group_id,
-        created_by=user.id,
-        from_account_code=ledger_code_for(origin.type),
-        to_account_code=ledger_code_for(destination.type),
+        description=payload.description,
+        user_id=user.id,
+        business_unit_id=payload.business_unit_id,
+        fiscal_entity_id=payload.fiscal_entity_id,
     )
-    # La póliza lleva la unidad indicada; si no viene y ambas cajas son de la
-    # misma unidad, esa. Entre unidades distintas no es de ninguna.
-    same_unit = origin.business_unit_id if origin.business_unit_id == destination.business_unit_id else None
-    tag_entry(entry, payload.business_unit_id or same_unit, payload.fiscal_entity_id)
     db.commit()
-    db.refresh(outgoing)
-    db.refresh(incoming)
-    return [TransactionRead.model_validate(outgoing), TransactionRead.model_validate(incoming)]
+    db.refresh(transfer.outgoing)
+    db.refresh(transfer.incoming)
+    return [TransactionRead.model_validate(transfer.outgoing), TransactionRead.model_validate(transfer.incoming)]

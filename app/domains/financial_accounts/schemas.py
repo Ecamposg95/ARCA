@@ -6,7 +6,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-FinancialAccountType = Literal["CASH", "BANK", "CREDIT_CARD", "OTHER"]
+from app.models.financial_account import AVAILABLE_ACCOUNT_TYPES, LIABILITY_ACCOUNT_TYPES
+
+FinancialAccountType = Literal["CASH", "BANK", "CREDIT_CARD", "PROCESSOR", "OTHER"]
 
 
 class FinancialAccountCreate(BaseModel):
@@ -18,6 +20,11 @@ class FinancialAccountCreate(BaseModel):
     credit_limit: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)
     # A qué unidad pertenece la caja (la caja de Morelos). Opcional.
     business_unit_id: str | None = None
+    # Sólo procesadores: comisión pactada (0.035 = 3.5 %), días en que
+    # deposita y banco donde liquida.
+    fee_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    settlement_days: int | None = Field(default=None, ge=0, le=365)
+    settlement_account_id: str | None = None
 
 
 class FinancialAccountUpdate(BaseModel):
@@ -26,6 +33,9 @@ class FinancialAccountUpdate(BaseModel):
     last_four: str | None = Field(default=None, max_length=4)
     active: bool | None = None
     business_unit_id: str | None = None
+    fee_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    settlement_days: int | None = Field(default=None, ge=0, le=365)
+    settlement_account_id: str | None = None
 
 
 class FinancialAccountRead(BaseModel):
@@ -43,13 +53,22 @@ class FinancialAccountRead(BaseModel):
     active: bool
     business_unit_id: str | None = None
     business_unit_name: str | None = None
+    fee_rate: Decimal | None = None
+    settlement_days: int | None = None
+    settlement_account_id: str | None = None
     created_at: datetime
 
     @computed_field
     @property
     def is_liability(self) -> bool:
         """Una tarjeta registra deuda: su saldo es lo que debes, no lo que tienes."""
-        return self.type in ("CREDIT_CARD",)
+        return self.type in LIABILITY_ACCOUNT_TYPES
+
+    @computed_field
+    @property
+    def available(self) -> bool:
+        """Si el saldo cuenta como disponible. Un procesador no: está en tránsito al banco."""
+        return self.type in AVAILABLE_ACCOUNT_TYPES
 
     @computed_field
     @property
