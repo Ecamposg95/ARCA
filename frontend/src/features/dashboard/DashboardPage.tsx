@@ -3,6 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/Button'
+import {
+  DimensionChips,
+  DimensionFilterSelects,
+  dimensionParams,
+  type DimensionValues,
+} from '@/components/ui/DimensionFields'
 import { Money } from '@/components/ui/Money'
 import { Card } from '@/components/ui/Table'
 import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear, formatShortDay } from '@/lib/format'
@@ -131,16 +137,40 @@ export function DashboardPage() {
   // La granularidad vive en la URL: "mira las últimas semanas" se comparte.
   const [searchParams, setSearchParams] = useSearchParams()
   const granularity: 'month' | 'week' = searchParams.get('flujo') === 'semana' ? 'week' : 'month'
-  const setGranularity = (next: 'month' | 'week') =>
-    setSearchParams(next === 'week' ? { flujo: 'semana' } : {}, { replace: true })
+  const setGranularity = (next: 'month' | 'week') => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'week') params.set('flujo', 'semana')
+    else params.delete('flujo')
+    setSearchParams(params, { replace: true })
+  }
+  // La unidad y el contribuyente también: "el tablero de Morelos" es un enlace.
+  // Con filtro, saldos, series y gasto por categoría son sólo de esa dimensión.
+  const dimensions: DimensionValues = {
+    business_unit_id: searchParams.get('unidad') ?? '',
+    fiscal_entity_id: searchParams.get('contribuyente') ?? '',
+  }
+  const setDimensions = (next: Partial<DimensionValues>) => {
+    const merged = { ...dimensions, ...next }
+    const params = new URLSearchParams(searchParams)
+    if (merged.business_unit_id) params.set('unidad', merged.business_unit_id)
+    else params.delete('unidad')
+    if (merged.fiscal_entity_id) params.set('contribuyente', merged.fiscal_entity_id)
+    else params.delete('contribuyente')
+    setSearchParams(params, { replace: true })
+  }
+  const dims = dimensionParams(dimensions)
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary')).data,
+    queryKey: ['dashboard', dims],
+    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary', { params: dims })).data,
   })
   const { data: flow } = useQuery({
-    queryKey: ['dashboard', 'flow', granularity],
+    queryKey: ['dashboard', 'flow', granularity, dims],
     queryFn: async () =>
-      (await api.get<CashFlowSeries>(`/dashboard/cash-flow?granularity=${granularity}`)).data,
+      (
+        await api.get<CashFlowSeries>('/dashboard/cash-flow', {
+          params: { granularity, ...dims },
+        })
+      ).data,
   })
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -195,6 +225,13 @@ export function DashboardPage() {
 
   return (
     <div>
+      {/* Sólo si la empresa tiene unidades o contribuyentes: el componente se
+          esconde solo cuando no hay nada que elegir. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 empty:hidden">
+        <DimensionFilterSelects value={dimensions} onChange={setDimensions} />
+        <DimensionChips value={dimensions} onChange={setDimensions} />
+      </div>
+
       {/* Lo primero que importa: cuánto dinero hay —y cuánto de eso ya está comprometido. */}
       <header className="mb-7 flex flex-wrap items-end gap-x-10 gap-y-3">
         <div>

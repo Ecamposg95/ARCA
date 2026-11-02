@@ -212,12 +212,17 @@ def account_type_balance(
     start: date_type | None = None,
     end: date_type | None = None,
     include_closing: bool = False,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
 ) -> Decimal:
     """Saldo neto (naturaleza normal) de todas las cuentas de un tipo, desde el ledger.
 
     Sin `include_closing` se ignoran las pólizas de cierre anual: traspasan el
     resultado a capital, no son ventas ni gastos. El balance general sí las pide.
+    Con unidad o entidad, sólo las pólizas marcadas con ellas.
     """
+    from app.services.dimensions import entry_filters
+
     query = (
         db.query(
             func.coalesce(func.sum(JournalEntryLine.debit), 0),
@@ -229,6 +234,7 @@ def account_type_balance(
             JournalEntry.organization_id == organization_id,
             JournalEntry.status == "POSTED",
             Account.type == account_type,
+            *entry_filters(business_unit_id, fiscal_entity_id),
         )
     )
     if not include_closing:
@@ -245,8 +251,17 @@ def account_type_balance(
     return credit - debit
 
 
-def trial_balance(db: Session, organization_id: str, as_of: date_type | None = None) -> list[dict]:
-    """Balanza de comprobación: una fila por cuenta con movimientos."""
+def trial_balance(
+    db: Session,
+    organization_id: str,
+    as_of: date_type | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> list[dict]:
+    """Balanza de comprobación: una fila por cuenta con movimientos. Filtrada por
+    unidad o entidad sigue cuadrando: cada póliza lleva sus dos dimensiones entera."""
+    from app.services.dimensions import entry_filters
+
     query = (
         db.query(
             Account.code,
@@ -260,6 +275,7 @@ def trial_balance(db: Session, organization_id: str, as_of: date_type | None = N
         .filter(
             Account.organization_id == organization_id,
             JournalEntry.status == "POSTED",
+            *entry_filters(business_unit_id, fiscal_entity_id),
         )
         .group_by(Account.code, Account.name, Account.type)
         .order_by(Account.code)

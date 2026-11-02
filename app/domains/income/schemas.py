@@ -16,6 +16,10 @@ class IncomeCreate(BaseModel):
     tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     category_id: str
     project_id: str | None = None
+    # Dimensiones del libro: la unidad se hereda de la cuenta si no viene;
+    # la entidad fiscal nunca se infiere.
+    business_unit_id: str | None = None
+    fiscal_entity_id: str | None = None
     financial_account_id: str | None = None
     status: Literal["PENDING", "PAID"] = "PENDING"
     notes: str | None = Field(default=None, max_length=1000)
@@ -43,6 +47,10 @@ class IncomeRead(BaseModel):
     tax_amount: Decimal
     category_id: str
     project_id: str | None = None
+    business_unit_id: str | None = None
+    business_unit_name: str | None = None
+    fiscal_entity_id: str | None = None
+    fiscal_entity_name: str | None = None
     financial_account_id: str | None
     status: str
     notes: str | None

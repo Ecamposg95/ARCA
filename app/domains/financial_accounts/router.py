@@ -12,6 +12,7 @@ from app.models.financial_account import FinancialAccount
 from app.models.organization import WRITE_ROLES
 from app.models.user import User
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services.dimensions import validate_dimensions
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -66,6 +67,7 @@ def create_account(
         last_four=payload.last_four,
         credit_limit=payload.credit_limit,
         created_by=user.id,
+        business_unit_id=payload.business_unit_id,
     )
     db.commit()
     db.refresh(account)
@@ -90,7 +92,9 @@ def update_account(
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
     account = _get_account(db, org_id, account_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    validate_dimensions(db, org_id, changes.get("business_unit_id"), None)
+    for field, value in changes.items():
         setattr(account, field, value)
     db.commit()
     db.refresh(account)

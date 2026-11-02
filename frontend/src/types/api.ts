@@ -26,6 +26,42 @@ export interface Organization {
   default_tax_rate: string
   ai_budget_usd: string | null
   ai_enabled: boolean
+  /** Si la empresa definió unidades o contribuyentes (sólo en /organizations/current). */
+  has_business_units?: boolean
+  has_fiscal_entities?: boolean
+}
+
+/** Sucursal, toma de muestra, unidad móvil o canal: una etiqueta del libro, no una cuenta. */
+export interface BusinessUnit {
+  id: string
+  name: string
+  code: string
+  kind: 'MATRIZ' | 'TOMA_MUESTRA' | 'UNIDAD_MOVIL' | 'CANAL' | 'OTRA'
+  active: boolean
+  opened_on: string | null
+  aliases: string[]
+  sort_order: number
+  accounts_count: number
+  created_at: string
+}
+
+/** Contribuyente bajo el que se declara una operación. */
+export interface FiscalEntity {
+  id: string
+  name: string
+  tax_id: string | null
+  regime: string | null
+  active: boolean
+  sort_order: number
+  created_at: string
+}
+
+/** Las dos dimensiones opcionales que lleva cada operación y su póliza. */
+export interface Dimensioned {
+  business_unit_id: string | null
+  business_unit_name: string | null
+  fiscal_entity_id: string | null
+  fiscal_entity_name: string | null
 }
 
 export interface AuthResponse {
@@ -48,6 +84,9 @@ export interface FinancialAccount {
   is_liability: boolean
   available_credit: string | null
   active: boolean
+  /** A qué unidad pertenece la caja; las operaciones pagadas con ella la heredan. */
+  business_unit_id: string | null
+  business_unit_name: string | null
   created_at: string
 }
 
@@ -73,7 +112,7 @@ export interface Contact {
 
 export type OperationStatus = 'PENDING' | 'PAID' | 'CANCELLED'
 
-export interface Income {
+export interface Income extends Dimensioned {
   id: string
   date: string
   customer_id: string | null
@@ -87,7 +126,7 @@ export interface Income {
   created_at: string
 }
 
-export interface Expense {
+export interface Expense extends Dimensioned {
   id: string
   date: string
   vendor_id: string | null
@@ -133,7 +172,7 @@ export interface Proposal {
 
 export type DebtDisplayStatus = 'OPEN' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE'
 
-export interface Debt {
+export interface Debt extends Dimensioned {
   id: string
   customer_id?: string
   vendor_id?: string
@@ -151,7 +190,7 @@ export interface Debt {
   created_at: string
 }
 
-export interface Transaction {
+export interface Transaction extends Dimensioned {
   id: string
   financial_account_id: string
   transaction_type: string
@@ -363,7 +402,7 @@ export interface JournalLine {
   description: string | null
 }
 
-export interface JournalEntry {
+export interface JournalEntry extends Dimensioned {
   id: string
   folio: string
   kind: 'INGRESO' | 'EGRESO' | 'DIARIO'

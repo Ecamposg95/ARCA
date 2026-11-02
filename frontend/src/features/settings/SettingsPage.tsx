@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { AssistantCard } from '@/features/settings/AssistantCard'
+import { DimensionsCard } from '@/features/settings/DimensionsCard'
 import { TeamCard } from '@/features/settings/TeamCard'
 import { useAuthStore } from '@/stores/authStore'
 import type { AgentKey, Organization } from '@/types/api'
@@ -93,6 +94,7 @@ export function SettingsPage() {
         </form>
       </Card>
 
+      <DimensionsCard />
       <TeamCard />
       <AgentKeysSection />
       <AssistantCard />

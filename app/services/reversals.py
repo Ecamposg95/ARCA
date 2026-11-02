@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.models.accounting import JournalEntry
 from app.models.transaction import FinancialTransaction
 from app.services.accounting.rules import REVERSAL_PREFIX, reversal_of
+from app.services.dimensions import tag_entry
 from app.services.transactions import record_transaction
 
 # Qué movimiento deshace a cuál. Un reverso no es un gasto ni un ingreso.
@@ -73,7 +74,10 @@ def reverse_operation(
         .all()
     )
     for entry in entries:
-        reversal_of(db, organization_id, entry, description, date, created_by=user_id)
+        # El espejo lleva la misma unidad y entidad que el original: deshacer
+        # un gasto de Morelos se ve en Morelos.
+        mirror = reversal_of(db, organization_id, entry, description, date, created_by=user_id)
+        tag_entry(mirror, entry.business_unit_id, entry.fiscal_entity_id)
 
     movements = (
         db.query(FinancialTransaction)
@@ -99,6 +103,7 @@ def reverse_operation(
             source_type=f"{source_type}_reversal",
             source_id=source_id,
             created_by=user_id,
+            business_unit_id=movement.business_unit_id,
         )
 
     return {"entries": len(entries), "movements": len(movements)}

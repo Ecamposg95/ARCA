@@ -26,6 +26,8 @@ from app.domains.agent_team.router import router as agent_team_router
 from app.domains.recurring.router import router as recurring_router
 from app.domains.portfolio.router import router as portfolio_router
 from app.domains.assistant.router import router as assistant_router
+from app.domains.business_units.router import router as business_units_router
+from app.domains.fiscal_entities.router import router as fiscal_entities_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -53,3 +55,5 @@ api_router.include_router(agent_team_router)
 api_router.include_router(recurring_router)
 api_router.include_router(portfolio_router)
 api_router.include_router(assistant_router)
+api_router.include_router(business_units_router)
+api_router.include_router(fiscal_entities_router)

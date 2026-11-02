@@ -4,6 +4,11 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from '@/api/client'
+import {
+  DimensionFilterSelects,
+  dimensionParams,
+  type DimensionValues,
+} from '@/components/ui/DimensionFields'
 import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, Table } from '@/components/ui/Table'
@@ -201,34 +206,55 @@ export function ReportsPage() {
     return { start: iso(prevStart), end: iso(prevEnd) }
   })()
 
+  // Unidad y contribuyente viven en la URL junto con la pestaña: "el estado de
+  // resultados de Morelos" se manda al contador como enlace.
+  const dimensions: DimensionValues = {
+    business_unit_id: searchParams.get('unidad') ?? '',
+    fiscal_entity_id: searchParams.get('contribuyente') ?? '',
+  }
+  const setDimensions = (next: Partial<DimensionValues>) => {
+    const merged = { ...dimensions, ...next }
+    const params = new URLSearchParams(searchParams)
+    if (merged.business_unit_id) params.set('unidad', merged.business_unit_id)
+    else params.delete('unidad')
+    if (merged.fiscal_entity_id) params.set('contribuyente', merged.fiscal_entity_id)
+    else params.delete('contribuyente')
+    setSearchParams(params, { replace: true })
+  }
+  const dims = new URLSearchParams(dimensionParams(dimensions)).toString()
+  const withDims = (query: string) => (dims ? `${query}&${dims}` : query)
+
   const profitLossQuery = useQuery({
-    queryKey: ['reports', 'pl', start, end],
-    queryFn: async () => (await api.get<ProfitLoss>(`/reports/profit-loss?start=${start}&end=${end}`)).data,
+    queryKey: ['reports', 'pl', start, end, dims],
+    queryFn: async () =>
+      (await api.get<ProfitLoss>(withDims(`/reports/profit-loss?start=${start}&end=${end}`))).data,
     enabled: tab === 'pl',
   })
   const previousProfitLossQuery = useQuery({
-    queryKey: ['reports', 'pl-prev', previousRange.start, previousRange.end],
+    queryKey: ['reports', 'pl-prev', previousRange.start, previousRange.end, dims],
     queryFn: async () =>
       (
         await api.get<ProfitLoss>(
-          `/reports/profit-loss?start=${previousRange.start}&end=${previousRange.end}`,
+          withDims(`/reports/profit-loss?start=${previousRange.start}&end=${previousRange.end}`),
         )
       ).data,
     enabled: tab === 'pl',
   })
   const balanceQuery = useQuery({
-    queryKey: ['reports', 'balance', end],
-    queryFn: async () => (await api.get<BalanceSheet>(`/reports/balance-sheet?as_of=${end}`)).data,
+    queryKey: ['reports', 'balance', end, dims],
+    queryFn: async () =>
+      (await api.get<BalanceSheet>(withDims(`/reports/balance-sheet?as_of=${end}`))).data,
     enabled: tab === 'balance',
   })
   const vatQuery = useQuery({
-    queryKey: ['reports', 'iva', start, end],
-    queryFn: async () => (await api.get<VatReport>(`/reports/iva?start=${start}&end=${end}`)).data,
+    queryKey: ['reports', 'iva', start, end, dims],
+    queryFn: async () => (await api.get<VatReport>(withDims(`/reports/iva?start=${start}&end=${end}`))).data,
     enabled: tab === 'iva',
   })
   const flowQuery = useQuery({
-    queryKey: ['reports', 'flow', start, end],
-    queryFn: async () => (await api.get<CashFlow>(`/reports/cash-flow?start=${start}&end=${end}`)).data,
+    queryKey: ['reports', 'flow', start, end, dims],
+    queryFn: async () =>
+      (await api.get<CashFlow>(withDims(`/reports/cash-flow?start=${start}&end=${end}`))).data,
     enabled: tab === 'flow',
   })
   const [agingKind, setAgingKind] = useState<'receivable' | 'payable'>('receivable')
@@ -275,7 +301,11 @@ export function ReportsPage() {
                 type="button"
                 onClick={() => {
                   // Con la sesión del usuario: el enlace directo respondía 401.
-                  downloadFile(`/reports/${CSV_REPORTS[tab]}/csv`, { start, end }, 'reporte.csv').catch(
+                  downloadFile(
+                    `/reports/${CSV_REPORTS[tab]}/csv`,
+                    { start, end, ...dimensionParams(dimensions) },
+                    'reporte.csv',
+                  ).catch(
                     async (err) => window.alert(await downloadErrorMessage(err)),
                   )
                 }}
@@ -311,8 +341,13 @@ export function ReportsPage() {
               </button>
             ))}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Cartera y patrimonio no se parten por unidad: no hay filtro que mentir. */}
+            {tab !== 'cartera' && tab !== 'patrimonio' ? (
+              <DimensionFilterSelects value={dimensions} onChange={setDimensions} />
+            ) : null}
           {tab !== 'balance' ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <>
               <select
                 value={period}
                 onChange={(event) => setPeriod(event.target.value)}
@@ -348,8 +383,9 @@ export function ReportsPage() {
                   />
                 </div>
               ) : null}
-            </div>
+            </>
           ) : null}
+          </div>
         </div>
       </PageHeader>
 

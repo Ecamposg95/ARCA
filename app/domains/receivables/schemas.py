@@ -16,6 +16,9 @@ class ReceivableCreate(BaseModel):
     due_date: date_type
     category_id: str
     project_id: str | None = None
+    # Dimensiones del libro. La entidad fiscal nunca se infiere.
+    business_unit_id: str | None = None
+    fiscal_entity_id: str | None = None
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -44,6 +47,10 @@ class ReceivableRead(BaseModel):
     due_date: date_type
     category_id: str
     project_id: str | None = None
+    business_unit_id: str | None = None
+    business_unit_name: str | None = None
+    fiscal_entity_id: str | None = None
+    fiscal_entity_name: str | None = None
     status: str
     notes: str | None
     created_at: datetime

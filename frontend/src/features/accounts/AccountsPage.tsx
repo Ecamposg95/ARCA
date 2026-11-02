@@ -10,7 +10,7 @@ import { Money } from '@/components/ui/Money'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { formatMoney, today } from '@/lib/format'
-import { useAccounts } from '@/lib/hooks'
+import { useAccounts, useDimensions } from '@/lib/hooks'
 
 const TYPE_LABELS: Record<string, string> = {
   CASH: 'Efectivo',
@@ -30,6 +30,7 @@ export function AccountsPage() {
     opening_balance: '',
     institution: '',
     credit_limit: '',
+    business_unit_id: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
@@ -37,6 +38,7 @@ export function AccountsPage() {
   const [payingCard, setPayingCard] = useState<{ id: string; name: string } | null>(null)
   const [payForm, setPayForm] = useState({ from_account_id: '', amount: '', date: today() })
   const { data: accounts, isLoading } = useAccounts()
+  const { activeUnits, hasUnits } = useDimensions()
 
   const payCardMutation = useMutation({
     mutationFn: async () => {
@@ -65,11 +67,13 @@ export function AccountsPage() {
       if (form.opening_balance) payload.opening_balance = form.opening_balance
       if (form.institution) payload.institution = form.institution
       if (form.type === 'CREDIT_CARD' && form.credit_limit) payload.credit_limit = form.credit_limit
+      if (form.business_unit_id) payload.business_unit_id = form.business_unit_id
       await api.post('/accounts', payload)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['accounts'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['business-units'] })
       closeModal()
     },
     onError: (err) => setError(errorMessage(err)),
@@ -77,7 +81,7 @@ export function AccountsPage() {
 
   function closeModal() {
     setModalOpen(false)
-    setForm({ name: '', type: 'BANK', opening_balance: '', institution: '', credit_limit: '' })
+    setForm({ name: '', type: 'BANK', opening_balance: '', institution: '', credit_limit: '', business_unit_id: '' })
     setError(null)
     if (searchParams.has('nueva')) {
       searchParams.delete('nueva')
@@ -156,6 +160,7 @@ export function AccountsPage() {
                             {TYPE_LABELS[account.type] ?? account.type}
                             {account.institution ? ` · ${account.institution}` : ''}
                             {account.last_four ? ` ····${account.last_four}` : ''}
+                            {account.business_unit_name ? ` · ${account.business_unit_name}` : ''}
                           </div>
                           {account.available_credit !== null ? (
                             <div className="mt-1.5 text-xs text-muted">
@@ -310,6 +315,15 @@ export function AccountsPage() {
             value={form.institution}
             onChange={(event) => setForm({ ...form, institution: event.target.value })}
           />
+          {hasUnits ? (
+            <SelectInput
+              label="Unidad (opcional)"
+              placeholder="Sin unidad"
+              options={activeUnits.map((unit) => ({ value: unit.id, label: unit.name }))}
+              value={form.business_unit_id}
+              onChange={(event) => setForm({ ...form, business_unit_id: event.target.value })}
+            />
+          ) : null}
           {error ? <p className="text-sm text-neg">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={closeModal}>

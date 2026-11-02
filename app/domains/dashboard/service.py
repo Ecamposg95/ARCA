@@ -13,9 +13,27 @@ from app.models.payable import Payable
 from app.models.receivable import Receivable
 from app.models.transaction import INFLOW_TYPES, FinancialTransaction
 from app.services.accounting.engine import account_type_balance
+from app.services.dimensions import transaction_filters
 
 
-def outstanding(db: Session, organization_id: str, model, overdue_only: bool = False) -> Decimal:
+def _operation_filters(model, business_unit_id: str | None, fiscal_entity_id: str | None) -> list:
+    """Filtros por dimensión sobre una operación (gasto, CxC, CxP)."""
+    conditions = []
+    if business_unit_id:
+        conditions.append(model.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        conditions.append(model.fiscal_entity_id == fiscal_entity_id)
+    return conditions
+
+
+def outstanding(
+    db: Session,
+    organization_id: str,
+    model,
+    overdue_only: bool = False,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> Decimal:
     """Saldo pendiente (amount - amount_paid) de cuentas abiertas o parciales."""
     query = db.query(
         func.coalesce(func.sum(model.amount), 0),
@@ -23,6 +41,7 @@ def outstanding(db: Session, organization_id: str, model, overdue_only: bool = F
     ).filter(
         model.organization_id == organization_id,
         model.status.in_(("OPEN", "PARTIAL")),
+        *_operation_filters(model, business_unit_id, fiscal_entity_id),
     )
     if overdue_only:
         query = query.filter(model.due_date < date.today())
@@ -30,23 +49,26 @@ def outstanding(db: Session, organization_id: str, model, overdue_only: bool = F
     return Decimal(total or 0) - Decimal(paid or 0)
 
 
-def available_cash(db: Session, organization_id: str) -> Decimal:
+def _account_balances(db: Session, organization_id: str, asset: bool, business_unit_id: str | None) -> Decimal:
+    query = db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0)).filter(
+        FinancialAccount.organization_id == organization_id,
+        FinancialAccount.deleted_at.is_(None),
+        FinancialAccount.active.is_(True),
+        FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES) if asset else FinancialAccount.type.notin_(ASSET_ACCOUNT_TYPES),
+    )
+    # Las cajas son de una unidad; de un contribuyente no (el dinero es uno).
+    if business_unit_id:
+        query = query.filter(FinancialAccount.business_unit_id == business_unit_id)
+    return Decimal(query.scalar() or 0)
+
+
+def available_cash(db: Session, organization_id: str, business_unit_id: str | None = None) -> Decimal:
     """Efectivo disponible: sólo instrumentos de activo.
 
     Sumar el saldo de una tarjeta restaría deuda al efectivo y diría que tienes
     menos dinero del que tienes.
     """
-    cash = (
-        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
-        .filter(
-            FinancialAccount.organization_id == organization_id,
-            FinancialAccount.deleted_at.is_(None),
-            FinancialAccount.active.is_(True),
-            FinancialAccount.type.in_(ASSET_ACCOUNT_TYPES),
-        )
-        .scalar()
-    )
-    return Decimal(cash or 0)
+    return _account_balances(db, organization_id, asset=True, business_unit_id=business_unit_id)
 
 
 def _month_start(day: date) -> date:
@@ -60,7 +82,13 @@ def _shift_months(day: date, months: int) -> date:
     return date(year, month, 1)
 
 
-def cash_flow_series(db: Session, organization_id: str, granularity: str = "month") -> dict:
+def cash_flow_series(
+    db: Session,
+    organization_id: str,
+    granularity: str = "month",
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
     """Entradas y salidas por periodo, con el desglose que alimenta el tooltip.
 
     `month`: últimos 6 meses. `week`: últimas 12 semanas ISO. Cada punto trae
@@ -109,6 +137,7 @@ def cash_flow_series(db: Session, organization_id: str, granularity: str = "mont
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
             FinancialTransaction.date >= series_start,
+            *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         .all()
     )
@@ -130,6 +159,7 @@ def cash_flow_series(db: Session, organization_id: str, granularity: str = "mont
             Expense.organization_id == organization_id,
             Expense.status == "PAID",
             Expense.date >= series_start,
+            *_operation_filters(Expense, business_unit_id, fiscal_entity_id),
         )
         .all()
     )
@@ -160,25 +190,23 @@ def cash_flow_series(db: Session, organization_id: str, granularity: str = "mont
     return {"granularity": granularity, "points": ordered}
 
 
-def summary(db: Session, organization_id: str) -> dict:
+def summary(
+    db: Session,
+    organization_id: str,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
+) -> dict:
+    """El tablero de Inicio. Con unidad o contribuyente, cada cifra es sólo de
+    esa dimensión; sin ellos, el negocio completo, como siempre."""
     today = date.today()
     month_start = _month_start(today)
+    dims = {"business_unit_id": business_unit_id, "fiscal_entity_id": fiscal_entity_id}
 
-    cash = available_cash(db, organization_id)
+    cash = available_cash(db, organization_id, business_unit_id)
+    card_debt = _account_balances(db, organization_id, asset=False, business_unit_id=business_unit_id)
 
-    card_debt = (
-        db.query(func.coalesce(func.sum(FinancialAccount.current_balance), 0))
-        .filter(
-            FinancialAccount.organization_id == organization_id,
-            FinancialAccount.deleted_at.is_(None),
-            FinancialAccount.active.is_(True),
-            FinancialAccount.type.notin_(ASSET_ACCOUNT_TYPES),
-        )
-        .scalar()
-    )
-
-    monthly_revenue = account_type_balance(db, organization_id, "REVENUE", start=month_start, end=today)
-    monthly_expenses = account_type_balance(db, organization_id, "EXPENSE", start=month_start, end=today)
+    monthly_revenue = account_type_balance(db, organization_id, "REVENUE", start=month_start, end=today, **dims)
+    monthly_expenses = account_type_balance(db, organization_id, "EXPENSE", start=month_start, end=today, **dims)
 
     # Mismo periodo del mes anterior (hasta el mismo día) para comparar peras con peras:
     # comparar 10 días de este mes contra 30 del anterior sería engañoso.
@@ -187,8 +215,12 @@ def summary(db: Session, organization_id: str) -> dict:
         _shift_months(previous_start, 1) - timedelta(days=1),
         previous_start + (today - month_start),
     )
-    previous_revenue = account_type_balance(db, organization_id, "REVENUE", start=previous_start, end=previous_end)
-    previous_expenses = account_type_balance(db, organization_id, "EXPENSE", start=previous_start, end=previous_end)
+    previous_revenue = account_type_balance(
+        db, organization_id, "REVENUE", start=previous_start, end=previous_end, **dims
+    )
+    previous_expenses = account_type_balance(
+        db, organization_id, "EXPENSE", start=previous_start, end=previous_end, **dims
+    )
 
     # Series de 6 meses desde movimientos
     series_start = _shift_months(today, -5)
@@ -202,6 +234,7 @@ def summary(db: Session, organization_id: str) -> dict:
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
             FinancialTransaction.date >= series_start,
+            *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         .all()
     )
@@ -239,6 +272,7 @@ def summary(db: Session, organization_id: str) -> dict:
             Expense.status == "PAID",
             Expense.date >= month_start,
             Expense.date <= today,
+            *_operation_filters(Expense, business_unit_id, fiscal_entity_id),
         )
         .group_by(Category.name)
         .order_by(func.sum(Expense.amount).desc())
@@ -247,7 +281,7 @@ def summary(db: Session, organization_id: str) -> dict:
 
     return {
         "cash": cash,
-        "card_debt": Decimal(card_debt or 0),
+        "card_debt": card_debt,
         "monthly_revenue": monthly_revenue,
         "monthly_expenses": monthly_expenses,
         "monthly_profit": monthly_revenue - monthly_expenses,
@@ -255,9 +289,9 @@ def summary(db: Session, organization_id: str) -> dict:
         "previous_expenses": previous_expenses,
         "previous_profit": previous_revenue - previous_expenses,
         "previous_period_end": previous_end,
-        "receivables": outstanding(db, organization_id, Receivable),
-        "overdue_receivables": outstanding(db, organization_id, Receivable, overdue_only=True),
-        "payables": outstanding(db, organization_id, Payable),
+        "receivables": outstanding(db, organization_id, Receivable, **dims),
+        "overdue_receivables": outstanding(db, organization_id, Receivable, overdue_only=True, **dims),
+        "payables": outstanding(db, organization_id, Payable, **dims),
         "cash_flow": [
             {"month": m, "inflows": flow[m]["inflows"], "outflows": flow[m]["outflows"]} for m in months
         ],

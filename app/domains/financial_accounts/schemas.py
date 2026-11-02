@@ -16,6 +16,8 @@ class FinancialAccountCreate(BaseModel):
     institution: str | None = Field(default=None, max_length=100)
     last_four: str | None = Field(default=None, max_length=4)
     credit_limit: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)
+    # A qué unidad pertenece la caja (la caja de Morelos). Opcional.
+    business_unit_id: str | None = None
 
 
 class FinancialAccountUpdate(BaseModel):
@@ -23,6 +25,7 @@ class FinancialAccountUpdate(BaseModel):
     institution: str | None = Field(default=None, max_length=100)
     last_four: str | None = Field(default=None, max_length=4)
     active: bool | None = None
+    business_unit_id: str | None = None
 
 
 class FinancialAccountRead(BaseModel):
@@ -38,6 +41,8 @@ class FinancialAccountRead(BaseModel):
     institution: str | None
     last_four: str | None
     active: bool
+    business_unit_id: str | None = None
+    business_unit_name: str | None = None
     created_at: datetime
 
     @computed_field

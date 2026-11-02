@@ -20,6 +20,7 @@ from app.services.accounting.rules import (
     reversal_of,
 )
 from app.services.reversals import reverse_operation
+from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -56,6 +57,7 @@ def _validate_vendor(db: Session, org_id: str, vendor_id: str) -> None:
 def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payable:
     category = _validate_category(db, org_id, payload.category_id)
     _validate_vendor(db, org_id, payload.vendor_id)
+    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
     issue_date = payload.date or date.today()
 
     tax = resolve_tax(db, org_id, payload)
@@ -71,6 +73,8 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
         due_date=payload.due_date,
         category_id=payload.category_id,
         project_id=payload.project_id,
+        business_unit_id=payload.business_unit_id,
+        fiscal_entity_id=payload.fiscal_entity_id,
         notes=payload.notes,
         created_by=created_by,
     )
@@ -78,7 +82,7 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
     db.flush()
 
     # Devengo: el gasto se reconoce al registrar el compromiso (task pack §18)
-    payable_created_entry(
+    entry = payable_created_entry(
         db,
         org_id,
         description=payable.description,
@@ -89,6 +93,7 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
         created_by=created_by,
         tax_amount=Decimal(payable.tax_amount),
     )
+    tag_entry(entry, payable.business_unit_id, payable.fiscal_entity_id)
     event_bus.publish("payable.created", {"payable_id": payable.id, "organization_id": org_id})
     db.commit()
     db.refresh(payable)
@@ -133,7 +138,7 @@ def pay_payable(
         source_id=payable.id,
         created_by=user_id,
     )
-    payable_payment_entry(
+    entry = payable_payment_entry(
         db,
         org_id,
         description=f"Pago: {payable.description}",
@@ -143,6 +148,13 @@ def pay_payable(
         created_by=user_id,
         cash_account_code=account_ledger_code(db, org_id, financial_account_id),
         tax_amount=tax_now,
+    )
+    # El pago es de la misma unidad que la cuenta por pagar; si ésta no trae,
+    # de la cuenta con la que se pagó.
+    tag_entry(
+        entry,
+        inherit_business_unit(db, org_id, payable.business_unit_id, financial_account_id),
+        payable.fiscal_entity_id,
     )
     payable.amount_paid = Decimal(payable.amount_paid) + amount
     payable.tax_paid = Decimal(payable.tax_paid) + tax_now
@@ -188,7 +200,7 @@ def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, rea
         .first()
     )
     if original is not None:
-        reversal_of(
+        mirror = reversal_of(
             db,
             org_id,
             original,
@@ -196,6 +208,7 @@ def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, rea
             date=date.today(),
             created_by=user_id,
         )
+        tag_entry(mirror, original.business_unit_id, original.fiscal_entity_id)
     payable.status = "CANCELLED"
     payable.cancelled_at = datetime.now(timezone.utc)
     payable.cancelled_by = user_id

@@ -33,6 +33,7 @@ from app.services.accounting.sat import (
 )
 from app.services.accounting.engine import lock_organization
 from app.services.accounting.engine import trial_balance as compute_trial_balance
+from app.services.dimensions import entry_filters
 from app.services.accounting.rules import (
     MODULE_CONTROLLED_CODES,
     OPENING_BALANCING_CODES,
@@ -108,6 +109,10 @@ class JournalEntryRead(BaseModel):
     source_type: str | None
     source_id: str | None
     status: str
+    business_unit_id: str | None = None
+    business_unit_name: str | None = None
+    fiscal_entity_id: str | None = None
+    fiscal_entity_name: str | None = None
     reversed: bool = False
     reversal_of: str | None = None
     reversed_by: ReversalRef | None = None
@@ -281,12 +286,17 @@ def list_journal_entries(
     end: date_type | None = None,
     source_type: str | None = None,
     source_id: str | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    query = db.query(JournalEntry).filter(JournalEntry.organization_id == org_id)
+    query = db.query(JournalEntry).filter(
+        JournalEntry.organization_id == org_id,
+        *entry_filters(business_unit_id, fiscal_entity_id),
+    )
     if start:
         query = query.filter(JournalEntry.date >= start)
     if end:
@@ -466,10 +476,12 @@ def create_opening_balance(
 @router.get("/trial-balance")
 def trial_balance(
     as_of: date_type | None = None,
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    rows = compute_trial_balance(db, org_id, as_of)
+    rows = compute_trial_balance(db, org_id, as_of, business_unit_id, fiscal_entity_id)
     return {
         "rows": rows,
         "total_debit": sum((row["debit"] for row in rows), Decimal("0")),

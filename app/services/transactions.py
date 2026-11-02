@@ -71,8 +71,14 @@ def record_transaction(
     transfer_group_id: str | None = None,
     created_by: str | None = None,
     payment_method: str | None = None,
+    business_unit_id: str | None = None,
 ) -> FinancialTransaction:
-    """Crea el movimiento y aplica el delta al saldo, en la transacción del caller. No hace commit."""
+    """Crea el movimiento y aplica el delta al saldo, en la transacción del caller. No hace commit.
+
+    `business_unit_id`: por defecto la unidad de la cuenta de dinero al momento
+    de registrar (el dinero vive donde vive la caja); sólo los reversos la
+    pasan explícita para copiar la del movimiento original.
+    """
     if transaction_type not in TRANSACTION_TYPES:
         raise ValueError("Tipo de movimiento inválido.")
     amount = _quantize(amount)
@@ -104,6 +110,7 @@ def record_transaction(
         source_id=source_id,
         transfer_group_id=transfer_group_id,
         created_by=created_by,
+        business_unit_id=business_unit_id or account.business_unit_id,
     )
     db.add(transaction)
     db.flush()

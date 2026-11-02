@@ -14,6 +14,7 @@ from app.domains.income.service import resolve_tax
 from app.services.accounting.rules import expense_paid_entry
 from app.services.reversals import reverse_operation
 from app.models.financial_account import FinancialAccount
+from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import (
     account_ledger_code,
     default_payment_method,
@@ -55,6 +56,7 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
     _validate_category(db, org_id, payload.category_id)
     if payload.vendor_id:
         _validate_vendor(db, org_id, payload.vendor_id)
+    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
 
     tax = resolve_tax(db, org_id, payload)
     expense = Expense(
@@ -68,6 +70,10 @@ def create_expense(db: Session, org_id: str, payload, created_by: str) -> Expens
         tax_amount=tax.tax_amount,
         category_id=payload.category_id,
         project_id=payload.project_id,
+        business_unit_id=inherit_business_unit(
+            db, org_id, payload.business_unit_id, payload.financial_account_id
+        ),
+        fiscal_entity_id=payload.fiscal_entity_id,
         retention_isr=payload.retention_isr,
         retention_iva=payload.retention_iva,
         financial_account_id=payload.financial_account_id,
@@ -118,6 +124,8 @@ def _apply_payment(
     account_id = financial_account_id or expense.financial_account_id
     if not account_id:
         raise ValueError("Indica desde qué cuenta pagaste.")
+    # Un gasto pendiente sin unidad la toma de la cuenta con la que se paga.
+    expense.business_unit_id = inherit_business_unit(db, org_id, expense.business_unit_id, account_id)
 
     # Del banco sale el total MENOS lo retenido: esa parte no llega al proveedor,
     # se queda como deuda con el SAT hasta que se entera.
@@ -136,7 +144,7 @@ def _apply_payment(
         created_by=user_id,
     )
     category = _validate_category(db, org_id, expense.category_id)
-    expense_paid_entry(
+    entry = expense_paid_entry(
         db,
         org_id,
         description=expense.description,
@@ -150,6 +158,7 @@ def _apply_payment(
         retention_isr=Decimal(expense.retention_isr),
         retention_iva=Decimal(expense.retention_iva),
     )
+    tag_entry(entry, expense.business_unit_id, expense.fiscal_entity_id)
     expense.financial_account_id = account_id
     # Cómo se pagó vive también en el gasto, no sólo en el movimiento: sin esto
     # el aviso de deducibilidad no tiene con qué decidir.

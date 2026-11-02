@@ -13,6 +13,7 @@ from app.models.income import Income
 from app.services.accounting.rules import income_paid_entry
 from app.services.taxes import split_total
 from app.services.reversals import reverse_operation
+from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
 
 
@@ -61,6 +62,7 @@ def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
     _validate_category(db, org_id, payload.category_id)
     if payload.customer_id:
         _validate_customer(db, org_id, payload.customer_id)
+    validate_dimensions(db, org_id, payload.business_unit_id, payload.fiscal_entity_id)
 
     tax = resolve_tax(db, org_id, payload)
     income = Income(
@@ -74,6 +76,10 @@ def create_income(db: Session, org_id: str, payload, created_by: str) -> Income:
         tax_amount=tax.tax_amount,
         category_id=payload.category_id,
         project_id=payload.project_id,
+        business_unit_id=inherit_business_unit(
+            db, org_id, payload.business_unit_id, payload.financial_account_id
+        ),
+        fiscal_entity_id=payload.fiscal_entity_id,
         financial_account_id=payload.financial_account_id,
         notes=payload.notes,
         status="PENDING",
@@ -120,6 +126,8 @@ def _apply_payment(
     account_id = financial_account_id or income.financial_account_id
     if not account_id:
         raise ValueError("Indica en qué cuenta recibiste el dinero.")
+    # Un ingreso pendiente sin unidad la toma de la cuenta en la que se cobra.
+    income.business_unit_id = inherit_business_unit(db, org_id, income.business_unit_id, account_id)
 
     record_transaction(
         db,
@@ -134,7 +142,7 @@ def _apply_payment(
         created_by=user_id,
     )
     category = _validate_category(db, org_id, income.category_id)
-    income_paid_entry(
+    entry = income_paid_entry(
         db,
         org_id,
         description=income.description,
@@ -146,6 +154,7 @@ def _apply_payment(
         cash_account_code=account_ledger_code(db, org_id, account_id),
         tax_amount=Decimal(income.tax_amount),
     )
+    tag_entry(entry, income.business_unit_id, income.fiscal_entity_id)
     income.financial_account_id = account_id
     income.status = "PAID"
     income.paid_at = datetime.now(timezone.utc)

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Date, ForeignKey, Numeric, String
 
 from app.database import Base
+from app.models.dimensions import BusinessUnitDimension
 from app.models.mixins import AuditMixin, TenantMixin, UUIDPKMixin
 
 TRANSACTION_TYPES = (
@@ -34,11 +35,14 @@ PAYMENT_METHODS = (
 )
 
 
-class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin):
+class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension):
     """Movimiento de dinero sobre una cuenta financiera.
 
     No es un asiento contable: la póliza correspondiente vive en el ledger
     (journal_entries) y referencia a la operación de negocio por source_type/source_id.
+
+    `business_unit_id` es la unidad de la cuenta de dinero al momento de
+    registrar; en un traspaso cada pierna lleva la de su cuenta.
     """
 
     __tablename__ = "financial_transactions"

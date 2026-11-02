@@ -35,6 +35,8 @@ def _get_receivable(db: Session, org_id: str, receivable_id: str) -> Receivable:
 def list_receivables(
     status: str | None = Query(default=None, pattern="^(OPEN|PARTIAL|PAID|CANCELLED|OVERDUE)$"),
     q: str | None = Query(default=None, max_length=200),
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -42,6 +44,10 @@ def list_receivables(
     org_id: str = Depends(get_current_org_id),
 ):
     query = db.query(Receivable).filter(Receivable.organization_id == org_id)
+    if business_unit_id:
+        query = query.filter(Receivable.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        query = query.filter(Receivable.fiscal_entity_id == fiscal_entity_id)
     if status == "OVERDUE":
         query = query.filter(
             Receivable.status.in_(("OPEN", "PARTIAL")),

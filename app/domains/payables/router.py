@@ -30,6 +30,8 @@ def _get_payable(db: Session, org_id: str, payable_id: str) -> Payable:
 def list_payables(
     status: str | None = Query(default=None, pattern="^(OPEN|PARTIAL|PAID|CANCELLED|OVERDUE)$"),
     q: str | None = Query(default=None, max_length=200),
+    business_unit_id: str | None = None,
+    fiscal_entity_id: str | None = None,
     sort: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -37,6 +39,10 @@ def list_payables(
     org_id: str = Depends(get_current_org_id),
 ):
     query = db.query(Payable).filter(Payable.organization_id == org_id)
+    if business_unit_id:
+        query = query.filter(Payable.business_unit_id == business_unit_id)
+    if fiscal_entity_id:
+        query = query.filter(Payable.fiscal_entity_id == fiscal_entity_id)
     if status == "OVERDUE":
         query = query.filter(
             Payable.status.in_(("OPEN", "PARTIAL")),

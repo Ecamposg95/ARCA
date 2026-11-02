@@ -9,6 +9,7 @@ from app.models.financial_account import FINANCIAL_ACCOUNT_TYPES, FinancialAccou
 from app.services.accounting.engine import _quantize
 from app.services.accounting.coa import ledger_code_for
 from app.services.accounting.rules import opening_balance_entry
+from app.services.dimensions import tag_entry, validate_dimensions
 
 
 def create_financial_account(
@@ -21,12 +22,14 @@ def create_financial_account(
     last_four: str | None = None,
     credit_limit=None,
     created_by: str | None = None,
+    business_unit_id: str | None = None,
 ) -> FinancialAccount:
     if account_type not in FINANCIAL_ACCOUNT_TYPES:
         raise ValueError("Tipo de cuenta inválido.")
     opening = _quantize(opening_balance)
     if opening < 0:
         raise ValueError("El saldo inicial no puede ser negativo.")
+    validate_dimensions(db, organization_id, business_unit_id, None)
 
     account = FinancialAccount(
         organization_id=organization_id,
@@ -37,12 +40,13 @@ def create_financial_account(
         institution=institution,
         last_four=last_four,
         credit_limit=credit_limit if is_liability(account_type) else None,
+        business_unit_id=business_unit_id,
     )
     db.add(account)
     db.flush()
 
     if opening > 0:
-        opening_balance_entry(
+        entry = opening_balance_entry(
             db,
             organization_id,
             account_name=account.name,
@@ -53,4 +57,6 @@ def create_financial_account(
             account_code=ledger_code_for(account_type),
             liability=is_liability(account_type),
         )
+        # El saldo inicial de la caja de Morelos es activo de Morelos.
+        tag_entry(entry, business_unit_id, None)
     return account
