@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens ONE Finance — paleta Atlas Cortex, HSL con canal separado para permitir alpha (bg-surface/60).
+/* Tokens ONE Finance — base Atlas Cortex con acento verde (finanzas), HSL con canal separado para permitir alpha (bg-surface/60).
    Fuente de los valores: atlas-cortex frontend/tailwind.config.js (brand.* / dark.*). */
 :root {
   --bg: 210 25% 98%; /* #fafbfc */
@@ -11,9 +11,9 @@
   --ink: 202 30% 7%; /* #0d1418 */
   --muted: 200 10% 40%; /* #5c6a71 */
   --border: 200 22% 92%; /* #e6ecef */
-  --accent: 186 58% 41%; /* #2c9aa6 */
+  --accent: 154 63% 33%; /* #1f8a5b verde ONE Finance */
   --on-accent: 0 0% 100%; /* texto sobre el acento */
-  --accent-soft: 187 43% 96%; /* #f0f8f9 */
+  --accent-soft: 152 45% 95%; /* #edf7f2 */
   --rail: 206 26% 11%; /* #141c22 dark surface */
   --rail-ink: 195 20% 96%; /* #f3f6f7 */
   --rail-muted: 201 13% 57%; /* #8496a0 */
@@ -39,9 +39,9 @@
   --ink: 195 20% 96%; /* #f3f6f7 */
   --muted: 201 13% 57%; /* #8496a0 */
   --border: 203 23% 15%; /* #1e2930 */
-  --accent: 188 30% 53%; /* #62a0aa accentBright */
+  --accent: 151 50% 53%; /* #4cc38a verde claro sobre oscuro */
   --on-accent: 202 40% 8%; /* en oscuro el acento aclara: el texto va oscuro */
-  --accent-soft: 200 26% 16%;
+  --accent-soft: 154 22% 14%;
   --rail: 204 30% 5%; /* #080c0f bg2 */
   --rail-ink: 195 20% 96%;
   --rail-muted: 201 13% 57%;

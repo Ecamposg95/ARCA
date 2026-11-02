@@ -28,13 +28,13 @@ import { api } from '@/api/client'
 import { formatCompact, formatDate, formatMoney } from '@/lib/format'
 import type { AgingReport, CashProjection, DashboardSummary, NetWorth } from '@/types/api'
 
-/* Verde/rojo de mercado para DIRECCIÓN (sube/baja); teal/oro de ONE Finance para
+/* Verde/rojo de mercado para DIRECCIÓN (sube/baja); verde/oro de ONE Finance para
  * NATURALEZA (entra/sale). Dos lenguajes, nunca revueltos en el mismo trazo. */
 const MKT = { up: '#0ecb81', down: '#f6465d' }
-const C = { in: '#2c9aa6', out: '#c29938', risk: '#f6465d' }
+const C = { in: '#1f8a5b', out: '#c29938', risk: '#f6465d' }
 
 const CATEGORY_PALETTE = [
-  '#2c9aa6',
+  '#1f8a5b',
   '#c29938',
   '#7c6bd6',
   '#5b8ff9',

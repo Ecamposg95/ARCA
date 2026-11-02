@@ -671,8 +671,8 @@ export function ReportsPage() {
                     type="monotone"
                     dataKey="net_worth"
                     name="Patrimonio"
-                    stroke="#2c9aa6"
-                    fill="#2c9aa6"
+                    stroke="#1f8a5b"
+                    fill="#1f8a5b"
                     fillOpacity={0.14}
                     strokeWidth={2}
                     isAnimationActive={false}

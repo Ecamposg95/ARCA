@@ -29,7 +29,7 @@ export default {
       boxShadow: {
         card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
         float: '0 10px 40px -10px rgba(0,0,0,0.12)',
-        accent: '0 0 20px rgba(44, 154, 166, 0.15)',
+        accent: '0 0 20px rgba(31, 138, 91, 0.15)',
       },
       borderRadius: {
         DEFAULT: '8px',

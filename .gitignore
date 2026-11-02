@@ -29,3 +29,6 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 .claude/worktrees/
+
+# Datos reales de clientes (inventarios con nombres y montos): no se publican
+docs/lafe/privado/

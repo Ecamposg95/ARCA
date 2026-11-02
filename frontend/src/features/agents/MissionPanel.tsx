@@ -33,7 +33,7 @@ interface MissionAgent {
 }
 
 const AGENTS: MissionAgent[] = [
-  { id: 'cfo', name: 'CFO Agent', role: 'Runway & escenarios', icon: Compass, color: '#2c9aa6' },
+  { id: 'cfo', name: 'CFO Agent', role: 'Runway & escenarios', icon: Compass, color: '#1f8a5b' },
   { id: 'treasury', name: 'Treasury Agent', role: 'Pagos & prioridad', icon: Vault, color: '#c9a24b' },
   { id: 'collections', name: 'Collections Agent', role: 'Cartera & cobranza', icon: HandCoins, color: '#d76f8e' },
   { id: 'accounting', name: 'Accounting Agent', role: 'Variaciones & margen', icon: BookOpenCheck, color: '#7b6ef0' },

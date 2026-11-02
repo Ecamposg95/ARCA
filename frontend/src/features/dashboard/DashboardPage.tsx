@@ -8,9 +8,9 @@ import { Card } from '@/components/ui/Table'
 import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear, formatShortDay } from '@/lib/format'
 import type { CashFlowSeries, CashProjection, DashboardSummary, FinancialAccount } from '@/types/api'
 
-/** Sistema de color del tablero: teal = dinero que entra, ámbar = dinero que sale.
+/** Sistema de color del tablero: verde = dinero que entra, ámbar = dinero que sale.
  *  El rojo queda reservado para problemas (vencido, pérdida), nunca para un gasto normal. */
-const IN = '#2c9aa6'
+const IN = '#1f8a5b'
 const OUT = '#c29938'
 const LOSS = '#e05252'
 const GRID = '#8fa0a8'
