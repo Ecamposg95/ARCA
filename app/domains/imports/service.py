@@ -107,8 +107,11 @@ def _hash_external_id(when: date_type, amount: Decimal, description: str) -> str
 
 def _summarize(rows: list[ImportRow], operations: int | None = None) -> dict:
     counts = {"OK": 0, "ERROR": 0, "DUPLICATE": 0, "SKIPPED": 0, "CREATED": 0}
+    dates: list[str] = []
     for row in rows:
         counts[row.status] = counts.get(row.status, 0) + 1
+        if row.status in ("OK", "CREATED") and row.payload.get("date"):
+            dates.append(row.payload["date"])
     return {
         "rows": len(rows),
         "ok": counts["OK"],
@@ -117,6 +120,9 @@ def _summarize(rows: list[ImportRow], operations: int | None = None) -> dict:
         "skipped": counts["SKIPPED"],
         "created": counts["CREATED"],
         "operations": operations if operations is not None else counts["OK"],
+        # Rango de fechas de lo que entra: la UI enlaza a Ingresos / Por cobrar filtrados.
+        "from": min(dates) if dates else None,
+        "to": max(dates) if dates else None,
     }
 
 

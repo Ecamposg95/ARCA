@@ -611,3 +611,64 @@ export interface AssistantUsage {
   by_user: AssistantUsageRow[]
   by_day: AssistantUsageRow[]
 }
+
+// --- Importación -------------------------------------------------------------
+
+export type ImportKind = 'TORONJA' | 'INCOMES' | 'EXPENSES' | 'CASH'
+export type ImportBatchStatus = 'PREVIEW' | 'CONFIRMED' | 'DISCARDED'
+export type ImportRowStatus = 'OK' | 'ERROR' | 'DUPLICATE' | 'SKIPPED' | 'CREATED'
+
+export interface ImportSummary {
+  rows: number
+  ok: number
+  errors: number
+  duplicates: number
+  skipped: number
+  created: number
+  /** Operaciones que se crearán (Toronja agrupa varios tickets en una). */
+  operations: number
+  /** Rango de fechas de lo que entra (AAAA-MM-DD), para enlazar las listas filtradas. */
+  from: string | null
+  to: string | null
+}
+
+export interface ImportRow {
+  id: string
+  row_number: number
+  external_id: string | null
+  payload: Record<string, unknown>
+  status: ImportRowStatus
+  message: string | null
+  result_type: string | null
+  result_id: string | null
+}
+
+export interface ImportBatch {
+  id: string
+  kind: ImportKind
+  filename: string
+  status: ImportBatchStatus
+  mapping: Record<string, string>
+  options: {
+    columns?: string[]
+    sheets?: string[]
+    sheet?: string | null
+    defaults?: Record<string, string>
+  }
+  summary: Partial<ImportSummary>
+  confirmed_at: string | null
+  created_at: string
+}
+
+export interface ImportBatchDetail extends ImportBatch {
+  rows: Page<ImportRow>
+}
+
+export interface ImportSettings {
+  toronja: {
+    bank_account_id: string | null
+    processor_account_id: string | null
+    receivable_customer_id: string | null
+    income_category_id: string | null
+  }
+}

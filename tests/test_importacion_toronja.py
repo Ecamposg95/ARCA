@@ -75,6 +75,8 @@ def test_preview_classifies_every_row(client):
         "skipped": 2,
         "created": 0,
         "operations": 8,
+        "from": "2026-10-15",
+        "to": "2026-10-16",
     }
     rows = _rows_by_folio(detail)
     assert rows["1510260001"]["status"] == "OK"

@@ -124,10 +124,11 @@ export function OperationsPage({ config }: { config: Config }) {
 
   // Un filtro nuevo debe volver a la primera página: si no, la lista sale vacía
   // sin explicación cuando el resultado cabe en menos páginas que el offset.
+  // `?desde=&hasta=` llega desde Importar: "ver lo que acabo de registrar".
   const [filters, setFiltersState] = useState({
     q: '',
-    start: '',
-    end: '',
+    start: searchParams.get('desde') ?? '',
+    end: searchParams.get('hasta') ?? '',
     project_id: '',
     non_deductible: false,
     ...EMPTY_DIMENSIONS,

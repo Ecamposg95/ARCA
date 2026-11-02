@@ -134,7 +134,8 @@ export function DebtsPage({ config }: { config: Config }) {
   const [detailFor, setDetailFor] = useState<Debt | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
-  const [search, setSearch] = useState('')
+  // `?q=` llega desde Importar: "ver los adeudos que acabo de registrar".
+  const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [dimensions, setDimensionsState] = useState(EMPTY_DIMENSIONS)
   const setDimensions = (next: Partial<typeof dimensions>) => {
     setDimensionsState({ ...dimensions, ...next })

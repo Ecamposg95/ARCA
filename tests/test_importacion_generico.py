@@ -87,7 +87,17 @@ def test_mapping_classifies_rows_duplicates_and_missing_category(client):
     assert rows[2]["message"] == "La categoría Comidas y viáticos de otro planeta no existe."
     assert rows[3]["message"] == "Repetido en el archivo."
     assert rows[3]["external_id"] == rows[0]["external_id"]
-    assert mapped["summary"] == {"rows": 4, "ok": 2, "errors": 1, "duplicates": 1, "skipped": 0, "created": 0, "operations": 2}
+    assert mapped["summary"] == {
+        "rows": 4,
+        "ok": 2,
+        "errors": 1,
+        "duplicates": 1,
+        "skipped": 0,
+        "created": 0,
+        "operations": 2,
+        "from": "2026-10-03",
+        "to": "2026-10-03",
+    }
     assert mapped["mapping"]["fecha"] == "Fecha"
 
 

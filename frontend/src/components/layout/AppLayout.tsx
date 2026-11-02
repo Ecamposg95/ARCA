@@ -19,6 +19,7 @@ import {
   Users,
   FolderKanban,
   Landmark,
+  Upload,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -53,6 +54,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet },
       { to: '/patrimonio', label: 'Patrimonio', icon: Landmark },
+      { to: '/importar', label: 'Importar', icon: Upload },
     ],
   },
   {

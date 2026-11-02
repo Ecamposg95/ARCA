@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Table'
 import { AssistantCard } from '@/features/settings/AssistantCard'
 import { DimensionsCard } from '@/features/settings/DimensionsCard'
+import { ImportSettingsCard } from '@/features/settings/ImportSettingsCard'
 import { TeamCard } from '@/features/settings/TeamCard'
 import { useAuthStore } from '@/stores/authStore'
 import type { AgentKey, Organization } from '@/types/api'
@@ -95,6 +96,7 @@ export function SettingsPage() {
       </Card>
 
       <DimensionsCard />
+      <ImportSettingsCard />
       <TeamCard />
       <AgentKeysSection />
       <AssistantCard />
