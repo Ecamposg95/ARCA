@@ -34,7 +34,14 @@ def upgrade() -> None:
 
     with op.batch_alter_table("agent_action_logs") as batch:
         batch.alter_column("agent_key_id", existing_type=sa.String(36), nullable=True)
-        batch.add_column(sa.Column("user_id", sa.String(36), sa.ForeignKey("users.id"), nullable=True))
+        batch.add_column(
+            sa.Column(
+                "user_id",
+                sa.String(36),
+                sa.ForeignKey("users.id", name="fk_agent_action_logs_user_id"),
+                nullable=True,
+            )
+        )
 
     op.create_table(
         "assistant_conversations",
