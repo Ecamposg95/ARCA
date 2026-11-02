@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as date_type
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal
@@ -76,3 +77,36 @@ class FinancialAccountRead(BaseModel):
         if self.credit_limit is None or not self.is_liability:
             return None
         return self.credit_limit - self.current_balance
+
+
+# --- Liquidaciones de procesadores ---
+
+
+class SettlementCreate(BaseModel):
+    date: date_type
+    gross_amount: Decimal = Field(gt=0, allow_inf_nan=False)  # lo que cobró el procesador
+    fee_amount: Decimal = Field(default=Decimal("0"), ge=0, allow_inf_nan=False)  # su comisión
+    # Si no viene, el banco configurado en el procesador.
+    bank_account_id: str | None = None
+    reference: str | None = Field(default=None, max_length=100)
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class SettlementRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    processor_account_id: str
+    bank_account_id: str
+    date: date_type
+    gross_amount: Decimal
+    fee_amount: Decimal
+    net_amount: Decimal
+    reference: str | None
+    notes: str | None
+    status: str
+    transfer_group_id: str
+    expense_id: str | None
+    created_by: str | None
+    cancelled_at: datetime | None
+    created_at: datetime
