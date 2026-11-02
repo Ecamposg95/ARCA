@@ -1,6 +1,6 @@
 """unidades de negocio y entidad fiscal: dos dimensiones opcionales del libro
 
-Revision ID: 20261102_01
+Revision ID: 20261102_03
 Revises: 20261102_02
 Create Date: 2026-11-02
 
@@ -15,7 +15,7 @@ empresa arranca sin unidades ni entidades: nada cambia para quien no las usa.
 import sqlalchemy as sa
 from alembic import op
 
-revision = "20261102_01"
+revision = "20261102_03"
 down_revision = "20261102_02"
 branch_labels = None
 depends_on = None
