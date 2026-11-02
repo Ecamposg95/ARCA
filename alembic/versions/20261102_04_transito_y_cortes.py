@@ -1,7 +1,7 @@
 """dinero en tránsito y corte de caja
 
 Revision ID: 20261102_04
-Revises: 20261102_03
+Revises: 20261102_06
 Create Date: 2026-11-02
 
 Tipo PROCESSOR en cuentas de dinero (tasa, días y banco donde liquida), la
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20261102_04"
-down_revision = "20261102_03"
+down_revision = "20261102_06"
 branch_labels = None
 depends_on = None
 
