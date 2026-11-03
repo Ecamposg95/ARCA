@@ -16,7 +16,7 @@ from app.models.financial_account import (
 )
 from app.models.payable import Payable
 from app.models.receivable import Receivable
-from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+from app.models.transaction import INFLOW_TYPES, FinancialTransaction, not_opening_adjustment
 from app.services.accounting.engine import account_type_balance
 from app.services.dimensions import transaction_filters
 
@@ -148,6 +148,8 @@ def cash_flow_series(
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
             FinancialTransaction.date >= series_start,
+            # Un ajuste de apertura no es dinero que entró ni salió en el mes.
+            not_opening_adjustment(),
             *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         .all()
@@ -246,6 +248,8 @@ def summary(
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
             FinancialTransaction.date >= series_start,
+            # Un ajuste de apertura no es dinero que entró ni salió en el mes.
+            not_opening_adjustment(),
             *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         .all()

@@ -102,6 +102,12 @@ def _assert_period_open(db: Session, organization_id: str, date: date_type) -> N
         )
 
 
+def assert_period_open(db: Session, organization_id: str, date: date_type) -> None:
+    """El mismo candado que aplica `post_journal_entry`, para validar antes de
+    tocar nada (p. ej. al fijar la fecha de corte de la apertura)."""
+    _assert_period_open(db, organization_id, date)
+
+
 def lock_organization(db: Session, organization_id: str) -> None:
     """FOR UPDATE sobre la empresa: serializa los procesos que postean pólizas únicas.
 

@@ -54,3 +54,9 @@ class FinancialAccount(Base, UUIDPKMixin, TenantMixin, AuditMixin, SoftDeleteMix
     fee_rate = Column(Numeric(6, 4), nullable=True)
     settlement_days = Column(Integer, nullable=True)
     settlement_account_id = Column(String(36), ForeignKey("financial_accounts.id"), nullable=True)
+    # Apertura ajustable: si el saldo inicial ya se confirmó con un documento
+    # (PROVISIONAL / CONFIRMED, null = nunca revisado) y de dónde sale la cifra
+    # ("Estado de cuenta oct-2026", "Pendiente"). `opening_balance` sólo cambia
+    # junto con un movimiento de ajuste fechado en el corte (domains/opening).
+    opening_status = Column(String(20), nullable=True)
+    opening_note = Column(String(255), nullable=True)

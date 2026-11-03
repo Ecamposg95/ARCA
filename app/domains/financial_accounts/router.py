@@ -11,8 +11,10 @@ from app.domains.financial_accounts.schemas import (
     SettlementRead,
 )
 from app.domains.financial_accounts.service import create_financial_account, validate_settlement_account
+from app.domains.opening import service as opening_service
+from app.domains.opening.schemas import AccountOpeningAdjustment
 from app.models.financial_account import FinancialAccount
-from app.models.organization import ROLE_ADMIN, ROLE_OWNER, WRITE_ROLES
+from app.models.organization import ACCOUNTING_ROLES, ROLE_ADMIN, ROLE_OWNER, WRITE_ROLES
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
@@ -118,6 +120,36 @@ def update_account(
     for field, value in changes.items():
         setattr(account, field, value)
     record_change(db, org_id, account, "UPDATE", user.id, before=before, after=snapshot(account))
+    db.commit()
+    db.refresh(account)
+    return FinancialAccountRead.model_validate(account)
+
+
+@router.post("/{account_id}/opening-adjustment", response_model=FinancialAccountRead)
+def adjust_opening(
+    account_id: str,
+    payload: AccountOpeningAdjustment,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+    _membership=Depends(require_role(ACCOUNTING_ROLES)),
+):
+    """Corrige el saldo de apertura al corte: movimiento de ajuste + póliza contra 3901."""
+    account = _get_account(db, org_id, account_id)
+    try:
+        opening_service.adjust_account_opening(
+            db,
+            org_id,
+            account.id,
+            target=payload.target_opening_balance,
+            reason=payload.reason,
+            status=payload.status,
+            note=payload.note,
+            user_id=user.id,
+        )
+    except ValueError:
+        db.rollback()
+        raise
     db.commit()
     db.refresh(account)
     return FinancialAccountRead.model_validate(account)

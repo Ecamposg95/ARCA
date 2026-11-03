@@ -104,6 +104,10 @@ const SettingsPage = lazyRoute(
   () => import('@/features/settings/SettingsPage'),
   (m) => m.SettingsPage,
 )
+const OpeningPage = lazyRoute(
+  () => import('@/features/opening/OpeningPage'),
+  (m) => m.OpeningPage,
+)
 const ImportPage = lazyRoute(
   () => import('@/features/imports/ImportPage'),
   (m) => m.ImportPage,
@@ -166,6 +170,7 @@ export function App() {
               <Route path="/propuestas" element={<ProposalsPage />} />
               <Route path="/reportes" element={<ReportsPage />} />
               <Route path="/configuracion" element={<SettingsPage />} />
+              <Route path="/configuracion/apertura" element={<OpeningPage />} />
               <Route path="/importar" element={<ImportPage />} />
               </Route>
             </Route>

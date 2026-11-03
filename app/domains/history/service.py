@@ -31,6 +31,10 @@ FIELD_META: dict[str, tuple[str, str, type | None]] = {
     "amount": ("Monto", "money", None),
     "amount_paid": ("Pagado", "money", None),
     "opening_balance": ("Saldo inicial", "money", None),
+    "opening_date": ("Fecha de corte", "date", None),
+    "opening_status": ("Estado de la apertura", "status", None),
+    "opening_note": ("Fuente", "text", None),
+    "balancing_code": ("Cuenta de cuadre", "text", None),
     "credit_limit": ("Límite de crédito", "money", None),
     "date": ("Fecha", "date", None),
     "due_date": ("Vencimiento", "date", None),
@@ -71,6 +75,14 @@ ENTITY_MODELS: dict[str, tuple[type, str]] = {
     "category": (Category, "name"),
     "proposal": (AgentProposal, "summary"),
 }
+
+
+def _dynamic_meta(field: str) -> tuple[str, str, type | None]:
+    """Campos sin catálogo fijo: las cuentas de la apertura viajan como
+    `line:<código> <nombre>` con su saldo."""
+    if field.startswith("line:"):
+        return field[len("line:"):], "money", None
+    return field, "text", None
 
 
 def _names(db: Session, org_id: str, model: type, ids: set[str], column: str = "name") -> dict[str, str]:
@@ -158,7 +170,7 @@ def serialize_events(db: Session, org_id: str, rows: list[ChangeLog]) -> list[Hi
     for row in rows:
         changes: list[FieldChange] = []
         for field, change in (row.changes or {}).items():
-            label, kind, model = FIELD_META.get(field, (field, "text", None))
+            label, kind, model = FIELD_META.get(field) or _dynamic_meta(field)
             names = resolved.get(model, {}) if model else {}
             old, new = change.get("old"), change.get("new")
             changes.append(

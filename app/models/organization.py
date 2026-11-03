@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import JSON, Boolean, Column, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Column, Date, ForeignKey, Numeric, String, UniqueConstraint
 
 from app.database import Base
 from app.models.mixins import AuditMixin, UUIDPKMixin
@@ -29,6 +29,19 @@ class Organization(Base, UUIDPKMixin, AuditMixin):
     # (MEMBER) no captura por encima de su límite (null = sin límite).
     approval_threshold = Column(Numeric(14, 2), nullable=True)
     member_capture_limit = Column(Numeric(14, 2), nullable=True)
+    # Fecha de corte: el día en que la empresa empieza en ONE Finance. Todo
+    # saldo de apertura (y cada ajuste posterior) va fechado aquí, no el día en
+    # que se capturó. `opening_status` dice si la apertura ya se confirmó con
+    # estados de cuenta (CONFIRMED) o sigue provisional (PROVISIONAL).
+    opening_date = Column(Date, nullable=True)
+    opening_status = Column(String(20), nullable=True)  # OPENING_STATUSES
+
+
+# Estado de un saldo de apertura: provisional hasta que llega el estado de
+# cuenta que lo respalda. Lo provisional vive contra la cuenta puente 3901.
+OPENING_PROVISIONAL = "PROVISIONAL"
+OPENING_CONFIRMED = "CONFIRMED"
+OPENING_STATUSES = (OPENING_PROVISIONAL, OPENING_CONFIRMED)
 
 
 ROLE_OWNER = "OWNER"

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.accounting import Account, DEBIT_NORMAL_TYPES, JournalEntry, JournalEntryLine
 from app.models.financial_account import FinancialAccount
-from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+from app.models.transaction import INFLOW_TYPES, FinancialTransaction, not_opening_adjustment
 from app.services.accounting.engine import account_type_balance, not_year_close
 from app.services.dimensions import entry_filters, transaction_filters
 
@@ -143,6 +143,8 @@ def cash_flow(
         ).filter(
             FinancialTransaction.organization_id == organization_id,
             FinancialTransaction.status == "ACTIVE",
+            # El ajuste de apertura ya viaja en `opening_balance`; contarlo aquí lo duplicaría.
+            not_opening_adjustment(),
             *transaction_filters(business_unit_id, fiscal_entity_id),
         )
         if since is not None:
@@ -575,7 +577,7 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
         IN_TRANSIT_ACCOUNT_TYPES,
         FinancialAccount,
     )
-    from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+    from app.models.transaction import INFLOW_TYPES, OPENING_ADJUSTMENT_SOURCE, FinancialTransaction
 
     today = date_type.today()
     start = today - timedelta(days=days - 1)
@@ -600,6 +602,7 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
             FinancialTransaction.financial_account_id,
             FinancialTransaction.date,
             FinancialTransaction.transaction_type,
+            FinancialTransaction.source_type,
             func.coalesce(func.sum(FinancialTransaction.amount), 0),
         )
         .filter(
@@ -611,6 +614,7 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
             FinancialTransaction.financial_account_id,
             FinancialTransaction.date,
             FinancialTransaction.transaction_type,
+            FinancialTransaction.source_type,
         )
         .all()
     )
@@ -619,14 +623,15 @@ def cash_series(db: Session, organization_id: str, days: int = 90, business_unit
     inflows_by_day: dict[date_type, Decimal] = {}
     outflows_by_day: dict[date_type, Decimal] = {}
     available_ids = {account.id for account in accounts}
-    for account_id, day, tx_type, amount in rows:
+    for account_id, day, tx_type, source_type, amount in rows:
         amount = Decimal(amount)
         signed = amount if tx_type in INFLOW_TYPES else -amount
         per_account_delta[account_id][day] = (
             per_account_delta[account_id].get(day, Decimal("0")) + signed
         )
-        # Lo que entra al procesador todavía no es entrada de efectivo.
-        if account_id not in available_ids:
+        # Lo que entra al procesador todavía no es entrada de efectivo; un
+        # ajuste de apertura mueve el saldo pero no es entrada ni salida.
+        if account_id not in available_ids or source_type == OPENING_ADJUSTMENT_SOURCE:
             continue
         if tx_type in INFLOW_TYPES:
             inflows_by_day[day] = inflows_by_day.get(day, Decimal("0")) + amount

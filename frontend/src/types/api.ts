@@ -93,7 +93,63 @@ export interface FinancialAccount {
   fee_rate: string | null
   settlement_days: number | null
   settlement_account_id: string | null
+  /** Apertura ajustable: null = nunca revisada. */
+  opening_status?: OpeningStatus | null
+  opening_note?: string | null
   created_at: string
+}
+
+/** Apertura al corte: provisional hasta que llega el documento que la respalda. */
+export type OpeningStatus = 'PROVISIONAL' | 'CONFIRMED'
+
+export interface OpeningAccountRow {
+  id: string
+  name: string
+  type: FinancialAccount['type']
+  active: boolean
+  is_liability: boolean
+  opening_balance: string
+  current_balance: string
+  opening_status: OpeningStatus
+  opening_note: string | null
+}
+
+export interface OpeningOtherRow {
+  account_id: string
+  code: string
+  name: string
+  type: string
+  amount: string
+}
+
+export interface OpeningSummary {
+  organization_id: string
+  opening_date: string | null
+  opening_status: OpeningStatus | null
+  /** Saldo de 3901: lo capturado al corte que todavía no se identifica. */
+  bridge_balance: string
+  accounts: OpeningAccountRow[]
+  loans: {
+    id: string
+    lender: string
+    description: string
+    principal: string
+    outstanding: string
+    start_date: string
+  }[]
+  fixed_assets: {
+    id: string
+    name: string
+    cost: string
+    accumulated_depreciation: string
+    book_value: string
+    acquisition_date: string
+  }[]
+  other_entry_id: string | null
+  other_entry_folio: string | null
+  other_balancing_code: string | null
+  others: OpeningOtherRow[]
+  other_candidates: { account_id: string; code: string; name: string; type: string }[]
 }
 
 /** Liquidación de un procesador: el neto pasa al banco y la comisión es gasto. */
@@ -798,6 +854,7 @@ export type HistoryEntityType =
   | 'financial_account'
   | 'category'
   | 'proposal'
+  | 'opening_balance'
 
 export interface HistoryFieldChange {
   field: string

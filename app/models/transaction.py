@@ -12,6 +12,9 @@ TRANSACTION_TYPES = (
     "RECEIVABLE_COLLECTION",
     "PAYABLE_PAYMENT",
     "ADJUSTMENT",
+    # Ajuste que sube el saldo de un activo (o baja la deuda de una tarjeta).
+    # ADJUSTMENT es el de salida: así el tipo dice la dirección, como en todo lo demás.
+    "ADJUSTMENT_IN",
     # Reversos: tipos propios para que un "deshacer" no se confunda con un
     # ingreso o un gasto real en la lista de movimientos.
     "REVERSAL_IN",
@@ -19,7 +22,12 @@ TRANSACTION_TYPES = (
 )
 
 # Tipos que aumentan el saldo de la cuenta financiera
-INFLOW_TYPES = ("INCOME", "TRANSFER_IN", "RECEIVABLE_COLLECTION", "REVERSAL_IN")
+INFLOW_TYPES = ("INCOME", "TRANSFER_IN", "RECEIVABLE_COLLECTION", "REVERSAL_IN", "ADJUSTMENT_IN")
+
+# Ajuste de un saldo de apertura (domains/opening). Mueve el saldo de la cuenta
+# pero no es dinero que entró o salió en el periodo: el flujo de efectivo y las
+# gráficas de entradas/salidas lo excluyen, porque ya viaja en `opening_balance`.
+OPENING_ADJUSTMENT_SOURCE = "opening_adjustment"
 
 # Cómo se movió el dinero. Normalizado (no texto libre) para poder responder
 # "¿con qué gasto?" y para detectar pagos en efectivo no deducibles.
@@ -64,3 +72,15 @@ class FinancialTransaction(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessU
     source_id = Column(String(64), nullable=True, index=True)
     transfer_group_id = Column(String(36), nullable=True, index=True)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+
+
+def not_opening_adjustment():
+    """Filtro: el movimiento no es un ajuste de apertura. `source_type` puede ser
+    NULL y en SQL `NULL != 'x'` no es verdadero; sin el IS NULL esos movimientos
+    desaparecerían del flujo."""
+    from sqlalchemy import or_
+
+    return or_(
+        FinancialTransaction.source_type.is_(None),
+        FinancialTransaction.source_type != OPENING_ADJUSTMENT_SOURCE,
+    )

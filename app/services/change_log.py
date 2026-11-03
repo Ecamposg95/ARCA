@@ -87,6 +87,8 @@ TRACKED_FIELDS: dict[str, tuple[str, ...]] = {
         "settlement_days",
         "settlement_account_id",
         "opening_balance",
+        "opening_status",
+        "opening_note",
     ),
     "category": ("name", "kind", "account_code", "active"),
     "proposal": ("status", "kind", "summary"),

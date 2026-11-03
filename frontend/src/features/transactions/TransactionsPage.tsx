@@ -38,6 +38,7 @@ const TYPE_LABELS: Record<string, { label: string; inflow: boolean }> = {
   RECEIVABLE_COLLECTION: { label: 'Cobro', inflow: true },
   PAYABLE_PAYMENT: { label: 'Pago', inflow: false },
   ADJUSTMENT: { label: 'Ajuste', inflow: false },
+  ADJUSTMENT_IN: { label: 'Ajuste (entrada)', inflow: true },
   REVERSAL_IN: { label: 'Reverso (entrada)', inflow: true },
   REVERSAL_OUT: { label: 'Reverso (salida)', inflow: false },
 }
