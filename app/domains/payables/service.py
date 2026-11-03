@@ -19,6 +19,7 @@ from app.services.accounting.rules import (
     payable_payment_entry,
     reversal_of,
 )
+from app.services.change_log import record_change, snapshot
 from app.services.reversals import reverse_operation
 from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
@@ -95,6 +96,7 @@ def create_payable(db: Session, org_id: str, payload, created_by: str) -> Payabl
     )
     tag_entry(entry, payable.business_unit_id, payable.fiscal_entity_id)
     event_bus.publish("payable.created", {"payable_id": payable.id, "organization_id": org_id})
+    record_change(db, org_id, payable, "CREATE", created_by)
     db.commit()
     db.refresh(payable)
     return payable
@@ -115,6 +117,7 @@ def pay_payable(
         raise ValueError("Esta cuenta ya está pagada por completo.")
 
     amount = _quantize(amount)
+    before = snapshot(payable)
     balance = Decimal(payable.amount) - Decimal(payable.amount_paid)
     if amount > balance:
         raise ValueError(f"El pago excede el saldo pendiente (${balance}).")
@@ -161,6 +164,15 @@ def pay_payable(
     payable.status = "PAID" if payable.amount_paid >= Decimal(payable.amount) else "PARTIAL"
     if payable.status == "PAID":
         event_bus.publish("payable.paid", {"payable_id": payable.id, "organization_id": org_id})
+    record_change(
+        db,
+        org_id,
+        payable,
+        "PAY",
+        user_id,
+        before=before,
+        after={**snapshot(payable), "payment_account_id": financial_account_id, "payment_date": when},
+    )
     db.commit()
     db.refresh(payable)
     return payable
@@ -169,6 +181,7 @@ def pay_payable(
 def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, reason: str | None) -> Payable:
     if payable.status == "CANCELLED":
         raise ValueError("Esta cuenta ya está cancelada.")
+    before = snapshot(payable)
     # Con pagos registrados no basta cancelar: hay que revertir la póliza del
     # registro Y la de cada pago, y devolver el dinero a su cuenta.
     if Decimal(payable.amount_paid) > 0:
@@ -185,6 +198,7 @@ def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, rea
         payable.cancelled_at = datetime.now(timezone.utc)
         payable.cancelled_by = user_id
         payable.cancellation_reason = reason
+        record_change(db, org_id, payable, "CANCEL", user_id, before=before, after=snapshot(payable), reason=reason)
         db.commit()
         db.refresh(payable)
         return payable
@@ -213,6 +227,7 @@ def cancel_payable(db: Session, org_id: str, payable: Payable, user_id: str, rea
     payable.cancelled_at = datetime.now(timezone.utc)
     payable.cancelled_by = user_id
     payable.cancellation_reason = reason
+    record_change(db, org_id, payable, "CANCEL", user_id, before=before, after=snapshot(payable), reason=reason)
     db.commit()
     db.refresh(payable)
     return payable

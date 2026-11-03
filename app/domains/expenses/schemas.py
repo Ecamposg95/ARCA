@@ -30,6 +30,23 @@ class ExpenseCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=1000)
 
 
+class ExpenseUpdate(BaseModel):
+    """Edición parcial. Pendiente: casi todo es corregible; pagado o cancelado,
+    sólo el proyecto (el resto exige reverso). Cada cambio queda en el historial."""
+
+    date: date_type | None = None
+    vendor_id: str | None = None
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    amount: Decimal | None = Field(default=None, gt=0, allow_inf_nan=False)
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    category_id: str | None = None
+    project_id: str | None = None
+    financial_account_id: str | None = None
+    payment_method: str | None = Field(default=None, max_length=30)
+    reference: str | None = Field(default=None, max_length=100)
+    notes: str | None = Field(default=None, max_length=1000)
+
+
 class ExpensePay(BaseModel):
     financial_account_id: str | None = None
     date: date_type | None = None

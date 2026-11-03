@@ -1,17 +1,15 @@
 from datetime import date as date_type
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.expenses import service
-from app.domains.expenses.schemas import ExpenseCancel, ExpenseCreate, ExpensePay, ExpenseRead
+from app.domains.expenses.schemas import ExpenseCancel, ExpenseCreate, ExpensePay, ExpenseRead, ExpenseUpdate
 from app.models.contact import Vendor
 from app.models.expense import Expense
 from app.models.organization import WRITE_ROLES
-from app.models.project import Project
 from app.models.user import User
 from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
@@ -182,31 +180,15 @@ def cancel_expense(
     return ExpenseRead.model_validate(expense)
 
 
-class ExpenseProjectPatch(BaseModel):
-    """Lo único editable tras el registro es la etiqueta analítica. Cambiar
-    montos o fechas de algo contabilizado exige reverso, nunca edición."""
-
-    project_id: str | None
-
-
 @router.patch("/{expense_id}", response_model=ExpenseRead)
 def patch_expense(
     expense_id: str,
-    payload: ExpenseProjectPatch,
+    payload: ExpenseUpdate,
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
     expense = _get_expense(db, org_id, expense_id)
-    if payload.project_id is not None:
-        project = (
-            db.query(Project)
-            .filter(Project.id == payload.project_id, Project.organization_id == org_id)
-            .first()
-        )
-        if project is None:
-            raise HTTPException(status_code=400, detail="Ese proyecto no existe en tu empresa.")
-    expense.project_id = payload.project_id
-    db.commit()
-    db.refresh(expense)
+    expense = service.update_expense(db, org_id, expense, payload.model_dump(exclude_unset=True), user.id)
     return ExpenseRead.model_validate(expense)

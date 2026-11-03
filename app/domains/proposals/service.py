@@ -30,6 +30,7 @@ from app.models.agent import AgentProposal
 from app.models.expense import Expense
 from app.models.payable import Payable
 from app.services import approvals
+from app.services.change_log import change_source, record_change
 
 SOURCE_APPROVAL = "approval"
 SOURCE_ASSISTANT = "assistant"
@@ -109,7 +110,10 @@ def approve_proposal(db: Session, org_id: str, proposal: AgentProposal, user_id:
     # un agente, a nombre de quien lo aprueba.
     author = proposal.requested_by or user_id
     try:
-        entity = create_fn(db, org_id, payload, author)
+        # La operación resultante queda en el historial con el origen de la
+        # propuesta (autorización, asistente, agente o sistema).
+        with change_source(source_of(proposal) or SOURCE_APPROVAL):
+            entity = create_fn(db, org_id, payload, author)
     except ValueError:
         # Cuenta inactiva, CxP ya pagada, mes cerrado...: la propuesta sigue
         # viva y nada a medias se queda en la sesión.
@@ -120,6 +124,16 @@ def approve_proposal(db: Session, org_id: str, proposal: AgentProposal, user_id:
     proposal.reviewed_by = user_id
     proposal.reviewed_at = datetime.now(timezone.utc)
     proposal.result_id = entity.id
+    record_change(
+        db,
+        org_id,
+        proposal,
+        "APPROVE",
+        user_id,
+        before={"status": "PROPOSED"},
+        after={"status": "APPROVED"},
+        source=source_of(proposal) or SOURCE_APPROVAL,
+    )
     db.commit()
     db.refresh(proposal)
     event_bus.publish("proposal.approved", {"proposal_id": proposal.id, "organization_id": org_id})
@@ -137,6 +151,17 @@ def reject_proposal(
     proposal.reviewed_by = user_id
     proposal.reviewed_at = datetime.now(timezone.utc)
     proposal.rejection_reason = reason
+    record_change(
+        db,
+        org_id,
+        proposal,
+        "REJECT",
+        user_id,
+        before={"status": "PROPOSED"},
+        after={"status": "REJECTED"},
+        reason=reason,
+        source=source_of(proposal) or SOURCE_APPROVAL,
+    )
     db.commit()
     db.refresh(proposal)
     event_bus.publish("proposal.rejected", {"proposal_id": proposal.id, "organization_id": org_id})

@@ -19,6 +19,7 @@ from app.services.accounting.rules import (
     receivable_created_entry,
     reversal_of,
 )
+from app.services.change_log import record_change, snapshot
 from app.services.reversals import reverse_operation
 from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
@@ -103,6 +104,7 @@ def build_receivable(db: Session, org_id: str, payload, created_by: str) -> Rece
     )
     tag_entry(entry, receivable.business_unit_id, receivable.fiscal_entity_id)
     event_bus.publish("receivable.created", {"receivable_id": receivable.id, "organization_id": org_id})
+    record_change(db, org_id, receivable, "CREATE", created_by)
     return receivable
 
 
@@ -121,6 +123,7 @@ def collect_receivable(
         raise ValueError("Esta cuenta ya está cobrada por completo.")
 
     amount = _quantize(amount)
+    before = snapshot(receivable)
     balance = Decimal(receivable.amount) - Decimal(receivable.amount_paid)
     if amount > balance:
         raise ValueError(f"El cobro excede el saldo pendiente (${balance}).")
@@ -168,6 +171,15 @@ def collect_receivable(
     receivable.status = "PAID" if receivable.amount_paid >= Decimal(receivable.amount) else "PARTIAL"
     if receivable.status == "PAID":
         event_bus.publish("receivable.paid", {"receivable_id": receivable.id, "organization_id": org_id})
+    record_change(
+        db,
+        org_id,
+        receivable,
+        "PAY",
+        user_id,
+        before=before,
+        after={**snapshot(receivable), "payment_account_id": financial_account_id, "payment_date": when},
+    )
     db.commit()
     db.refresh(receivable)
     return receivable
@@ -176,6 +188,7 @@ def collect_receivable(
 def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id: str, reason: str | None) -> Receivable:
     if receivable.status == "CANCELLED":
         raise ValueError("Esta cuenta ya está cancelada.")
+    before = snapshot(receivable)
     # Con cobros registrados no basta cancelar: hay que revertir la póliza del
     # registro Y la de cada cobro, y devolver el dinero a su cuenta.
     if Decimal(receivable.amount_paid) > 0:
@@ -192,6 +205,7 @@ def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id:
         receivable.cancelled_at = datetime.now(timezone.utc)
         receivable.cancelled_by = user_id
         receivable.cancellation_reason = reason
+        record_change(db, org_id, receivable, "CANCEL", user_id, before=before, after=snapshot(receivable), reason=reason)
         db.commit()
         db.refresh(receivable)
         return receivable
@@ -220,6 +234,7 @@ def cancel_receivable(db: Session, org_id: str, receivable: Receivable, user_id:
     receivable.cancelled_at = datetime.now(timezone.utc)
     receivable.cancelled_by = user_id
     receivable.cancellation_reason = reason
+    record_change(db, org_id, receivable, "CANCEL", user_id, before=before, after=snapshot(receivable), reason=reason)
     db.commit()
     db.refresh(receivable)
     return receivable

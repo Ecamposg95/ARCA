@@ -201,6 +201,7 @@ export function DebtsPage({ config }: { config: Config }) {
     void queryClient.invalidateQueries({ queryKey: [config.kind] })
     void queryClient.invalidateQueries({ queryKey: ['accounts'] })
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    void queryClient.invalidateQueries({ queryKey: ['history'] })
   }
 
   const createMutation = useMutation({
@@ -240,8 +241,8 @@ export function DebtsPage({ config }: { config: Config }) {
   })
 
   const cancelMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`${config.endpoint}/${id}/cancel`, {})
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      await api.post(`${config.endpoint}/${id}/cancel`, { reason: reason.trim() || null })
     },
     onSuccess: invalidate,
     onError: (err) => window.alert(errorMessage(err)),
@@ -502,8 +503,10 @@ export function DebtsPage({ config }: { config: Config }) {
                         variant="ghost"
                         className="!px-2 !py-1 text-xs"
                         onClick={() => {
-                          if (window.confirm('¿Cancelar esta cuenta? Se revertirá su registro contable.'))
-                            cancelMutation.mutate(debt.id)
+                          const reason = window.prompt(
+                            '¿Por qué cancelas esta cuenta? Se revertirá su registro contable y el motivo queda en el historial.',
+                          )
+                          if (reason !== null) cancelMutation.mutate({ id: debt.id, reason })
                         }}
                       >
                         Cancelar

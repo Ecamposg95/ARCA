@@ -2,13 +2,15 @@
  *
  *  El patrón FINNOVA: la fila abre un panel lateral y el contexto de la lista
  *  no se pierde. Aquí viven las tres preguntas de una factura: ¿hace cuánto
- *  venció?, ¿qué cobros lleva?, ¿cómo quedó asentada?
+ *  venció?, ¿qué cobros lleva?, ¿cómo quedó asentada? Y al final, quién la
+ *  cambió y cuáles eran los valores anteriores (HU-09).
  */
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/Button'
+import { HistoryTimeline } from '@/components/ui/HistoryTimeline'
 import { Money } from '@/components/ui/Money'
 import { formatDate, formatMoney } from '@/lib/format'
 import { useAccounts } from '@/lib/hooks'
@@ -191,6 +193,13 @@ export function DebtDetailPanel({
                 ))}
               </div>
             )}
+          </section>
+
+          <section>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Historial de cambios
+            </h3>
+            <HistoryTimeline endpoint={`/${kind}`} entityId={debt.id} />
           </section>
         </div>
 

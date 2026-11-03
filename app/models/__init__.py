@@ -11,6 +11,7 @@ from app.models.assistant import AiUsage, AssistantAction, AssistantConversation
 from app.models.business_unit import BusinessUnit  # noqa: F401
 from app.models.cash_cut import CashCut  # noqa: F401
 from app.models.category import Category  # noqa: F401
+from app.models.change_log import ChangeLog  # noqa: F401
 from app.models.contact import Customer, Vendor  # noqa: F401
 from app.models.expense import Expense  # noqa: F401
 from app.models.financial_account import FinancialAccount  # noqa: F401

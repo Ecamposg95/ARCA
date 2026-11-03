@@ -16,6 +16,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table } from '@/components/ui/Table'
 import { TaxSelect } from '@/components/ui/TaxSelect'
 import { JournalEntryModal } from '@/components/ui/JournalEntryModal'
+import { OperationDetailModal } from '@/features/operations/OperationDetailModal'
 import { TableFooter } from '@/components/ui/Pagination'
 import {
   BatchBar,
@@ -114,6 +115,7 @@ export function OperationsPage({ config }: { config: Config }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [entryFor, setEntryFor] = useState<Operation | null>(null)
+  const [detailFor, setDetailFor] = useState<Operation | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     date: today(),
@@ -230,6 +232,7 @@ export function OperationsPage({ config }: { config: Config }) {
     void queryClient.invalidateQueries({ queryKey: [config.kind] })
     void queryClient.invalidateQueries({ queryKey: ['accounts'] })
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    void queryClient.invalidateQueries({ queryKey: ['history'] })
   }
 
   const createMutation = useMutation({
@@ -272,8 +275,8 @@ export function OperationsPage({ config }: { config: Config }) {
   })
 
   const cancelMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`${config.endpoint}/${id}/cancel`, {})
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      await api.post(`${config.endpoint}/${id}/cancel`, { reason: reason.trim() || null })
     },
     onSuccess: invalidate,
     onError: (err) => window.alert(errorMessage(err)),
@@ -626,6 +629,13 @@ export function OperationsPage({ config }: { config: Config }) {
               </td>
               <td className="px-4 py-2.5 text-right">
                 <div className="flex justify-end gap-1.5">
+                  <Button
+                    variant="ghost"
+                    className="!px-2 !py-1 text-xs"
+                    onClick={() => setDetailFor(item)}
+                  >
+                    {item.status === 'PENDING' ? 'Editar' : 'Detalle'}
+                  </Button>
                   {item.status === 'PAID' ? (
                     <Button
                       variant="ghost"
@@ -656,7 +666,9 @@ export function OperationsPage({ config }: { config: Config }) {
                       variant="ghost"
                       className="!px-2 !py-1 text-xs"
                       onClick={() => {
-                        if (window.confirm('¿Cancelar esta operación?')) cancelMutation.mutate(item.id)
+                        // El motivo queda en el historial: quien revise sabrá por qué.
+                        const reason = window.prompt('¿Por qué cancelas esta operación? (queda en el historial)')
+                        if (reason !== null) cancelMutation.mutate({ id: item.id, reason })
                       }}
                     >
                       Cancelar
@@ -742,6 +754,19 @@ export function OperationsPage({ config }: { config: Config }) {
           </div>
         </form>
       </Modal>
+
+      <OperationDetailModal
+        operation={detailFor ? (items.find((item) => item.id === detailFor.id) ?? detailFor) : null}
+        endpoint={config.endpoint}
+        paidLabel={config.paidLabel}
+        accountLabel={config.kind === 'income' ? 'Cuenta donde entra' : 'Cuenta con la que se paga'}
+        categories={categories ?? []}
+        accounts={accounts ?? []}
+        categoryName={categoryName}
+        accountName={accountLabel}
+        onClose={() => setDetailFor(null)}
+        onSaved={invalidate}
+      />
 
       <JournalEntryModal
         sourceType={config.kind === 'income' ? 'income' : 'expense'}

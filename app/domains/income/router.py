@@ -1,15 +1,13 @@
 from datetime import date as date_type
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.income import service
-from app.domains.income.schemas import IncomeCancel, IncomeCreate, IncomePay, IncomeRead
+from app.domains.income.schemas import IncomeCancel, IncomeCreate, IncomePay, IncomeRead, IncomeUpdate
 from app.models.income import Income
 from app.models.organization import WRITE_ROLES
-from app.models.project import Project
 from app.models.user import User
 from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
@@ -122,31 +120,15 @@ def cancel_income(
     return IncomeRead.model_validate(income)
 
 
-class IncomeProjectPatch(BaseModel):
-    """Lo único editable tras el registro es la etiqueta analítica. Cambiar
-    montos o fechas de algo contabilizado exige reverso, nunca edición."""
-
-    project_id: str | None
-
-
 @router.patch("/{income_id}", response_model=IncomeRead)
 def patch_income(
     income_id: str,
-    payload: IncomeProjectPatch,
+    payload: IncomeUpdate,
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
     income = _get_income(db, org_id, income_id)
-    if payload.project_id is not None:
-        project = (
-            db.query(Project)
-            .filter(Project.id == payload.project_id, Project.organization_id == org_id)
-            .first()
-        )
-        if project is None:
-            raise HTTPException(status_code=400, detail="Ese proyecto no existe en tu empresa.")
-    income.project_id = payload.project_id
-    db.commit()
-    db.refresh(income)
+    income = service.update_income(db, org_id, income, payload.model_dump(exclude_unset=True), user.id)
     return IncomeRead.model_validate(income)

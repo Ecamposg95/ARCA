@@ -773,3 +773,39 @@ export interface ImportSettings {
     income_category_id: string | null
   }
 }
+
+export type HistoryAction = 'CREATE' | 'UPDATE' | 'CANCEL' | 'PAY' | 'APPROVE' | 'REJECT' | 'DELETE'
+export type HistoryEntityType =
+  | 'expense'
+  | 'income'
+  | 'payable'
+  | 'receivable'
+  | 'financial_account'
+  | 'category'
+  | 'proposal'
+
+export interface HistoryFieldChange {
+  field: string
+  /** Nombre amigable en español ("Monto", "Categoría"). */
+  label: string
+  kind: 'money' | 'date' | 'text' | 'status' | 'bool' | 'rate' | 'ref'
+  old: string | number | boolean | null
+  new: string | number | boolean | null
+  /** Referencias (categoría, cuenta…) ya resueltas a su nombre por el backend. */
+  old_display: string | null
+  new_display: string | null
+}
+
+export interface HistoryEvent {
+  id: string
+  entity_type: HistoryEntityType
+  entity_id: string
+  entity_label: string | null
+  action: HistoryAction
+  source: 'web' | 'assistant' | 'agent' | 'import' | 'approval' | 'system'
+  reason: string | null
+  user_id: string | null
+  user_name: string | null
+  created_at: string
+  changes: HistoryFieldChange[]
+}

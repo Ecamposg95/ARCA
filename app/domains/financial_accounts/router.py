@@ -16,6 +16,7 @@ from app.models.organization import ROLE_ADMIN, ROLE_OWNER, WRITE_ROLES
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
+from app.services.change_log import record_change, snapshot
 from app.services.dimensions import validate_dimensions
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -80,6 +81,7 @@ def create_account(
         settlement_days=payload.settlement_days,
         settlement_account_id=payload.settlement_account_id,
     )
+    record_change(db, org_id, account, "CREATE", user.id)
     db.commit()
     db.refresh(account)
     return FinancialAccountRead.model_validate(account)
@@ -100,9 +102,11 @@ def update_account(
     payload: FinancialAccountUpdate,
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
     _membership=Depends(require_role(WRITE_ROLES)),
 ):
     account = _get_account(db, org_id, account_id)
+    before = snapshot(account)
     changes = payload.model_dump(exclude_unset=True)
     validate_dimensions(db, org_id, changes.get("business_unit_id"), None)
     if changes.get("settlement_account_id"):
@@ -113,6 +117,7 @@ def update_account(
             changes.pop(field, None)
     for field, value in changes.items():
         setattr(account, field, value)
+    record_change(db, org_id, account, "UPDATE", user.id, before=before, after=snapshot(account))
     db.commit()
     db.refresh(account)
     return FinancialAccountRead.model_validate(account)
