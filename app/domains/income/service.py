@@ -11,8 +11,10 @@ from app.models.category import Category
 from app.models.contact import Customer
 from app.models.financial_account import FinancialAccount
 from app.models.income import Income
+from app.models.project import Project
 from app.services.accounting.rules import income_paid_entry
 from app.services.taxes import split_total
+from app.services.change_log import record_change, snapshot
 from app.services.reversals import reverse_operation
 from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
 from app.services.transactions import account_ledger_code, record_transaction
@@ -115,6 +117,7 @@ def build_income(db: Session, org_id: str, payload, created_by: str) -> Income:
             payment_method=getattr(payload, "payment_method", None),
             reference=getattr(payload, "reference", None),
         )
+    record_change(db, org_id, income, "CREATE", created_by)
     return income
 
 
@@ -131,9 +134,11 @@ def pay_income(
         raise ValueError("Este ingreso ya está cobrado.")
     if income.status == "CANCELLED":
         raise ValueError("No puedes cobrar un ingreso cancelado.")
+    before = snapshot(income)
     _apply_payment(
         db, org_id, income, financial_account_id, paid_date or income.date, user_id, payment_method=payment_method
     )
+    record_change(db, org_id, income, "PAY", user_id, before=before, after=snapshot(income))
     db.commit()
     db.refresh(income)
     return income
@@ -222,6 +227,7 @@ def cancel_income(
 ) -> Income:
     if income.status == "CANCELLED":
         raise ValueError("Este ingreso ya está cancelado.")
+    before = snapshot(income)
 
     # Si ya movió dinero, cancelar no basta: hay que revertir la contabilidad y
     # devolver el saldo. Nada se borra; se emite la póliza espejo.
@@ -240,8 +246,93 @@ def cancel_income(
     income.cancelled_at = datetime.now(timezone.utc)
     income.cancelled_by = user_id
     income.cancellation_reason = reason
+    record_change(
+        db, income.organization_id, income, "CANCEL", user_id, before=before, after=snapshot(income), reason=reason
+    )
     if not commit:
         return income
+    db.commit()
+    db.refresh(income)
+    return income
+
+
+def validate_project(db: Session, org_id: str, project_id: str | None) -> None:
+    if project_id is None:
+        return
+    exists = (
+        db.query(Project.id).filter(Project.id == project_id, Project.organization_id == org_id).first()
+    )
+    if exists is None:
+        raise ValueError("Ese proyecto no existe en tu empresa.")
+
+
+def validate_money_account(db: Session, org_id: str, account_id: str | None) -> None:
+    if account_id is None:
+        return
+    exists = (
+        db.query(FinancialAccount.id)
+        .filter(
+            FinancialAccount.id == account_id,
+            FinancialAccount.organization_id == org_id,
+            FinancialAccount.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if exists is None:
+        raise ValueError("Esa cuenta de dinero no existe en tu empresa.")
+
+
+# Un ingreso pendiente no tiene movimiento ni póliza: corregirlo no toca la
+# contabilidad. Ya cobrado o cancelado, sólo la etiqueta analítica es editable.
+PENDING_EDITABLE = (
+    "date",
+    "description",
+    "amount",
+    "tax_rate",
+    "category_id",
+    "customer_id",
+    "financial_account_id",
+    "notes",
+)
+
+
+def update_income(db: Session, org_id: str, income: Income, changes: dict, user_id: str) -> Income:
+    """Aplica una edición y la deja en la bitácora con sus valores anteriores."""
+    locked = [field for field in changes if field in PENDING_EDITABLE]
+    if locked and income.status != "PENDING":
+        raise ValueError(
+            "Un ingreso cobrado o cancelado sólo admite cambiar el proyecto. "
+            "Para corregir otra cosa, cancélalo y regístralo de nuevo."
+        )
+    before = snapshot(income)
+    if "project_id" in changes:
+        validate_project(db, org_id, changes["project_id"])
+        income.project_id = changes["project_id"]
+    if changes.get("category_id"):
+        _validate_category(db, org_id, changes["category_id"])
+        income.category_id = changes["category_id"]
+    if "customer_id" in changes:
+        if changes["customer_id"]:
+            _validate_customer(db, org_id, changes["customer_id"])
+        income.customer_id = changes["customer_id"]
+    if "financial_account_id" in changes:
+        validate_money_account(db, org_id, changes["financial_account_id"])
+        income.financial_account_id = changes["financial_account_id"]
+    if changes.get("date"):
+        income.date = changes["date"]
+    if changes.get("description"):
+        income.description = changes["description"].strip()
+    if "notes" in changes:
+        income.notes = changes["notes"]
+    if changes.get("amount") is not None or changes.get("tax_rate") is not None:
+        amount = changes.get("amount") or Decimal(income.amount)
+        rate = changes["tax_rate"] if changes.get("tax_rate") is not None else Decimal(income.tax_rate)
+        tax = split_total(amount, rate)
+        income.amount = tax.total
+        income.subtotal = tax.subtotal
+        income.tax_rate = tax.tax_rate
+        income.tax_amount = tax.tax_amount
+    record_change(db, org_id, income, "UPDATE", user_id, before=before, after=snapshot(income))
     db.commit()
     db.refresh(income)
     return income

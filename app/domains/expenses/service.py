@@ -10,8 +10,10 @@ from app.core.events import event_bus
 from app.models.category import Category
 from app.models.contact import Vendor
 from app.models.expense import Expense
-from app.domains.income.service import resolve_tax
+from app.domains.income.service import resolve_tax, validate_money_account, validate_project
 from app.services.accounting.rules import expense_paid_entry
+from app.services.change_log import record_change, snapshot
+from app.services.taxes import split_total
 from app.services.reversals import reverse_operation
 from app.models.financial_account import FinancialAccount
 from app.services.dimensions import inherit_business_unit, tag_entry, validate_dimensions
@@ -100,6 +102,7 @@ def build_expense(db: Session, org_id: str, payload, created_by: str) -> Expense
 
     if payload.status == "PAID":
         _apply_payment(db, org_id, expense, payload.financial_account_id, payload.date, created_by)
+    record_change(db, org_id, expense, "CREATE", created_by)
     return expense
 
 
@@ -115,7 +118,9 @@ def pay_expense(
         raise ValueError("Este gasto ya está pagado.")
     if expense.status == "CANCELLED":
         raise ValueError("No puedes pagar un gasto cancelado.")
+    before = snapshot(expense)
     _apply_payment(db, org_id, expense, financial_account_id, paid_date or expense.date, user_id)
+    record_change(db, org_id, expense, "PAY", user_id, before=before, after=snapshot(expense))
     db.commit()
     db.refresh(expense)
     return expense
@@ -191,6 +196,7 @@ def cancel_expense(
     otra (el ajuste de un corte se deshace en el día del corte)."""
     if expense.status == "CANCELLED":
         raise ValueError("Este gasto ya está cancelado.")
+    before = snapshot(expense)
     if expense.status == "PAID":
         reverse_operation(
             db,
@@ -205,8 +211,71 @@ def cancel_expense(
     expense.cancelled_at = datetime.now(timezone.utc)
     expense.cancelled_by = user_id
     expense.cancellation_reason = reason
+    record_change(
+        db, expense.organization_id, expense, "CANCEL", user_id, before=before, after=snapshot(expense), reason=reason
+    )
     if not commit:
         return expense
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
+# Mientras no se paga, un gasto no tiene movimiento ni póliza: corregirlo no
+# toca la contabilidad. Una vez pagado, sólo la etiqueta analítica es editable;
+# lo demás exige cancelar (reverso) y volver a registrar.
+PENDING_EDITABLE = (
+    "date",
+    "description",
+    "amount",
+    "tax_rate",
+    "category_id",
+    "vendor_id",
+    "financial_account_id",
+    "payment_method",
+    "reference",
+    "notes",
+)
+
+
+def update_expense(db: Session, org_id: str, expense: Expense, changes: dict, user_id: str) -> Expense:
+    """Aplica una edición y la deja en la bitácora con sus valores anteriores."""
+    locked = [field for field in changes if field in PENDING_EDITABLE]
+    if locked and expense.status != "PENDING":
+        raise ValueError(
+            "Un gasto pagado o cancelado sólo admite cambiar el proyecto. "
+            "Para corregir otra cosa, cancélalo y regístralo de nuevo."
+        )
+    before = snapshot(expense)
+    if "project_id" in changes:
+        validate_project(db, org_id, changes["project_id"])
+        expense.project_id = changes["project_id"]
+    if changes.get("category_id"):
+        _validate_category(db, org_id, changes["category_id"])
+        expense.category_id = changes["category_id"]
+    if "vendor_id" in changes:
+        if changes["vendor_id"]:
+            _validate_vendor(db, org_id, changes["vendor_id"])
+        expense.vendor_id = changes["vendor_id"]
+    if "financial_account_id" in changes:
+        validate_money_account(db, org_id, changes["financial_account_id"])
+        expense.financial_account_id = changes["financial_account_id"]
+    if changes.get("date"):
+        expense.date = changes["date"]
+    if changes.get("description"):
+        expense.description = changes["description"].strip()
+    for field in ("payment_method", "reference", "notes"):
+        if field in changes:
+            setattr(expense, field, changes[field])
+    if changes.get("amount") is not None or changes.get("tax_rate") is not None:
+        amount = changes.get("amount") or Decimal(expense.amount)
+        rate = changes["tax_rate"] if changes.get("tax_rate") is not None else Decimal(expense.tax_rate)
+        tax = split_total(amount, rate)
+        expense.amount = tax.total
+        expense.subtotal = tax.subtotal
+        expense.tax_rate = tax.tax_rate
+        expense.tax_amount = tax.tax_amount
+    record_change(db, org_id, expense, "UPDATE", user_id, before=before, after=snapshot(expense))
     db.commit()
     db.refresh(expense)
     return expense

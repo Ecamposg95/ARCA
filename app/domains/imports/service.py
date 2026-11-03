@@ -33,6 +33,7 @@ from app.models.fiscal_entity import FiscalEntity
 from app.models.import_batch import IMPORT_KINDS, ImportBatch, ImportRow
 from app.models.organization import Organization
 from app.services.accounting.engine import ClosedPeriodError, _assert_period_open
+from app.services.change_log import change_source
 from app.services.dimensions import normalize_alias
 from app.services.imports.tabular import TabularFormatError, read_table
 from app.services.imports.toronja import ToronjaFormatError, parse_toronja
@@ -941,10 +942,12 @@ def confirm_batch(db: Session, org_id: str, batch: ImportBatch, user_id: str) ->
             row.status, row.message = "DUPLICATE", "Este folio ya se importó antes."
 
     try:
-        if batch.kind == "TORONJA":
-            created = _confirm_toronja(db, org_id, batch, rows, user_id)
-        else:
-            created = _confirm_generic(db, org_id, batch, rows, user_id)
+        # Cada operación creada queda en el historial con origen "importación".
+        with change_source("import"):
+            if batch.kind == "TORONJA":
+                created = _confirm_toronja(db, org_id, batch, rows, user_id)
+            else:
+                created = _confirm_generic(db, org_id, batch, rows, user_id)
         batch.status = "CONFIRMED"
         batch.confirmed_at = datetime.now(timezone.utc)
         batch.summary = {**_summarize(rows, created), "created": created}
