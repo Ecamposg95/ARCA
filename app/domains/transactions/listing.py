@@ -37,6 +37,7 @@ TYPE_LABELS = {
     "RECEIVABLE_COLLECTION": "Cobro",
     "PAYABLE_PAYMENT": "Pago",
     "ADJUSTMENT": "Ajuste",
+    "ADJUSTMENT_IN": "Ajuste (entrada)",
     "REVERSAL_IN": "Reverso (entrada)",
     "REVERSAL_OUT": "Reverso (salida)",
 }

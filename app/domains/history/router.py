@@ -14,7 +14,7 @@ from app.security.deps import get_current_org_id
 
 router = APIRouter(tags=["history"])
 
-ENTITY_PATTERN = "^(expense|income|payable|receivable|transfer|financial_account|category|contact|proposal)$"
+ENTITY_PATTERN = "^(expense|income|payable|receivable|transfer|financial_account|category|contact|proposal|opening_balance)$"
 ACTION_PATTERN = "^(" + "|".join(CHANGE_ACTIONS) + ")$"
 
 
@@ -70,5 +70,7 @@ for _path, _entity_type in (
     ("/payables", "payable"),
     ("/receivables", "receivable"),
     ("/accounts", "financial_account"),
+    # La apertura general (corte, estado, cuentas sin módulo) cuelga de la empresa.
+    ("/opening", "opening_balance"),
 ):
     _entity_history_route(_path, _entity_type)

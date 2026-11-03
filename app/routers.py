@@ -32,6 +32,7 @@ from app.domains.cash_cuts.router import router as cash_cuts_router
 from app.domains.imports.router import router as imports_router
 from app.domains.attachments.router import router as attachments_router
 from app.domains.history.router import router as history_router
+from app.domains.opening.router import router as opening_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -65,3 +66,4 @@ api_router.include_router(cash_cuts_router)
 api_router.include_router(imports_router)
 api_router.include_router(attachments_router)
 api_router.include_router(history_router)
+api_router.include_router(opening_router)

@@ -48,6 +48,8 @@ const STATUS_LABELS: Record<string, string> = {
   PROPOSED: 'Por revisar',
   APPROVED: 'Autorizada',
   REJECTED: 'Rechazada',
+  PROVISIONAL: 'Provisional',
+  CONFIRMED: 'Confirmado',
 }
 
 const PAYMENT_LABELS: Record<string, string> = {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, errorMessage } from '@/api/client'
 import { Button } from '@/components/ui/Button'
@@ -99,6 +100,7 @@ export function SettingsPage() {
         </form>
       </Card>
 
+      {role === 'OWNER' || role === 'ADMIN' || role === 'ACCOUNTANT' ? <OpeningCard /> : null}
       <DimensionsCard />
       <ImportSettingsCard />
       {role === 'OWNER' || role === 'ADMIN' ? <ApprovalsCard /> : null}
@@ -107,6 +109,24 @@ export function SettingsPage() {
       <AgentKeysSection />
       <AssistantCard />
     </div>
+  )
+}
+
+function OpeningCard() {
+  return (
+    <Card className="mt-6 max-w-lg">
+      <h2 className="font-display text-lg font-semibold">Apertura</h2>
+      <p className="mt-1 text-sm text-muted">
+        La fecha de corte y los saldos con los que empezaste en ONE Finance. Captúralos provisionales y corrígelos
+        cuando lleguen los estados de cuenta.
+      </p>
+      <Link
+        to="/configuracion/apertura"
+        className="mt-4 inline-flex rounded border border-border px-3.5 py-2 text-sm font-medium hover:bg-surface-2"
+      >
+        Revisar la apertura
+      </Link>
+    </Card>
   )
 }
 

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.accounting import service
+from app.domains.opening import service as opening_service
 from app.models.accounting import Account, JournalEntry, JournalEntryLine
 from app.models.organization import ACCOUNTING_ROLES, Organization
 from app.models.user import User
@@ -418,8 +419,21 @@ class OpeningLineCreate(BaseModel):
 class OpeningBalanceCreate(BaseModel):
     date: date_type
     description: str | None = Field(default=None, max_length=500)
-    balancing_code: Literal["3200", "3100"] = "3200"
+    balancing_code: Literal["3200", "3100", "3901"] = "3200"
     lines: list[OpeningLineCreate] = Field(min_length=1, max_length=100)
+
+
+class OpeningBalanceReplace(BaseModel):
+    """Corrección de la apertura sin módulo: la lista completa de cuentas como debe quedar.
+
+    Va fechada en la fecha de corte de la empresa; una cuenta que ya no viene (o
+    viene en cero) sale de la apertura. Todo en cero deja sólo el reverso.
+    """
+
+    reason: str = Field(min_length=5, max_length=500)
+    description: str | None = Field(default=None, max_length=500)
+    balancing_code: Literal["3200", "3100", "3901"] = "3901"
+    lines: list[OpeningLineCreate] = Field(default_factory=list, max_length=100)
 
 
 class OpeningBalanceRead(BaseModel):
@@ -452,6 +466,12 @@ def create_opening_balance(
     # FOR UPDATE sobre la empresa: dos aperturas simultáneas se serializan y la
     # segunda ya ve la primera ("Ya existe una póliza de apertura").
     lock_organization(db, org_id)
+    cutoff = db.query(Organization.opening_date).filter(Organization.id == org_id).scalar()
+    if cutoff is not None and payload.date != cutoff:
+        raise HTTPException(
+            status_code=400,
+            detail=f"La apertura va fechada en la fecha de corte de la empresa ({cutoff:%d/%m/%Y}).",
+        )
     try:
         entry = opening_entry(
             db,
@@ -471,6 +491,41 @@ def create_opening_balance(
     db.commit()
     db.refresh(entry)
     return _entry_read(db, org_id, entry)
+
+
+@router.put("/opening-balance", response_model=OpeningBalanceRead)
+def replace_opening_balance(
+    payload: OpeningBalanceReplace,
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    user: User = Depends(get_current_user),
+):
+    """Corrige la apertura en un paso: revierte la viva y asienta la nueva al corte.
+
+    Las reglas son las de siempre (`rules.reverse_manual_entry` + `rules.opening_entry`);
+    el orquestador vive en `domains/opening/service.py`.
+    """
+    try:
+        entry = opening_service.replace_opening(
+            db,
+            org_id,
+            lines=[OpeningLine(line.account_id, line.amount) for line in payload.lines],
+            reason=payload.reason,
+            balancing_code=payload.balancing_code,
+            description=payload.description,
+            user_id=user.id,
+        )
+    except LookupError as error:
+        db.rollback()
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    db.commit()
+    return OpeningBalanceRead(
+        entry=_entry_read(db, org_id, entry) if entry is not None else None,
+        balancing_codes=list(OPENING_BALANCING_CODES),
+    )
 
 
 @router.get("/trial-balance")

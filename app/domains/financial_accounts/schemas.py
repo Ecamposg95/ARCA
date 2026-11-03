@@ -57,6 +57,9 @@ class FinancialAccountRead(BaseModel):
     fee_rate: Decimal | None = None
     settlement_days: int | None = None
     settlement_account_id: str | None = None
+    # Apertura ajustable: PROVISIONAL / CONFIRMED (null = nunca revisada) y la fuente de la cifra.
+    opening_status: str | None = None
+    opening_note: str | None = None
     created_at: datetime
 
     @computed_field

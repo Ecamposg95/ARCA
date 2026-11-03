@@ -58,6 +58,10 @@ DEFAULT_SAT_CODES = {
     "3000": "300",
     "3100": "301.01",
     "3200": "304.01",
+    # Puente de apertura: "Otras cuentas de capital" (306.01). 302.01 es
+    # "Patrimonio" de una no lucrativa; para una sociedad o persona física con
+    # actividad empresarial lo más cercano es 306.01.
+    "3901": "306.01",
     "4000": "400",
     "4100": "401.01",
     "4200": "401.01",

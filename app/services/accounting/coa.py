@@ -26,6 +26,9 @@ CODE_ACCOUNTS_PAYABLE = "2100"
 CODE_CREDIT_CARDS = "2200"
 CODE_CAPITAL = "3100"
 CODE_RETAINED_EARNINGS = "3200"
+# Cuenta puente de la apertura: lo que se capturó al corte sin documento que lo
+# respalde todavía. Se vacía conforme llegan los estados de cuenta.
+CODE_OPENING_BRIDGE = "3901"
 CODE_SALES = "4100"
 CODE_SERVICES = "4200"
 CODE_OPERATING_EXPENSES = "5100"
@@ -63,6 +66,7 @@ DEFAULT_CHART = (
     ("3000", "Capital", "EQUITY", None),
     ("3100", "Capital", "EQUITY", "3000"),
     ("3200", "Resultados Acumulados", "EQUITY", "3000"),
+    ("3901", "Saldos de apertura por identificar", "EQUITY", "3000"),
     ("4000", "Ingresos", "REVENUE", None),
     ("4100", "Ventas", "REVENUE", "4000"),
     ("4200", "Servicios", "REVENUE", "4000"),

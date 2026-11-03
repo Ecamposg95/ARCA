@@ -26,7 +26,11 @@ from app.models.expense import Expense
 from app.models.financial_account import FinancialAccount
 from app.models.income import Income
 from app.models.organization import ROLE_ADMIN, ROLE_OWNER
-from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+from app.models.transaction import (
+    INFLOW_TYPES,
+    FinancialTransaction,
+    not_opening_adjustment,
+)
 from app.services.accounting.coa import CODE_OTHER_EXPENSES, CODE_SALES
 from app.services.accounting.engine import _quantize
 from app.services.categories import ensure_system_category
@@ -134,10 +138,15 @@ def day_flows(db: Session, organization_id: str, account: FinancialAccount, day:
                 outflow += Decimal(amount or 0)
         return inflow, outflow
 
-    since_in, since_out = sums(base.filter(FinancialTransaction.date >= day))
+    # Un ajuste de apertura fechado ese mismo día es el punto de partida (el
+    # saldo al corte), no una entrada ni una salida: cuenta en la apertura.
+    # (Escrito sin NOT: con `source_type` NULL, NOT(... = 'x') es NULL y perdería filas.)
+    after_opening = or_(FinancialTransaction.date > day, not_opening_adjustment())
+    since_in, since_out = sums(base.filter(FinancialTransaction.date >= day, after_opening))
     day_in, day_out = sums(
         base.filter(
             FinancialTransaction.date == day,
+            not_opening_adjustment(),
             or_(FinancialTransaction.source_id.is_(None), FinancialTransaction.source_id.notin_(expenses)),
             or_(FinancialTransaction.source_id.is_(None), FinancialTransaction.source_id.notin_(incomes)),
             or_(FinancialTransaction.source_id.is_(None), FinancialTransaction.source_id.notin_(deliveries)),

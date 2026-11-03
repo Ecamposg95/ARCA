@@ -27,6 +27,7 @@ from app.services.accounting.coa import (
     CODE_INTEREST_EXPENSE,
     CODE_ISR_WITHHELD,
     CODE_LOANS_PAYABLE,
+    CODE_OPENING_BRIDGE,
     CODE_RETAINED_EARNINGS,
     CODE_VAT_WITHHELD,
     CODE_VAT_CHARGED_COLLECTED,
@@ -671,8 +672,9 @@ def reverse_manual_entry(
 # --- Apertura (C-2) ---
 
 # La cuenta contra la que cuadra la apertura: 3200 por defecto, 3100 si el
-# contador prefiere llevar la diferencia a capital.
-OPENING_BALANCING_CODES = (CODE_RETAINED_EARNINGS, CODE_CAPITAL)
+# contador prefiere llevar la diferencia a capital, 3901 mientras la apertura es
+# provisional (lo que aún no tiene documento queda "por identificar").
+OPENING_BALANCING_CODES = (CODE_RETAINED_EARNINGS, CODE_CAPITAL, CODE_OPENING_BRIDGE)
 BALANCE_SHEET_TYPES = ("ASSET", "LIABILITY", "EQUITY")
 MAX_OPENING_LINES = 100
 
@@ -739,7 +741,10 @@ def opening_entry(
     corregirla se revierte y se captura otra. No hace commit.
     """
     if balancing_code not in OPENING_BALANCING_CODES:
-        raise AccountingError("La apertura cuadra contra Resultados Acumulados (3200) o Capital (3100).")
+        raise AccountingError(
+            "La apertura cuadra contra Resultados Acumulados (3200), Capital (3100) "
+            "o Saldos de apertura por identificar (3901)."
+        )
     if date > date_type.today():
         raise AccountingError("No se puede asentar una póliza con fecha futura.")
     if len(lines) > MAX_OPENING_LINES:
@@ -783,6 +788,10 @@ def opening_entry(
             )
         if account.code == balancing_code:
             raise AccountingError(f"La cuenta {account.code} es la de cuadre; su saldo se calcula.")
+        if account.code == CODE_OPENING_BRIDGE:
+            raise AccountingError(
+                f"La cuenta {CODE_OPENING_BRIDGE} es la puente de la apertura; su saldo se calcula, no se captura."
+            )
         amount = Decimal(line.amount).quantize(TWO_PLACES)
         if amount < 0:
             raise AccountingError("Los saldos iniciales no pueden ser negativos.")
@@ -812,6 +821,62 @@ def opening_entry(
         lines=specs,
         source_type=OPENING_SOURCE,
         source_id=opening_source_id(organization_id),
+        created_by=created_by,
+        kind="DIARIO",
+    )
+
+
+OPENING_ADJUSTMENT_SOURCE = "opening_adjustment"
+
+
+def opening_adjustment_entry(
+    db: Session,
+    organization_id: str,
+    account_name: str,
+    difference: Decimal,
+    date: date_type,
+    source_id: str,
+    account_code: str = CODE_CASH_BANK,
+    liability: bool = False,
+    created_by: str | None = None,
+) -> JournalEntry:
+    """Ajuste del saldo de apertura de un instrumento, contra la cuenta puente 3901.
+
+    `difference` = apertura nueva − apertura anterior, en la naturaleza del
+    instrumento (en una tarjeta, más deuda es positivo).
+
+    Activo que sube:  Cargo instrumento / Abono 3901.   Activo que baja: al revés.
+    Pasivo que sube:  Cargo 3901 / Abono 2200.          Pasivo que baja: al revés.
+
+    Va fechado en la fecha de corte, no el día de la captura: las operaciones
+    registradas desde el corte quedan como están y sólo el punto de partida se
+    corrige. No hace commit.
+    """
+    difference = Decimal(difference).quantize(TWO_PLACES)
+    if difference == 0:
+        raise AccountingError("El ajuste no cambia el saldo de apertura.")
+    amount = abs(difference)
+    instrument_debit = (difference > 0) != liability
+    instrument = LineSpec(
+        account_code,
+        debit=amount if instrument_debit else Decimal("0"),
+        credit=Decimal("0") if instrument_debit else amount,
+        description=account_name,
+    )
+    bridge = LineSpec(
+        CODE_OPENING_BRIDGE,
+        debit=Decimal("0") if instrument_debit else amount,
+        credit=amount if instrument_debit else Decimal("0"),
+        description="Saldo de apertura por identificar",
+    )
+    return post_journal_entry(
+        db,
+        organization_id,
+        date=date,
+        description=f"Ajuste de apertura de {account_name}"[:500],
+        lines=[instrument, bridge],
+        source_type=OPENING_ADJUSTMENT_SOURCE,
+        source_id=source_id,
         created_by=created_by,
         kind="DIARIO",
     )
