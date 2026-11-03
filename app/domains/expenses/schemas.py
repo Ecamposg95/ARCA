@@ -65,6 +65,8 @@ class ExpenseRead(BaseModel):
     notes: str | None
     paid_at: datetime | None
     created_at: datetime
+    # Evidencia (ticket, PDF/XML de la factura): la lista muestra el clip.
+    attachments_count: int = 0
 
     @computed_field
     @property

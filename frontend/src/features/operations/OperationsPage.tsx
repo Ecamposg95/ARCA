@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
+import { Paperclip } from 'lucide-react'
 import { api, errorMessage } from '@/api/client'
 import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
 import { handlePendingApproval } from '@/lib/approvals'
@@ -39,6 +40,8 @@ import {
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts, useDimensions } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
+import { toast } from '@/stores/toastStore'
+import { AttachmentsPanel, PendingAttachments, uploadAttachment } from './Attachments'
 import type { Expense, Income, Page } from '@/types/api'
 
 type Operation = Income & Expense
@@ -114,6 +117,8 @@ export function OperationsPage({ config }: { config: Config }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [offset, setOffset] = useState(0)
   const [entryFor, setEntryFor] = useState<Operation | null>(null)
+  const [attachmentsFor, setAttachmentsFor] = useState<Operation | null>(null)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     date: today(),
@@ -252,7 +257,26 @@ export function OperationsPage({ config }: { config: Config }) {
       if (form.fiscal_entity_id) payload.fiscal_entity_id = form.fiscal_entity_id
       if (form.notes) payload.notes = form.notes
       // 202: alcanzó el umbral y espera autorización. El formulario se cierra igual.
-      handlePendingApproval(await api.post(config.endpoint, payload))
+      const response = await api.post<Operation>(config.endpoint, payload)
+      if (handlePendingApproval(response)) {
+        if (pendingFiles.length > 0) {
+          toast('Los adjuntos no se subieron: el gasto espera autorización. Súbelos cuando quede registrado.')
+        }
+        return
+      }
+      // Los adjuntos necesitan el id del gasto: se suben ya creado. Si uno
+      // falla, el gasto queda y el aviso dice cuál faltó.
+      const failed: string[] = []
+      for (const file of pendingFiles) {
+        try {
+          await uploadAttachment(response.data.id, file)
+        } catch (err) {
+          failed.push(`${file.name} (${errorMessage(err)})`)
+        }
+      }
+      if (failed.length > 0) {
+        toast(`El gasto se guardó, pero no se subió: ${failed.join('; ')}.`, 'neg')
+      }
     },
     onSuccess: () => {
       invalidate()
@@ -282,6 +306,7 @@ export function OperationsPage({ config }: { config: Config }) {
   function closeModal() {
     setModalOpen(false)
     setError(null)
+    setPendingFiles([])
     setForm({
       date: today(),
       description: '',
@@ -626,6 +651,24 @@ export function OperationsPage({ config }: { config: Config }) {
               </td>
               <td className="px-4 py-2.5 text-right">
                 <div className="flex justify-end gap-1.5">
+                  {config.kind === 'expense' ? (
+                    <Button
+                      variant="ghost"
+                      className={`!px-2 !py-1 text-xs ${item.attachments_count > 0 ? '!text-ink' : ''}`}
+                      aria-label={
+                        item.attachments_count > 0
+                          ? `Adjuntos de ${item.description} (${item.attachments_count})`
+                          : `Adjuntar ticket o factura a ${item.description}`
+                      }
+                      title={item.attachments_count > 0 ? 'Ver adjuntos' : 'Adjuntar ticket o factura'}
+                      onClick={() => setAttachmentsFor(item)}
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                      {item.attachments_count > 0 ? (
+                        <span className="figures">{item.attachments_count}</span>
+                      ) : null}
+                    </Button>
+                  ) : null}
                   {item.status === 'PAID' ? (
                     <Button
                       variant="ghost"
@@ -741,6 +784,14 @@ export function OperationsPage({ config }: { config: Config }) {
             <Button type="submit">Asignar</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        title={`Adjuntos · ${attachmentsFor?.description ?? ''}`}
+        open={attachmentsFor !== null}
+        onClose={() => setAttachmentsFor(null)}
+      >
+        {attachmentsFor ? <AttachmentsPanel expenseId={attachmentsFor.id} /> : null}
       </Modal>
 
       <JournalEntryModal
@@ -919,13 +970,20 @@ export function OperationsPage({ config }: { config: Config }) {
             value={form.notes}
             onChange={(event) => setForm({ ...form, notes: event.target.value })}
           />
+          {config.kind === 'expense' ? (
+            <PendingAttachments files={pendingFiles} onChange={setPendingFiles} />
+          ) : null}
           {error ? <p className="text-sm text-neg">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={closeModal}>
               Cancelar
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Guardando…' : 'Guardar'}
+              {createMutation.isPending
+                ? pendingFiles.length > 0
+                  ? 'Guardando y subiendo…'
+                  : 'Guardando…'
+                : 'Guardar'}
             </Button>
           </div>
         </form>

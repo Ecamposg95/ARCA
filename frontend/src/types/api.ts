@@ -212,6 +212,21 @@ export interface Expense extends Dimensioned {
   notes: string | null
   paid_at: string | null
   created_at: string
+  /** Adjuntos vivos (ticket, PDF/XML de la factura). */
+  attachments_count: number
+}
+
+/** Evidencia de una operación. Los bytes sólo se piden al ver o descargar. */
+export interface Attachment {
+  id: string
+  owner_type: string
+  owner_id: string
+  filename: string
+  content_type: string
+  size_bytes: number
+  uploaded_by: string | null
+  uploaded_by_name: string | null
+  created_at: string
 }
 
 export interface AgentKey {

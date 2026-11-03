@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String
+from sqlalchemy.orm import column_property
 
 from app.database import Base
 from app.models.dimensions import BusinessUnitDimension, FiscalEntityDimension
@@ -37,3 +38,26 @@ class Expense(Base, UUIDPKMixin, TenantMixin, AuditMixin, BusinessUnitDimension,
     cancelled_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     cancellation_reason = Column(String(500), nullable=True)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+
+
+def _attachments_count():
+    """Adjuntos vivos del gasto, como subconsulta correlacionada: la lista de
+    gastos lo trae en la misma consulta (sin N+1) y sin tocar los bytes."""
+    from sqlalchemy import func, select
+
+    from app.models.attachment import Attachment
+
+    return column_property(
+        select(func.count(Attachment.id))
+        .where(
+            Attachment.organization_id == Expense.organization_id,
+            Attachment.owner_type == "expense",
+            Attachment.owner_id == Expense.id,
+            Attachment.deleted_at.is_(None),
+        )
+        .correlate_except(Attachment)
+        .scalar_subquery()
+    )
+
+
+Expense.attachments_count = _attachments_count()

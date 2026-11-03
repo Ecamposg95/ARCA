@@ -7,6 +7,7 @@ autogenerate de Alembic).
 
 from app.models.accounting import Account, JournalEntry, JournalEntryLine  # noqa: F401
 from app.models.agent import AgentActionLog, AgentKey, AgentProposal  # noqa: F401
+from app.models.attachment import Attachment, AttachmentBlob  # noqa: F401
 from app.models.assistant import AiUsage, AssistantAction, AssistantConversation, AssistantMessage  # noqa: F401
 from app.models.business_unit import BusinessUnit  # noqa: F401
 from app.models.cash_cut import CashCut  # noqa: F401
