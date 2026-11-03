@@ -210,7 +210,7 @@ def _list_expenses(db: Session, org_id: str, params: StatusPeriodParams):
     if params.end:
         query = query.filter(Expense.date <= params.end)
     rows = query.order_by(Expense.date.desc()).limit(200).all()
-    return _rows(rows, ["id", "date", "description", "amount", "status", "vendor_id", "category_id"])
+    return _rows(rows, ["id", "date", "description", "amount", "status", "vendor_id", "category_id", "attachments_count"])
 
 
 def _debt_lister(model, read_schema):
