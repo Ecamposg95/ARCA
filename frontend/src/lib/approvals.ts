@@ -18,9 +18,15 @@ function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`
 }
 
-/** Toast "Se envió a autorización de ..." y sube el badge de Propuestas. */
-export function notifyPendingApproval(body: PendingApproval) {
-  toast(`Se envió a autorización de ${joinNames(body.authorizers)}.`)
+/** Toast "Se envió a autorización de ..." y sube el badge de Propuestas.
+ *  `count` > 1 cuando un lote mandó varias a la vez: un solo aviso, no N. */
+export function notifyPendingApproval(body: PendingApproval, count = 1) {
+  const who = joinNames(body.authorizers)
+  toast(
+    count > 1
+      ? `${count} operaciones se enviaron a autorización de ${who}.`
+      : `Se envió a autorización de ${who}.`,
+  )
   void queryClient.invalidateQueries({ queryKey: ['proposals'] })
   void queryClient.invalidateQueries({ queryKey: ['proposals-count'] })
 }
@@ -52,4 +58,22 @@ export function usePendingCount() {
     queryFn: async () => (await api.get<PendingCount>('/proposals/pending-count')).data,
     refetchInterval: 60_000,
   })
+}
+
+/** Para lotes: reconoce cada 202 sin avisar uno por uno, y al final avisa una vez. */
+export function pendingApprovalCollector() {
+  let last: PendingApproval | null = null
+  let count = 0
+  return {
+    /** 'pending' si la respuesta fue un 202 de autorización. */
+    track(response: AxiosResponse): 'pending' | undefined {
+      if (!isPendingApproval(response)) return undefined
+      last = response.data
+      count += 1
+      return 'pending'
+    },
+    notify() {
+      if (last) notifyPendingApproval(last, count)
+    },
+  }
 }

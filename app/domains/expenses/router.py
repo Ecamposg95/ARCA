@@ -1,5 +1,3 @@
-from datetime import date as date_type
-
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -7,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.expenses import service
+from app.domains.expenses.listing import expense_export_rows, filter_expenses
 from app.domains.expenses.schemas import ExpenseCancel, ExpenseCreate, ExpensePay, ExpenseRead
 from app.models.contact import Vendor
 from app.models.expense import Expense
@@ -16,6 +15,13 @@ from app.models.user import User
 from app.schemas.common import apply_sort, paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.services import approvals
+from app.services.listing import (
+    OperationFilters,
+    check_export_size,
+    export_response,
+    money_total_row,
+    operation_filters,
+)
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -47,16 +53,18 @@ def _get_expense(db: Session, org_id: str, expense_id: str) -> Expense:
     return expense
 
 
+def _sorted(query, sort: str | None):
+    return apply_sort(
+        query,
+        sort,
+        {"date": Expense.date, "amount": Expense.amount},
+        (Expense.date.desc(), Expense.created_at.desc()),
+    )
+
+
 @router.get("")
 def list_expenses(
-    status: str | None = Query(default=None, pattern="^(PENDING|PAID|CANCELLED)$"),
-    start: date_type | None = None,
-    end: date_type | None = None,
-    q: str | None = Query(default=None, max_length=200),
-    category_id: str | None = None,
-    project_id: str | None = None,
-    business_unit_id: str | None = None,
-    fiscal_entity_id: str | None = None,
+    filters: OperationFilters = Depends(operation_filters),
     sort: str | None = Query(default=None, max_length=30),
     non_deductible: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
@@ -64,35 +72,32 @@ def list_expenses(
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    query = db.query(Expense).filter(Expense.organization_id == org_id)
-    if status:
-        query = query.filter(Expense.status == status)
-    if start:
-        query = query.filter(Expense.date >= start)
-    if end:
-        query = query.filter(Expense.date <= end)
-    if q:
-        # Búsqueda simple sobre el concepto: es como la gente recuerda una operación.
-        query = query.filter(Expense.description.ilike(f"%{q}%"))
-    if category_id:
-        query = query.filter(Expense.category_id == category_id)
-    if project_id:
-        query = query.filter(Expense.project_id == project_id)
-    if business_unit_id:
-        query = query.filter(Expense.business_unit_id == business_unit_id)
-    if fiscal_entity_id:
-        query = query.filter(Expense.fiscal_entity_id == fiscal_entity_id)
-    if non_deductible:
-        # LISR 27-III: efectivo por más de $2,000. El mismo criterio que calcula
-        # el aviso en el schema, expresado como filtro.
-        query = query.filter(Expense.payment_method == "EFECTIVO", Expense.amount > 2000)
-    query = apply_sort(
-        query,
-        sort,
-        {"date": Expense.date, "amount": Expense.amount},
-        (Expense.date.desc(), Expense.created_at.desc()),
-    )
+    query = _sorted(filter_expenses(db, org_id, filters, non_deductible=non_deductible), sort)
     return paginate(query, limit, offset, ExpenseRead, sum_column=Expense.amount)
+
+
+@router.get("/export")
+def export_expenses(
+    filters: OperationFilters = Depends(operation_filters),
+    sort: str | None = Query(default=None, max_length=30),
+    non_deductible: bool = Query(default=False),
+    file_format: str = Query(default="xlsx", alias="format", pattern="^(xlsx|csv)$"),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Los gastos de la lista, con los mismos filtros, en Excel o CSV."""
+    query = _sorted(filter_expenses(db, org_id, filters, non_deductible=non_deductible), sort)
+    check_export_size(query)
+    rows = expense_export_rows(db, org_id, query)
+    return export_response(
+        rows=rows,
+        total_row=money_total_row(rows),
+        file_format=file_format,
+        prefix="gastos",
+        sheet_title="Gastos",
+        start=filters.start,
+        end=filters.end,
+    )
 
 
 @router.post("", response_model=ExpenseRead, status_code=201)

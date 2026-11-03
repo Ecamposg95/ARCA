@@ -42,6 +42,25 @@ export function useCategories(kind: 'INCOME' | 'EXPENSE') {
   })
 }
 
+export interface OrgMember {
+  id: string
+  user_id: string
+  name: string
+  email: string
+  role: string
+  is_you: boolean
+  can_authorize: boolean
+}
+
+/** Quienes registran en la empresa: el filtro "Registró" de las listas. */
+export function useMembers() {
+  return useQuery({
+    queryKey: ['members'],
+    queryFn: async () =>
+      (await api.get<{ items: OrgMember[] }>('/organizations/current/members')).data.items,
+  })
+}
+
 export function useContacts(resource: 'customers' | 'vendors') {
   return useQuery({
     queryKey: [resource, 'all'],

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
 import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
-import { handlePendingApproval } from '@/lib/approvals'
+import { handlePendingApproval, pendingApprovalCollector } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -287,19 +287,23 @@ export function DebtsPage({ config }: { config: Config }) {
   )
 
   async function batchPay() {
+    // Un pago que alcanza el umbral responde 202: espera autorización, no se pagó.
+    const approvals = pendingApprovalCollector()
     const outcome = await runBatch(
       selectedOpen,
       (debt) => debt.description,
-      async (debt) => {
+      async (debt) =>
         // El lote liquida el SALDO de cada cuenta: cobros parciales se hacen
         // uno por uno desde su propio modal.
-        await api.post(`${config.endpoint}/${debt.id}/${config.payEndpoint}`, {
-          amount: debt.balance,
-          financial_account_id: batchAccountId,
-        })
-      },
+        approvals.track(
+          await api.post(`${config.endpoint}/${debt.id}/${config.payEndpoint}`, {
+            amount: debt.balance,
+            financial_account_id: batchAccountId,
+          }),
+        ),
       errorMessage,
     )
+    approvals.notify()
     setBatchOutcome(outcome)
     setBatchPayOpen(false)
     selection.clear()

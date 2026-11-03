@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
 import { ApprovalNotice } from '@/components/ui/ApprovalNotice'
-import { handlePendingApproval } from '@/lib/approvals'
+import { handlePendingApproval, pendingApprovalCollector } from '@/lib/approvals'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SelectInput, TextInput } from '@/components/ui/Field'
@@ -36,6 +36,14 @@ import {
   EMPTY_DIMENSIONS,
   dimensionParams,
 } from '@/components/ui/DimensionFields'
+import {
+  DownloadExcelButton,
+  EMPTY_FINE_FILTERS,
+  FineFilterChips,
+  FineFilterSelects,
+  countFineFilters,
+  fineFilterParams,
+} from '@/components/ui/ListFilters'
 import { formatDate, formatMoney, today } from '@/lib/format'
 import { useAccounts, useCategories, useContacts, useDimensions } from '@/lib/hooks'
 import { useAuthStore } from '@/stores/authStore'
@@ -142,8 +150,17 @@ export function OperationsPage({ config }: { config: Config }) {
     project_id: '',
     non_deductible: false,
     ...EMPTY_DIMENSIONS,
+    ...EMPTY_FINE_FILTERS,
   })
-  const emptyFilters = { q: '', start: '', end: '', project_id: '', non_deductible: false, ...EMPTY_DIMENSIONS }
+  const emptyFilters = {
+    q: '',
+    start: '',
+    end: '',
+    project_id: '',
+    non_deductible: false,
+    ...EMPTY_DIMENSIONS,
+    ...EMPTY_FINE_FILTERS,
+  }
   const setFilters = (next: Partial<typeof filters>) => {
     setFiltersState({ ...filters, ...next })
     setOffset(0)
@@ -154,9 +171,13 @@ export function OperationsPage({ config }: { config: Config }) {
     Number(Boolean(filters.project_id)) +
     Number(filters.non_deductible) +
     Number(Boolean(filters.business_unit_id)) +
-    Number(Boolean(filters.fiscal_entity_id))
+    Number(Boolean(filters.fiscal_entity_id)) +
+    countFineFilters(filters)
   const hasFilters = activeFilterCount > 0
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // Con un filtro fino aplicado el panel no se esconde: se vería sin explicación.
+  const showMore = moreOpen || countFineFilters(filters) > 0
 
   // El orden vive en la URL: una vista ordenada se comparte tal cual.
   const sort = searchParams.get('orden') ?? ''
@@ -190,24 +211,23 @@ export function OperationsPage({ config }: { config: Config }) {
   const { data: categories } = useCategories(config.categoryKind)
   const { data: contacts } = useContacts(config.contactResource)
 
+  // Los mismos parámetros para la lista y la descarga: baja lo que se ve.
+  const listParams: Record<string, string | boolean> = {
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.start ? { start: filters.start } : {}),
+    ...(filters.end ? { end: filters.end } : {}),
+    ...(filters.project_id ? { project_id: filters.project_id } : {}),
+    ...(filters.non_deductible ? { non_deductible: true } : {}),
+    ...dimensionParams(filters),
+    ...fineFilterParams(filters),
+    ...(sort ? { sort } : {}),
+  }
+
   const { data, isLoading } = useQuery({
-    queryKey: [config.kind, statusFilter, filters, sort, offset],
+    queryKey: [config.kind, listParams, offset],
     queryFn: async () =>
-      (
-        await api.get<Page<Operation>>(config.endpoint, {
-          params: {
-            ...(statusFilter ? { status: statusFilter } : {}),
-            ...(filters.q ? { q: filters.q } : {}),
-            ...(filters.start ? { start: filters.start } : {}),
-            ...(filters.end ? { end: filters.end } : {}),
-            ...(filters.project_id ? { project_id: filters.project_id } : {}),
-            ...(filters.non_deductible ? { non_deductible: true } : {}),
-            ...dimensionParams(filters),
-            ...(sort ? { sort } : {}),
-            offset,
-          },
-        })
-      ).data,
+      (await api.get<Page<Operation>>(config.endpoint, { params: { ...listParams, offset } })).data,
   })
 
   const categoryName = useMemo(() => {
@@ -309,18 +329,21 @@ export function OperationsPage({ config }: { config: Config }) {
   const selectedPending = selection.selectedItems.filter((item) => item.status === 'PENDING')
 
   async function batchPay() {
+    // Un pago que alcanza el umbral responde 202: espera autorización, no se
+    // pagó. Se cuenta aparte y se avisa una sola vez al final.
+    const approvals = pendingApprovalCollector()
     const outcome = await runBatch(
       selectedPending,
       (item) => item.description,
-      async (item) => {
-        handlePendingApproval(
+      async (item) =>
+        approvals.track(
           await api.post(`${config.endpoint}/${item.id}/pay`, {
             financial_account_id: batchAccountId,
           }),
-        )
-      },
+        ),
       errorMessage,
     )
+    approvals.notify()
     setBatchNoun(config.kind === 'income' ? 'cobradas' : 'pagadas')
     setBatchOutcome(outcome)
     setBatchPayOpen(false)
@@ -371,7 +394,16 @@ export function OperationsPage({ config }: { config: Config }) {
       <PageHeader
         title={config.title}
         description={config.description}
-        actions={<Button onClick={() => setModalOpen(true)}>+ {config.newLabel}</Button>}
+        actions={
+          <>
+            <DownloadExcelButton
+              path={`${config.endpoint}/export`}
+              params={listParams}
+              fallbackName={`${config.noun}.xlsx`}
+            />
+            <Button onClick={() => setModalOpen(true)}>+ {config.newLabel}</Button>
+          </>
+        }
       >
         <div className="flex gap-2">
           {['', 'PENDING', 'PAID', 'CANCELLED'].map((status) => (
@@ -431,6 +463,12 @@ export function OperationsPage({ config }: { config: Config }) {
             />
           ) : null}
           <DimensionChips value={filters} onChange={setFilters} />
+          <FineFilterChips
+            value={filters}
+            onChange={setFilters}
+            categories={categories}
+            contacts={contacts}
+          />
           {hasFilters ? (
             <button
               type="button"
@@ -495,6 +533,27 @@ export function OperationsPage({ config }: { config: Config }) {
                 />
                 Sólo no deducibles
               </label>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setMoreOpen(!showMore)}
+              aria-expanded={showMore}
+              className="text-xs font-medium text-muted underline hover:text-ink"
+            >
+              {showMore ? 'Menos filtros ▴' : 'Más filtros ▾'}
+            </button>
+            {showMore ? (
+              <div className="flex w-full flex-wrap items-center gap-2 border-t border-border pt-2">
+                <FineFilterSelects
+                  value={filters}
+                  onChange={setFilters}
+                  categories={categories}
+                  contacts={contacts}
+                  contactPlaceholder={
+                    config.kind === 'income' ? 'Todos los clientes' : 'Todos los proveedores'
+                  }
+                />
+              </div>
             ) : null}
           </div>
         ) : null}
