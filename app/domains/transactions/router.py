@@ -9,17 +9,26 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.domains.transactions import service
+from app.domains.transactions.listing import (
+    TRANSACTION_HEADERS,
+    TRANSACTION_MONEY_COLUMNS,
+    TRANSACTION_STATUS_INDEX,
+    TransactionFilters,
+    filter_transactions,
+    sorted_transactions,
+    transaction_export_rows,
+    transaction_list_filters,
+)
 from app.domains.transactions.schemas import TransferCreate
 from app.models.organization import WRITE_ROLES
 from app.models.financial_account import FinancialAccount
-from app.models.transaction import FinancialTransaction
 from app.models.user import User
 from app.schemas.common import paginate
 from app.security.deps import get_current_org_id, get_current_user, require_role
 from app.models.accounting import JournalEntry
 from app.models.fiscal_entity import FiscalEntity
 from app.services import approvals
-from app.services.dimensions import transaction_filters
+from app.services.listing import check_export_size, export_response, money_total_row
 from app.services.running_balance import running_balances
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -71,50 +80,50 @@ def _fill_fiscal_entities(db: Session, org_id: str, items: list[TransactionRead]
 
 @router.get("")
 def list_transactions(
-    account_id: str | None = None,
-    transaction_type: str | None = None,
-    # Origen: "los cobros de ESTA factura". Ambos o ninguno — un source_id
-    # suelto cruzaría tipos de entidad distintos.
-    source_type: str | None = Query(default=None, max_length=50),
-    source_id: str | None = Query(default=None, max_length=64),
-    start: date_type | None = None,
-    end: date_type | None = None,
-    business_unit_id: str | None = None,
-    fiscal_entity_id: str | None = None,
+    filters: TransactionFilters = Depends(transaction_list_filters),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
 ):
-    query = db.query(FinancialTransaction).filter(
-        FinancialTransaction.organization_id == org_id,
-        *transaction_filters(business_unit_id, fiscal_entity_id),
-    )
-    if account_id:
-        query = query.filter(FinancialTransaction.financial_account_id == account_id)
-    if transaction_type:
-        query = query.filter(FinancialTransaction.transaction_type == transaction_type)
-    if source_type:
-        query = query.filter(FinancialTransaction.source_type == source_type)
-    if source_id:
-        query = query.filter(FinancialTransaction.source_id == source_id)
-    if start:
-        query = query.filter(FinancialTransaction.date >= start)
-    if end:
-        query = query.filter(FinancialTransaction.date <= end)
-    query = query.order_by(
-        FinancialTransaction.date.desc(),
-        FinancialTransaction.created_at.desc(),
-        FinancialTransaction.id.desc(),
-    )
+    query = sorted_transactions(filter_transactions(db, org_id, filters))
     page = paginate(query, limit, offset, TransactionRead)
     _fill_fiscal_entities(db, org_id, page["items"])
 
-    if account_id:
-        balances = running_balances(db, org_id, account_id, [item.id for item in page["items"]])
+    if filters.account_id:
+        balances = running_balances(db, org_id, filters.account_id, [item.id for item in page["items"]])
         for item in page["items"]:
             item.running_balance = balances.get(item.id)
     return page
+
+
+@router.get("/export")
+def export_transactions(
+    filters: TransactionFilters = Depends(transaction_list_filters),
+    file_format: str = Query(default="xlsx", alias="format", pattern="^(xlsx|csv)$"),
+    db: Session = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+):
+    """Los movimientos de la lista, con los mismos filtros, en Excel o CSV."""
+    query = sorted_transactions(filter_transactions(db, org_id, filters))
+    check_export_size(query)
+    rows = transaction_export_rows(db, org_id, query)
+    return export_response(
+        rows=rows,
+        total_row=money_total_row(
+            rows,
+            status_index=TRANSACTION_STATUS_INDEX,
+            money_columns=TRANSACTION_MONEY_COLUMNS,
+            width=len(TRANSACTION_HEADERS),
+        ),
+        file_format=file_format,
+        prefix="movimientos",
+        sheet_title="Movimientos",
+        start=filters.start,
+        end=filters.end,
+        headers=TRANSACTION_HEADERS,
+        money_columns=TRANSACTION_MONEY_COLUMNS,
+    )
 
 
 @router.post("/transfer", response_model=list[TransactionRead], status_code=201)

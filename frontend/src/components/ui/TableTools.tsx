@@ -139,24 +139,30 @@ export interface BatchFailure {
 
 export interface BatchOutcome {
   ok: number
+  /** Respondieron 202: alcanzaron el umbral y esperan autorización. No se aplicaron. */
+  pending: number
   failures: BatchFailure[]
 }
 
+/** Lo que devuelve la acción de un elemento: nada si se aplicó, 'pending' si
+ *  quedó esperando autorización (no cuenta como aplicada). */
+export type BatchItemResult = void | 'pending'
+
 /** Ejecuta una acción por elemento EN SECUENCIA y nunca se traga un error:
- *  devuelve cuántas aplicaron y cuáles fallaron con su motivo. Secuencial a
- *  propósito: los pagos mutan saldos y dispararlos en paralelo invita a
- *  condiciones de carrera en el lock de la cuenta. */
+ *  devuelve cuántas aplicaron, cuántas esperan autorización y cuáles fallaron
+ *  con su motivo. Secuencial a propósito: los pagos mutan saldos y dispararlos
+ *  en paralelo invita a condiciones de carrera en el lock de la cuenta. */
 export async function runBatch<T>(
   items: T[],
   label: (item: T) => string,
-  action: (item: T) => Promise<void>,
+  action: (item: T) => Promise<BatchItemResult>,
   extractError: (error: unknown) => string,
 ): Promise<BatchOutcome> {
-  const outcome: BatchOutcome = { ok: 0, failures: [] }
+  const outcome: BatchOutcome = { ok: 0, pending: 0, failures: [] }
   for (const item of items) {
     try {
-      await action(item)
-      outcome.ok += 1
+      if ((await action(item)) === 'pending') outcome.pending += 1
+      else outcome.ok += 1
     } catch (error) {
       outcome.failures.push({ label: label(item), error: extractError(error) })
     }
@@ -175,18 +181,23 @@ export function BatchNotice({
 }) {
   if (!outcome) return null
   const failed = outcome.failures.length
+  const pending = outcome.pending
   return (
     <div
       className={`mb-3 rounded-xl border px-4 py-3 text-sm ${
-        failed ? 'border-warn/40 bg-warn/10' : 'border-pos/40 bg-pos/10'
+        failed || pending ? 'border-warn/40 bg-warn/10' : 'border-pos/40 bg-pos/10'
       }`}
     >
       <p>
         <span className="figures font-semibold">{outcome.ok}</span> {noun}
-        {failed ? (
+        {pending || failed ? (
           <>
-            {' · '}
-            <span className="figures font-semibold">{failed}</span> con error:
+            {', '}
+            <span className="figures font-semibold">{pending}</span> enviada
+            {pending === 1 ? '' : 's'} a autorización
+            {', '}
+            <span className="figures font-semibold">{failed}</span> con error
+            {failed ? ':' : ''}
           </>
         ) : null}
       </p>
