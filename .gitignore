@@ -32,3 +32,4 @@ Thumbs.db
 
 # Datos reales de clientes (inventarios con nombres y montos): no se publican
 docs/lafe/privado/
+.superpowers/
