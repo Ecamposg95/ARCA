@@ -393,7 +393,7 @@ def reverse_journal_entry(
     entry = (
         db.query(JournalEntry)
         .filter(JournalEntry.id == entry_id, JournalEntry.organization_id == org_id)
-        .with_for_update()
+        .with_for_update(of=JournalEntry)
         .first()
     )
     if entry is None:

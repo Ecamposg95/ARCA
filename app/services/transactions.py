@@ -50,7 +50,9 @@ def get_locked_account(db: Session, organization_id: str, financial_account_id: 
             FinancialAccount.id == financial_account_id,
             FinancialAccount.organization_id == organization_id,
         )
-        .with_for_update()
+        # `of=`: la unidad viene por LEFT JOIN (lazy="joined") y PostgreSQL no
+        # bloquea el lado nullable de un outer join.
+        .with_for_update(of=FinancialAccount)
         .first()
     )
     if account is None:
