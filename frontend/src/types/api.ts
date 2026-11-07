@@ -881,3 +881,105 @@ export interface HistoryEvent {
   created_at: string
   changes: HistoryFieldChange[]
 }
+
+// --- Inicio «Tablero del día» ------------------------------------------------
+
+export type MoneyRowKey = 'central' | 'branches' | 'banks' | 'processor'
+export type MoneyRowStatus = 'CONFIRMED' | 'PROVISIONAL' | 'TO_COLLECT' | 'TO_DEPOSIT' | null
+
+export interface DashboardMoneyRow {
+  key: MoneyRowKey
+  label: string
+  amount: string
+  status: MoneyRowStatus
+}
+
+export interface DashboardMoney {
+  total: string
+  available: string
+  in_transit: string
+  previous_close: string
+  delta: string
+  rows: DashboardMoneyRow[]
+  next_settlement: { account: string; amount: string; expected_on: string } | null
+  needs_opening: boolean
+}
+
+export interface DashboardWeekDay {
+  date: string
+  amount: string
+  pending_approval_amount: string
+}
+
+export interface DashboardWeekItem {
+  payable_id: string
+  due_date: string
+  overdue: boolean
+  vendor: string
+  description: string
+  amount: string
+  running_balance: string
+  approval: 'PENDING' | 'REQUIRED' | null
+}
+
+export interface DashboardWeek {
+  start: string
+  end: string
+  days: DashboardWeekDay[]
+  items: DashboardWeekItem[]
+  total: string
+}
+
+export interface DashboardPendingApproval {
+  proposal_id: string
+  summary: string
+  amount: string | null
+  requested_by_name: string | null
+}
+
+export interface DashboardApprovals {
+  pending: DashboardPendingApproval[]
+  can_authorize: boolean
+}
+
+export type BranchCutStatus = 'DELIVERED' | 'LATE' | 'MISSING' | 'NA'
+
+export interface DashboardBranchRow {
+  business_unit_id: string
+  name: string
+  sales: string
+  share: string
+  delta_pct: string | null
+  delta_basis: 'previous_year' | 'avg_3m' | null
+  sparkline: { date: string; value: string }[]
+  cut: BranchCutStatus
+}
+
+export interface DashboardBranches {
+  month: string | null
+  origin: 'live' | 'historical'
+  rows: DashboardBranchRow[]
+}
+
+export interface DashboardToday {
+  money: DashboardMoney
+  week: DashboardWeek
+  approvals: DashboardApprovals
+  branches: DashboardBranches
+}
+
+export interface AnalyticsSeriesPoint {
+  period: string
+  value: string
+  origin: 'historical' | 'live'
+  partial: boolean
+}
+
+export interface AnalyticsSeries {
+  points: AnalyticsSeriesPoint[]
+  previous: { period: string; value: string; origin: 'historical' | 'live' }[] | null
+  target: { period: string; value: string }[] | null
+  opening_date: string | null
+  historical_available: boolean
+  historical_note: string | null
+}

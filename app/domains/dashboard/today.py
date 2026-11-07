@@ -30,7 +30,7 @@ from app.services import approvals
 ZERO = Decimal("0.00")
 ROW_LABELS = {
     "central": "Caja central",
-    "branches": "Cajas de sucursal",
+    "branches": "Cajas sucursal",
     "banks": "Bancos",
     "processor": "En tránsito",
 }

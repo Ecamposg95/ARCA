@@ -1,6 +1,6 @@
 /** Página compartida de CxC / CxP: misma mecánica, conceptos explícitos. */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api, errorMessage } from '@/api/client'
@@ -282,6 +282,30 @@ export function DebtsPage({ config }: { config: Config }) {
   }
 
   const items = data?.items ?? []
+
+  // `?open=<id>` llega desde Inicio: abre el detalle de ese documento. Si no
+  // está en la página cargada, se pide por id.
+  const openId = searchParams.get('open')
+  useEffect(() => {
+    if (!openId) return
+    const found = items.find((item) => item.id === openId)
+    const clear = () => {
+      const params = new URLSearchParams(searchParams)
+      params.delete('open')
+      setSearchParams(params, { replace: true })
+    }
+    if (found) {
+      setDetailFor(found)
+      clear()
+      return
+    }
+    if (!data) return
+    api
+      .get<Debt>(`${config.endpoint}/${openId}`)
+      .then((response) => setDetailFor(response.data))
+      .catch(() => undefined)
+      .finally(clear)
+  }, [openId, data])
   const selection = useRowSelection(items)
   const selectedOpen = selection.selectedItems.filter((debt) =>
     ['OPEN', 'PARTIAL', 'OVERDUE'].includes(debt.display_status),

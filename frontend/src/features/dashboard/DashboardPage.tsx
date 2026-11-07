@@ -1,500 +1,107 @@
+/** Inicio «Tablero del día»: cuánto dinero hay, qué hay que pagar esta semana,
+ *  cómo van las sucursales y las ventas del año contra el anterior. Los filtros
+ *  de unidad, contribuyente y semana viven en la URL: el tablero se comparte. */
+
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/client'
-import { Button } from '@/components/ui/Button'
-import {
-  DimensionChips,
-  DimensionFilterSelects,
-  dimensionParams,
-  type DimensionValues,
-} from '@/components/ui/DimensionFields'
-import { Money } from '@/components/ui/Money'
-import { Card } from '@/components/ui/Table'
-import { formatCompact, formatDate, formatMoney, formatMonth, formatMonthYear, formatShortDay } from '@/lib/format'
-import type { CashFlowSeries, CashProjection, DashboardSummary, FinancialAccount } from '@/types/api'
+import { DimensionFilterSelects, dimensionParams, type DimensionValues } from '@/components/ui/DimensionFields'
+import { useDimensions } from '@/lib/hooks'
+import { useAuthStore } from '@/stores/authStore'
+import type { DashboardToday } from '@/types/api'
+import { ApprovalStrip } from './ApprovalStrip'
+import { BranchesPanel } from './BranchesPanel'
+import { MoneyPanel } from './MoneyPanel'
+import { SalesByMonthChart } from './SalesByMonthChart'
+import { BranchesSkeleton, MoneySkeleton, WeekSkeleton } from './Skeletons'
+import { WeekPayablesPanel } from './WeekPayablesPanel'
 
-/** Sistema de color del tablero: verde = dinero que entra, ámbar = dinero que sale.
- *  El rojo queda reservado para problemas (vencido, pérdida), nunca para un gasto normal. */
-const IN = '#1f8a5b'
-const OUT = '#c29938'
-const LOSS = '#e05252'
-const GRID = '#8fa0a8'
-
-/** Variación contra el mismo tramo del mes anterior. Sin base previa no se
- *  inventa un porcentaje: se dice que no hay con qué comparar. */
-function DeltaChip({ current, previous, goodWhenUp = true }: { current: number; previous: number; goodWhenUp?: boolean }) {
-  if (!previous) return null
-  const change = ((current - previous) / Math.abs(previous)) * 100
-  if (!Number.isFinite(change)) return null
-  const up = change >= 0
-  const good = goodWhenUp ? up : !up
-  return (
-    <span
-      className={`figures block text-[11px] font-medium ${good ? 'text-pos' : 'text-neg'}`}
-      title={`Mismo tramo del mes anterior: ${formatMoney(previous)}`}
-    >
-      {up ? '▲' : '▼'} {Math.abs(change).toFixed(0)}% vs. mes anterior
-    </span>
-  )
-}
-
-function MetricLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{children}</div>
-  )
-}
-
-function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
-  return (
-    <div className="flex items-center gap-4">
-      {items.map((item) => (
-        <span key={item.label} className="flex items-center gap-1.5 text-xs text-muted">
-          <span className="h-2 w-2 rounded-full" style={{ background: item.color }} />
-          {item.label}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function ChartCard({
-  title,
-  legend,
-  children,
-}: {
-  title: string
-  legend?: { label: string; color: string }[]
-  children: React.ReactNode
-}) {
-  return (
-    <Card>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {legend ? <ChartLegend items={legend} /> : null}
-      </div>
-      {children}
-    </Card>
-  )
-}
-
-/** Tooltip que explica la barra en vez de repetirla: entradas, salidas, neto
- *  y en qué se fue el gasto del periodo. */
-function FlowTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: { payload: CashFlowSeries['points'][number] }[]
-  label?: string
-}) {
-  if (!active || !payload?.length) return null
-  const point = payload[0].payload
-  return (
-    <div className="rounded-lg border border-border bg-surface px-3.5 py-3 text-xs shadow-card">
-      <div className="mb-2 font-semibold">{label}</div>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-6">
-          <span className="flex items-center gap-1.5 text-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: IN }} />
-            Entradas
-          </span>
-          <span className="figures font-medium">{formatMoney(point.inflows)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-6">
-          <span className="flex items-center gap-1.5 text-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: OUT }} />
-            Salidas
-          </span>
-          <span className="figures font-medium">{formatMoney(point.outflows)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-6 border-t border-border pt-1">
-          <span className="text-muted">Neto</span>
-          <span className={`figures font-semibold ${point.net < 0 ? 'text-neg' : 'text-pos'}`}>
-            {formatMoney(point.net)}
-          </span>
-        </div>
-      </div>
-      {point.top_expense_categories.length > 0 ? (
-        <div className="mt-2 border-t border-border pt-2">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-            En qué se fue
-          </div>
-          {point.top_expense_categories.map((row) => (
-            <div key={row.category} className="flex items-center justify-between gap-6">
-              <span className="text-muted">{row.category}</span>
-              <span className="figures">{formatMoney(row.amount)}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
+function weekLabel(start: string, end: string): string {
+  const fmt = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  }
+  return `${fmt(start)} – ${fmt(end)}`
 }
 
 export function DashboardPage() {
-  // La granularidad vive en la URL: "mira las últimas semanas" se comparte.
   const [searchParams, setSearchParams] = useSearchParams()
-  const granularity: 'month' | 'week' = searchParams.get('flujo') === 'semana' ? 'week' : 'month'
-  const setGranularity = (next: 'month' | 'week') => {
-    const params = new URLSearchParams(searchParams)
-    if (next === 'week') params.set('flujo', 'semana')
-    else params.delete('flujo')
-    setSearchParams(params, { replace: true })
-  }
-  // La unidad y el contribuyente también: "el tablero de Morelos" es un enlace.
-  // Con filtro, saldos, series y gasto por categoría son sólo de esa dimensión.
+  const userName = useAuthStore((state) => state.user?.name ?? '')
+  const { hasUnits } = useDimensions()
+
   const dimensions: DimensionValues = {
     business_unit_id: searchParams.get('unidad') ?? '',
     fiscal_entity_id: searchParams.get('contribuyente') ?? '',
   }
-  const setDimensions = (next: Partial<DimensionValues>) => {
-    const merged = { ...dimensions, ...next }
+  const weekOf = searchParams.get('semana') ?? ''
+  const year = Number(searchParams.get('anio')) || new Date().getFullYear()
+
+  const update = (changes: Record<string, string>) => {
     const params = new URLSearchParams(searchParams)
-    if (merged.business_unit_id) params.set('unidad', merged.business_unit_id)
-    else params.delete('unidad')
-    if (merged.fiscal_entity_id) params.set('contribuyente', merged.fiscal_entity_id)
-    else params.delete('contribuyente')
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) params.set(key, value)
+      else params.delete(key)
+    }
     setSearchParams(params, { replace: true })
   }
-  const dims = dimensionParams(dimensions)
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', dims],
-    queryFn: async () => (await api.get<DashboardSummary>('/dashboard/summary', { params: dims })).data,
-  })
-  const { data: flow } = useQuery({
-    queryKey: ['dashboard', 'flow', granularity, dims],
-    queryFn: async () =>
-      (
-        await api.get<CashFlowSeries>('/dashboard/cash-flow', {
-          params: { granularity, ...dims },
-        })
-      ).data,
-  })
-  const { data: accounts } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: async () => (await api.get<FinancialAccount[]>('/accounts')).data,
-  })
-  const { data: projection } = useQuery({
-    queryKey: ['cash-projection'],
-    queryFn: async () => (await api.get<CashProjection>('/reports/cash-projection?days=90')).data,
-  })
-
-  if (isLoading || !data) {
-    return (
-      <div className="space-y-4">
-        <div className="h-24 w-72 animate-pulse rounded-xl bg-surface-2" />
-        <div className="h-28 animate-pulse rounded-xl bg-surface-2" />
-        <div className="h-28 animate-pulse rounded-xl bg-surface-2" />
-      </div>
-    )
+  const setDimensions = (next: Partial<DimensionValues>) => {
+    const merged = { ...dimensions, ...next }
+    update({ unidad: merged.business_unit_id, contribuyente: merged.fiscal_entity_id })
   }
 
-  const hasMovement =
-    data.cash_flow.some((row) => row.inflows > 0 || row.outflows > 0) || data.cash !== 0
-
-  const flowData = (flow?.points ?? data.cash_flow.map((row) => ({
-    bucket: row.month,
-    start: `${row.month}-01`,
-    inflows: row.inflows,
-    outflows: row.outflows,
-    net: row.inflows - row.outflows,
-    top_expense_categories: [],
-  }))).map((point) => ({
-    ...point,
-    label:
-      (flow?.granularity ?? 'month') === 'week'
-        ? formatShortDay(point.start)
-        : formatMonth(point.bucket),
-  }))
-
-  // Un activo en negativo es un sobregiro: dinero que el banco te está prestando
-  // sin que lo hayas pedido. Se dice, no se esconde.
-  const overdrawn = (accounts ?? []).filter(
-    (account) =>
-      account.type !== 'CREDIT_CARD' && Number(account.current_balance) < 0 && account.active,
-  )
-  // "Por recibir" sólo existe para quien cobra con terminal: sin procesadores no se enseña.
-  const hasProcessors = (accounts ?? []).some((account) => account.type === 'PROCESSOR' && account.active)
-  const resultData = data.revenue_vs_expenses.map((row) => ({
-    month: formatMonth(row.month),
-    profit: row.revenue - row.expenses,
-  }))
-  const topCategory = data.expense_categories[0]?.amount ?? 0
-
-  const axisProps = { tickLine: false, axisLine: false, fontSize: 11, stroke: GRID } as const
+  const dims = dimensionParams(dimensions)
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['dashboard', 'today', dims, weekOf],
+    queryFn: async () =>
+      (await api.get<DashboardToday>('/dashboard/today', { params: { ...dims, ...(weekOf ? { week_of: weekOf } : {}) } })).data,
+  })
 
   return (
-    <div>
-      {/* Sólo si la empresa tiene unidades o contribuyentes: el componente se
-          esconde solo cuando no hay nada que elegir. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 empty:hidden">
+    <div className="space-y-3">
+      {/* Barra compacta: unidad · contribuyente · semana. Sólo lo que la empresa tiene. */}
+      <div className="flex flex-wrap items-center gap-2">
         <DimensionFilterSelects value={dimensions} onChange={setDimensions} />
-        <DimensionChips value={dimensions} onChange={setDimensions} />
+        <label className="flex items-center gap-2 text-xs text-muted">
+          <span>Semana</span>
+          <input
+            type="date"
+            aria-label="Semana"
+            value={weekOf}
+            onChange={(event) => update({ semana: event.target.value })}
+            className="figures rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+          />
+          {data ? <span className="figures hidden sm:inline">{weekLabel(data.week.start, data.week.end)}</span> : null}
+        </label>
+        {weekOf ? (
+          <button type="button" className="text-xs text-accent hover:underline" onClick={() => update({ semana: '' })}>
+            Hoy
+          </button>
+        ) : null}
       </div>
 
-      {/* Lo primero que importa: cuánto dinero hay —y cuánto de eso ya está comprometido. */}
-      <header className="mb-7 flex flex-wrap items-end gap-x-10 gap-y-3">
-        <div>
-          <MetricLabel>Disponible</MetricLabel>
-          <div className="mt-1.5">
-            <Money value={data.cash} size="xl" />
-          </div>
-        </div>
-        {hasProcessors ? (
-          <Link to="/cuentas" className="group" title="Cobrado con tarjeta que el procesador aún no deposita">
-            <MetricLabel>Por recibir</MetricLabel>
-            <div className="mt-1.5 group-hover:opacity-80">
-              <Money value={data.in_transit_total} size="lg" tone="muted" />
-            </div>
-          </Link>
-        ) : null}
-        {data.card_debt > 0 ? (
-          <Link to="/cuentas" className="group">
-            <MetricLabel>Deuda en tarjetas</MetricLabel>
-            <div className="mt-1.5 group-hover:opacity-80">
-              <Money value={data.card_debt} size="lg" tone="neg" />
-            </div>
-          </Link>
-        ) : null}
-      </header>
+      {data ? <ApprovalStrip approvals={data.approvals} userName={userName} /> : null}
 
-      {overdrawn.length > 0 ? (
-        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-neg/30 bg-neg/5 px-4 py-2.5 text-sm">
-          <span className="font-medium text-neg">
-            {overdrawn.length === 1
-              ? `${overdrawn[0].name} está sobregirada`
-              : `${overdrawn.length} cuentas están sobregiradas`}
-          </span>
-          <span className="text-muted">
-            — el Disponible ya lo descuenta.{' '}
-            <Link to="/cuentas" className="underline hover:text-ink">
-              Ver cuentas
-            </Link>
-          </span>
-        </div>
+      {isError ? (
+        <div className="panel px-4 py-6 text-center text-sm text-muted">No se pudo cargar el tablero. Intenta de nuevo en un momento.</div>
       ) : null}
 
-      {/* Dos paneles en vez de cinco tarjetas: menos ruido, misma información. */}
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <div className="mb-4 flex items-baseline justify-between">
-            <MetricLabel>Este mes</MetricLabel>
-            <span className="text-xs text-muted">{formatMonthYear(new Date())}</span>
-          </div>
-          <div className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            <div className="pb-3 sm:pb-0 sm:pr-4">
-              <div className="text-xs text-muted">Ingresos</div>
-              <div className="mt-1">
-                <Money value={data.monthly_revenue} size="lg" />
-                <DeltaChip current={data.monthly_revenue} previous={data.previous_revenue} />
-              </div>
-            </div>
-            <div className="py-3 sm:px-4 sm:py-0">
-              <div className="text-xs text-muted">Gastos</div>
-              <div className="mt-1">
-                <Money value={data.monthly_expenses} size="lg" />
-                <DeltaChip current={data.monthly_expenses} previous={data.previous_expenses} goodWhenUp={false} />
-              </div>
-            </div>
-            <div className="pt-3 sm:pl-4 sm:pt-0">
-              <div className="text-xs text-muted">Resultado</div>
-              <div className="mt-1">
-                <Money
-                  value={data.monthly_profit}
-                  size="lg"
-                  tone={data.monthly_profit >= 0 ? 'pos' : 'neg'}
-                />
-                <DeltaChip current={data.monthly_profit} previous={data.previous_profit} />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <MetricLabel>Cartera</MetricLabel>
-          <div className="mt-4 grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-            <Link to="/por-cobrar" className="group pb-3 sm:pb-0 sm:pr-4">
-              <div className="text-xs text-muted group-hover:text-accent">Por cobrar</div>
-              <div className="mt-1">
-                <Money value={data.receivables} size="lg" />
-              </div>
-              {data.overdue_receivables > 0 ? (
-                <div className="mt-1 text-xs font-medium text-neg">
-                  Vencido {formatMoney(data.overdue_receivables)}
-                </div>
-              ) : null}
-            </Link>
-            <Link to="/por-pagar" className="group pt-3 sm:pl-4 sm:pt-0">
-              <div className="text-xs text-muted group-hover:text-accent">Por pagar</div>
-              <div className="mt-1">
-                <Money value={data.payables} size="lg" />
-              </div>
-            </Link>
-          </div>
-        </Card>
+      <div className="grid gap-3 lg:grid-cols-[300px_1.1fr_1.2fr]">
+        {isLoading || !data ? (
+          <>
+            <MoneySkeleton />
+            <WeekSkeleton />
+            <BranchesSkeleton />
+          </>
+        ) : (
+          <>
+            <MoneyPanel money={data.money} />
+            <WeekPayablesPanel week={data.week} />
+            <BranchesPanel branches={data.branches} hasUnits={hasUnits} />
+          </>
+        )}
       </div>
 
-      {projection && (projection.expected_inflows > 0 || projection.expected_outflows > 0) ? (
-        <Card className="mt-4">
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <MetricLabel>Lo que viene · próximos 90 días</MetricLabel>
-            {projection.shortfall_date ? (
-              <span className="text-xs font-medium text-neg">
-                El dinero no alcanza el {formatDate(projection.shortfall_date)}
-              </span>
-            ) : (
-              <span className="text-xs text-muted">Con lo comprometido, el saldo no se va a cero</span>
-            )}
-          </div>
-          <div className="grid gap-3 divide-y divide-border sm:grid-cols-4 sm:divide-x sm:divide-y-0">
-            <div className="sm:pr-4">
-              <div className="text-xs text-muted">Hoy tienes</div>
-              <div className="mt-1"><Money value={projection.opening_cash} /></div>
-            </div>
-            <div className="pt-3 sm:px-4 sm:pt-0">
-              <div className="text-xs text-muted">+ Te van a pagar</div>
-              <div className="mt-1"><Money value={projection.expected_inflows} tone="pos" /></div>
-            </div>
-            <div className="pt-3 sm:px-4 sm:pt-0">
-              <div className="text-xs text-muted">− Tienes que pagar</div>
-              <div className="mt-1"><Money value={projection.expected_outflows} tone="neg" /></div>
-            </div>
-            <div className="pt-3 sm:pl-4 sm:pt-0">
-              <div className="text-xs text-muted">Quedarías con</div>
-              <div className="mt-1">
-                <Money
-                  value={projection.projected_cash}
-                  size="lg"
-                  tone={projection.projected_cash < 0 ? 'neg' : 'ink'}
-                />
-              </div>
-            </div>
-          </div>
-          {/* Sólo compromisos con fecha: esto no es un pronóstico. */}
-          <p className="mt-3 text-xs text-muted">
-            Calculado con cuentas por cobrar y por pagar ya registradas, en su fecha de vencimiento.
-          </p>
-        </Card>
-      ) : null}
-
-      {!hasMovement ? (
-        <div className="mt-4 rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center">
-          <h3 className="font-display text-lg font-semibold">Registra tu primera operación</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-            Captura una venta o un gasto y ONE Finance irá armando tus números, tus reportes y tu
-            contabilidad por ti.
-          </p>
-          <div className="mt-5 flex justify-center gap-3">
-            <Link to="/ingresos?nuevo=1">
-              <Button>Registrar ingreso</Button>
-            </Link>
-            <Link to="/gastos?nuevo=1">
-              <Button variant="secondary">Registrar gasto</Button>
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <Card>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">Entradas y salidas de dinero</h2>
-              <div className="flex items-center gap-4">
-                <ChartLegend
-                  items={[
-                    { label: 'Entradas', color: IN },
-                    { label: 'Salidas', color: OUT },
-                  ]}
-                />
-                <div className="flex overflow-hidden rounded-md border border-border text-[11px] font-medium">
-                  {(
-                    [
-                      { key: 'week', label: 'Semana' },
-                      { key: 'month', label: 'Mes' },
-                    ] as const
-                  ).map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setGranularity(option.key)}
-                      className={
-                        granularity === option.key
-                          ? 'bg-accent px-2.5 py-1 text-on-accent'
-                          : 'bg-surface px-2.5 py-1 text-muted hover:text-ink'
-                      }
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={210}>
-              <BarChart data={flowData} barGap={3} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="2 4" vertical={false} stroke={GRID} strokeOpacity={0.25} />
-                <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" />
-                <YAxis {...axisProps} tickFormatter={formatCompact} width={52} />
-                <Tooltip
-                  cursor={{ fill: GRID, fillOpacity: 0.08 }}
-                  content={<FlowTooltip />}
-                />
-                <Bar dataKey="inflows" name="Entradas" fill={IN} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                <Bar dataKey="outflows" name="Salidas" fill={OUT} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Distinta pregunta que el flujo de efectivo: ¿gané o perdí cada mes? */}
-          <ChartCard title="Resultado por mes">
-            <ResponsiveContainer width="100%" height={210}>
-              <BarChart data={resultData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="2 4" vertical={false} stroke={GRID} strokeOpacity={0.25} />
-                <XAxis dataKey="month" {...axisProps} />
-                <YAxis {...axisProps} tickFormatter={formatCompact} width={52} />
-                <Tooltip
-                  cursor={{ fill: GRID, fillOpacity: 0.08 }}
-                  formatter={(value) => formatMoney(Number(value))}
-                />
-                <Bar dataKey="profit" name="Resultado" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                  {resultData.map((row) => (
-                    <Cell key={row.month} fill={row.profit >= 0 ? IN : LOSS} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {data.expense_categories.length > 0 ? (
-            <Card className="lg:col-span-2">
-              <div className="mb-4 flex items-baseline justify-between">
-                <h2 className="text-sm font-semibold">En qué se va el gasto</h2>
-                <span className="text-xs text-muted">{formatMonthYear(new Date())}</span>
-              </div>
-              {/* Barras horizontales en vez de dona: ocho categorías se comparan de un vistazo. */}
-              <ul className="space-y-2.5">
-                {data.expense_categories.map((row) => (
-                  <li key={row.category} className="grid grid-cols-[9rem_1fr_auto] items-center gap-3 text-sm">
-                    <span className="truncate text-muted">{row.category}</span>
-                    <span className="h-2 rounded-full bg-surface-2">
-                      <span
-                        className="block h-2 rounded-full"
-                        style={{
-                          width: topCategory > 0 ? `${Math.max((row.amount / topCategory) * 100, 2)}%` : '2%',
-                          background: OUT,
-                        }}
-                      />
-                    </span>
-                    <span className="figures tabular-nums text-right font-medium">
-                      {formatMoney(row.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
-        </div>
-      )}
+      <SalesByMonthChart year={year} onYearChange={(next) => update({ anio: String(next) })} params={dims} />
     </div>
   )
 }

@@ -158,6 +158,8 @@ export function OperationsPage({ config }: { config: Config }) {
     non_deductible: false,
     ...EMPTY_DIMENSIONS,
     ...EMPTY_FINE_FILTERS,
+    // `?business_unit_id=` llega desde Inicio (Sucursales): la lista de esa unidad.
+    business_unit_id: searchParams.get('business_unit_id') ?? '',
   })
   const emptyFilters = {
     q: '',

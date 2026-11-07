@@ -9,6 +9,24 @@ export function formatMoney(value: string | number | null | undefined): string {
   return mxn.format(Number.isFinite(numeric) ? numeric : 0)
 }
 
+const mxnWhole = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+  maximumFractionDigits: 0,
+})
+
+/** Cifra sin centavos para listas densas y etiquetas de barras: $148,300. */
+export function formatWhole(value: string | number | null | undefined): string {
+  const numeric = typeof value === 'string' ? Number(value) : (value ?? 0)
+  return mxnWhole.format(Number.isFinite(numeric) ? numeric : 0)
+}
+
+/** "sáb 8 nov" — para fechas próximas en una frase. */
+export function formatWeekday(iso: string): string {
+  const [year, month, day] = iso.split('T')[0].split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 /** Divide una cifra en entero y centavos para la tipografía de ledger. */
 export function splitMoney(value: string | number | null | undefined): { main: string; cents: string } {
   const formatted = formatMoney(value)
