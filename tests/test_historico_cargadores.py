@@ -288,3 +288,30 @@ def test_avance_de_revision_cuenta_por_estatus(rec_points):
     assert snap["journal_confirmed"] == 3 and snap["journal_pending"] == 2
     assert snap["findings_resuelto"] == 2 and snap["findings_parcial"] == 1 and snap["findings_nuevo"] == 1
     assert snap["questions_respondida"] == 1 and snap["questions_sin_respuesta"] == 1 and snap["questions_parcial"] == 1
+
+
+# --- Control de efectivo --------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def cash_points():
+    from app.domains.analytics.loaders.efectivo import load_efectivo
+    from tests.historico_fixtures import efectivo_xlsx
+
+    return load_efectivo(efectivo_xlsx(), "Control_Efectivo_Reco_2026.xlsx")
+
+
+def test_efectivo_saldo_cierre_por_dia(cash_points):
+    pts = cash_points
+    assert all(p.dataset == "cash_daily" and p.period_grain == "day" and p.account_label == "Caja central" for p in pts)
+    assert value(pts, "closing_balance", date(2026, 10, 31)) == Decimal("27407.00")
+    assert value(pts, "inflows", date(2026, 10, 1)) == Decimal("16475.00")
+    assert value(pts, "outflows", date(2026, 10, 3)) == Decimal("9300.00")
+    assert value(pts, "closing_balance", date(2026, 10, 3)) == Decimal("80858.00")
+    assert len([p for p in pts if p.period_start.month == 10]) == 31 * 3
+
+
+def test_efectivo_omite_meses_vacios(cash_points):
+    months = {p.period_start.month for p in cash_points}
+    assert months == {10}  # enero todo en cero y noviembre sin movimientos (saldo arrastrado) se omiten
+    assert all(p.period_start.day >= 1 for p in cash_points)

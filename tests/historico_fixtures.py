@@ -179,3 +179,34 @@ def reconstruccion_xlsx() -> bytes:
         ws.cell(row=i, column=1, value=did)
         ws.cell(row=i, column=4, value=est)
     return _bytes(wb)
+
+
+def efectivo_xlsx() -> bytes:
+    """Control de efectivo: una hoja por mes; la tabla de la derecha (J–M) trae
+    Fecha | Ingresos día | Egresos día | Saldo cierre día, como texto."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    wb.create_sheet("Resumen")["A1"] = "Resumen"
+    header = ["Fecha", "Concepto", "Categoría", "Área/Sucursal", "Ingreso efectivo", "Egreso efectivo", "Saldo acumulado", "Observaciones", None, "Fecha", "Ingresos día", "Egresos día", "Saldo cierre día"]
+
+    def sheet(name: str, month: int, days: list[tuple[str, str, str]], opening: str = "0"):
+        ws = wb.create_sheet(name)
+        ws["A1"] = "Control de efectivo - "
+        ws["A3"], ws["B3"], ws["D3"], ws["E3"] = "Saldo inicial del mes", opening, "Mes", name
+        ws["D4"], ws["E4"] = "Año", "2026"
+        for j, v in enumerate(header, start=1):
+            if v:
+                ws.cell(row=10, column=j, value=v)
+        for i, (inflow, outflow, closing) in enumerate(days, start=11):
+            ws.cell(row=i, column=10, value=f"2026-{month:02d}-{i - 10:02d} 00:00:00")
+            ws.cell(row=i, column=11, value=inflow)
+            ws.cell(row=i, column=12, value=outflow)
+            ws.cell(row=i, column=13, value=closing)
+        ws.cell(row=11 + len(days), column=11, value="0")  # fila sin fecha: se omite
+
+    sheet("Enero", 1, [("0", "0", "0")] * 31)
+    octubre = [("16475", "0", "73088"), ("17070", "0", "90158"), ("0", "9300", "80858")] + [("0", "0", "80858")] * 27
+    octubre.append(("0", "53451", "27407"))
+    sheet("Octubre", 10, octubre, opening="56613")
+    sheet("Noviembre", 11, [("0", "0", "27407")] * 30)
+    return _bytes(wb)
