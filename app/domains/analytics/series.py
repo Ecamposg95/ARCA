@@ -13,6 +13,7 @@ Reglas (spec «Cómo se lee» y Definiciones 1 y 7):
 
 from __future__ import annotations
 
+import calendar
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
@@ -29,6 +30,10 @@ from app.models.receivable import Receivable
 ENTITY_NOTE = "El histórico no trae desglose por contribuyente"
 SERIES = {("sales", "net_sales")}
 ZERO = Decimal("0.00")
+
+
+def _month_end(day: date) -> date:
+    return day.replace(day=calendar.monthrange(day.year, day.month)[1])
 
 
 def _period(day: date, grain: str) -> date:
@@ -102,7 +107,14 @@ def _historical(
     for day, amount in daily.group_by(HistoricalPoint.period_start).all():
         totals[_period(day, grain)] += Decimal(amount or 0)
     if grain == "month" and not business_unit_id:
-        monthly = base.filter(HistoricalPoint.dataset == "sales_monthly", HistoricalPoint.period_start >= start.replace(day=1))
+        # Un mes partido por el corte (end no es fin de mes) sólo puede armarse
+        # con días de Toronja: el mensual de PROY cubriría también los días vivos.
+        monthly_end = end if end == _month_end(end) else end.replace(day=1) - timedelta(days=1)
+        monthly = base.filter(
+            HistoricalPoint.dataset == "sales_monthly",
+            HistoricalPoint.period_start >= start.replace(day=1),
+            HistoricalPoint.period_start <= monthly_end,
+        )
         for month, amount in monthly.group_by(HistoricalPoint.period_start).all():
             if month not in totals:
                 totals[month] = Decimal(amount or 0)

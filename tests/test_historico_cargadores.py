@@ -315,3 +315,16 @@ def test_efectivo_omite_meses_vacios(cash_points):
     months = {p.period_start.month for p in cash_points}
     assert months == {10}  # enero todo en cero y noviembre sin movimientos (saldo arrastrado) se omiten
     assert all(p.period_start.day >= 1 for p in cash_points)
+
+
+def test_toronja_folio_repetido_cuenta_una_vez():
+    content = render_html(
+        [
+            ticket("0201260001", "2026-01-02", "VILLAS", efectivo="100"),
+            ticket("0201260001", "2026-01-02", "VILLAS", efectivo="100"),  # misma fila exportada dos veces
+            ticket("0201260002", "2026-01-02", "VILLAS", efectivo="40"),
+        ]
+    )
+    points = load_toronja(content, "ventas.xls")
+    assert value(points, "tickets") == 2
+    assert value(points, "net_sales") == Decimal("140.00")

@@ -42,9 +42,15 @@ def load_toronja(content: bytes, filename: str) -> list[Point]:
     by_unit: dict[tuple[date, str], dict[str, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     by_method: dict[tuple[date, str, str], Decimal] = defaultdict(Decimal)
 
+    seen: set[str] = set()
     for row in rows:
         if row.get("error") or row.get("date") is None:
             continue
+        folio = (row.get("folio") or "").strip()
+        if folio:
+            if folio in seen:
+                continue  # la misma fila exportada dos veces: igual que el importador
+            seen.add(folio)
         vendor = (row.get("vendor") or "").strip()
         if not vendor or normalize_alias(vendor) == SUPPORT_VENDOR:
             continue

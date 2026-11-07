@@ -243,3 +243,14 @@ def test_otra_empresa_no_ve_el_historico(client, db):
     other = _company(client, email="otra@example.com")[1]
     body = client.get(URL, headers=other).json()
     assert body["points"] == [] and body["historical_available"] is False
+
+
+def test_corte_a_mitad_de_mes_ignora_proy_del_mes_partido(client, db):
+    """Sin Toronja en el mes del corte, PROY no se suma a lo vivo (review: fuga mensual)."""
+    cutoff = LAST_MONTH + timedelta(days=14)
+    organization_id, headers = _company(client, email="partido@example.com", cutoff=cutoff)
+    _hist(db, organization_id, [("sales_monthly", "net_sales", LAST_MONTH, "5000")], family="control_general")
+    _income(client, headers, LAST_MONTH + timedelta(days=19), "50")
+
+    month = pt(_series(db, organization_id), LAST_MONTH)
+    assert month["value"] == Decimal("50.00") and month["origin"] == "live"

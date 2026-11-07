@@ -388,3 +388,55 @@ def test_estado_del_corte(client, db):
 
     cuts = {r["name"]: r["cut"] for r in _branches(client, headers)["rows"]}
     assert cuts == {"Villas": "DELIVERED", "Morelos": "LATE", "Alameda": "MISSING", "Santa Anita": "NA", "Empresas": "NA"}
+
+
+# --- Hallazgos de la revisión -------------------------------------------------
+
+
+def test_ajuste_de_apertura_no_cuenta_en_el_delta(client, db):
+    from app.domains.dashboard.today import today as today_panel
+    from app.models.organization import OrganizationMember
+
+    organization_id, headers = _company(client, email="apertura@example.com", initial_cash=None)
+    cutoff = MONDAY - timedelta(days=14)
+    assert client.patch("/api/opening", headers=headers, json={"opening_date": cutoff.isoformat()}).status_code == 200
+    bank = _account(client, headers, "Santander", "BANK", "0")
+    adjusted = client.post(
+        f"/api/accounts/{bank['id']}/opening-adjustment",
+        headers=headers,
+        json={"target_opening_balance": "2500", "status": "CONFIRMED", "reason": "Estado de cuenta oct-2026"},
+    )
+    assert adjusted.status_code == 200, adjusted.text
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization_id).first()
+    panel = today_panel(db, organization_id, membership, week_of=cutoff, business_unit_id=None, fiscal_entity_id=None, today=cutoff)
+    assert panel["money"]["total"] == Decimal("2500.00")
+    assert panel["money"]["delta"] == Decimal("0.00") and panel["money"]["previous_close"] == Decimal("2500.00")
+
+
+def test_mes_de_respaldo_vivo_no_se_etiqueta_historico(client, db):
+    from app.domains.dashboard.today import today as today_panel
+    from app.models.organization import OrganizationMember
+
+    organization_id, headers = _company(client, email="respaldo@example.com")
+    last_month = _months_back(MONTH, 1)
+    assert client.patch("/api/opening", headers=headers, json={"opening_date": last_month.isoformat()}).status_code == 200
+    _, caja = _unit(client, headers, "Villas")
+    _income(client, headers, last_month + timedelta(days=2), "300", caja["id"])
+    membership = db.query(OrganizationMember).filter_by(organization_id=organization_id).first()
+    panel = today_panel(db, organization_id, membership, week_of=MONTH, business_unit_id=None, fiscal_entity_id=None, today=MONTH)
+    branches = panel["branches"]
+    assert branches["month"] == last_month and branches["origin"] == "live"
+    assert branches["rows"][0]["sales"] == Decimal("300.00")
+
+
+def test_hoy_es_el_de_la_zona_horaria_de_la_empresa():
+    from datetime import datetime, timezone
+
+    from app.domains.dashboard.today import local_today
+    from app.models.organization import Organization
+
+    late_utc = datetime(2026, 11, 6, 23, 30, tzinfo=timezone.utc)  # 17:30 en la Ciudad de México
+    assert local_today(Organization(timezone="America/Mexico_City"), now=late_utc) == date(2026, 11, 6)
+    assert local_today(Organization(timezone="UTC"), now=late_utc) == date(2026, 11, 6)
+    assert local_today(Organization(timezone="Asia/Tokyo"), now=late_utc) == date(2026, 11, 7)
+    assert local_today(Organization(timezone="Zona/Inexistente"), now=late_utc) == date(2026, 11, 6)  # cae a México

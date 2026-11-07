@@ -23,7 +23,7 @@ from app.models.contact import Vendor
 from app.models.financial_account import FinancialAccount
 from app.models.organization import OPENING_CONFIRMED, OPENING_PROVISIONAL, Organization, OrganizationMember
 from app.models.payable import Payable
-from app.models.transaction import INFLOW_TYPES, FinancialTransaction
+from app.models.transaction import INFLOW_TYPES, FinancialTransaction, not_opening_adjustment
 from app.models.user import User
 from app.services import approvals
 
@@ -101,6 +101,8 @@ def money_panel(db: Session, organization: Organization, business_unit_id: str |
                 FinancialTransaction.financial_account_id.in_(account_ids),
                 FinancialTransaction.status == "ACTIVE",
                 FinancialTransaction.date > previous_business_day(today),
+                # Capturar el saldo de apertura no es dinero que llegó hoy.
+                not_opening_adjustment(),
             )
             .group_by(FinancialTransaction.transaction_type)
             .all()
@@ -247,6 +249,17 @@ def approvals_panel(db: Session, organization_id: str, membership: OrganizationM
     return {"pending": pending, "can_authorize": approvals.can_authorize(membership)}
 
 
+def local_today(organization: Organization, now: datetime | None = None) -> date:
+    """«Hoy» en la zona de la empresa, no la del servidor (Railway corre en UTC:
+    a las 18:00 de México ya sería mañana)."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        zone = ZoneInfo(organization.timezone or "America/Mexico_City")
+    except Exception:
+        zone = ZoneInfo("America/Mexico_City")
+    return now.astimezone(zone).date()
+
+
 def today(
     db: Session,
     organization_id: str,
@@ -256,8 +269,8 @@ def today(
     fiscal_entity_id: str | None,
     today: date | None = None,
 ) -> dict:
-    today = today or date.today()
     organization = db.get(Organization, organization_id)
+    today = today or local_today(organization)
     money = money_panel(db, organization, business_unit_id, today)
     week = week_panel(db, organization, week_of or today, money["total"], business_unit_id, fiscal_entity_id)
     return {
@@ -393,7 +406,8 @@ def branches_panel(
     else:
         past = sorted({day.replace(day=1) for (_, day) in daily if day < month}, reverse=True)
         if past:
-            origin, ref_month, last_day = "historical", past[0], _month_end(past[0]).day
+            ref_month, last_day = past[0], _month_end(past[0]).day
+            origin = "historical" if ref_month < opening.replace(day=1) else "live"
         else:
             origin, ref_month, last_day = "live", month, today.day
 
