@@ -153,7 +153,7 @@ export function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="rail-scroll flex-1 overflow-y-auto px-3 pb-4">
           {NAV_SECTIONS.map((section, index) => (
             <div key={index} className="mb-4">
               {section.label ? (
@@ -211,8 +211,8 @@ export function AppLayout() {
           onOpenNav={() => setNavOpen(true)}
           onOpenPalette={() => setPaletteOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
             <Outlet />
           </div>
         </main>

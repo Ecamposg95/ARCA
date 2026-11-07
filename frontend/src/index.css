@@ -5,55 +5,75 @@
 /* Tokens ONE Finance — base Atlas Cortex con acento verde (finanzas), HSL con canal separado para permitir alpha (bg-surface/60).
    Fuente de los valores: atlas-cortex frontend/tailwind.config.js (brand.* / dark.*). */
 :root {
-  --bg: 210 25% 98%; /* #fafbfc */
+  --bg: 140 20% 97%; /* #f6f9f7 casi blanco verdoso */
   --surface: 0 0% 100%; /* #ffffff */
-  --surface-2: 210 22% 96%; /* #f4f6f8 */
-  --ink: 202 30% 7%; /* #0d1418 */
-  --muted: 200 10% 40%; /* #5c6a71 */
-  --border: 200 22% 92%; /* #e6ecef */
+  --surface-2: 144 17% 94%; /* #eef3f0 */
+  --ink: 157 22% 7%; /* #0e1613 */
+  --ink-soft: 154 11% 28%; /* #3f4f48 */
+  --muted: 156 7% 45%; /* #6b7a74 */
+  --border: 142 13% 88%; /* #dde5e0 */
   --accent: 154 63% 33%; /* #1f8a5b verde ONE Finance */
+  --accent-strong: 154 66% 26%; /* #176e48 */
   --on-accent: 0 0% 100%; /* texto sobre el acento */
   --accent-soft: 152 45% 95%; /* #edf7f2 */
-  --rail: 206 26% 11%; /* #141c22 dark surface */
-  --rail-ink: 195 20% 96%; /* #f3f6f7 */
-  --rail-muted: 201 13% 57%; /* #8496a0 */
-  --pos: 148 36% 47%; /* #4ca374 */
-  --neg: 0 70% 60%; /* #e05252 */
-  --warn: 42 55% 49%; /* #c29938 */
+  --rail: 154 18% 8%; /* #101714 */
+  --rail-ink: 143 17% 91%; /* #e4ece7 */
+  --rail-muted: 148 10% 69%; /* #a9b8b0 */
+  --pos: 154 55% 36%; /* #2a8f63 */
+  --neg: 5 57% 51%; /* #c9453a */
+  --warn: 37 63% 44%; /* #b8822a */
 }
 
 /* Alias en formato color: recharts y estilos inline no pueden usar las
    tripletas HSL de Tailwind. Sin esto, var(--color-surface) no existe y los
    tooltips caen al blanco default — ilegible en oscuro. */
-:root {
+:root,
+.dark {
+  --color-bg: hsl(var(--bg));
   --color-surface: hsl(var(--surface));
+  --color-surface-2: hsl(var(--surface-2));
   --color-border: hsl(var(--border));
   --color-muted: hsl(var(--muted));
   --color-ink: hsl(var(--ink));
+  --color-ink-soft: hsl(var(--ink-soft));
+  --color-accent: hsl(var(--accent));
+  --color-accent-strong: hsl(var(--accent-strong));
+  --color-warn: hsl(var(--warn));
+  --color-neg: hsl(var(--neg));
+  --color-pos: hsl(var(--pos));
 }
 
 .dark {
-  --bg: 202 30% 7%; /* #0d1418 */
-  --surface: 206 26% 11%; /* #141c22 */
-  --surface-2: 205 25% 13%; /* #19232a */
-  --ink: 195 20% 96%; /* #f3f6f7 */
-  --muted: 201 13% 57%; /* #8496a0 */
-  --border: 203 23% 15%; /* #1e2930 */
-  --accent: 151 50% 53%; /* #4cc38a verde claro sobre oscuro */
-  --on-accent: 202 40% 8%; /* en oscuro el acento aclara: el texto va oscuro */
-  --accent-soft: 154 22% 14%;
-  --rail: 204 30% 5%; /* #080c0f bg2 */
-  --rail-ink: 195 20% 96%;
-  --rail-muted: 201 13% 57%;
-  --pos: 148 40% 55%;
-  --neg: 0 75% 66%;
-  --warn: 42 60% 55%;
+  --bg: 160 20% 6%; /* #0c1210 */
+  --surface: 158 18% 9%; /* #121a17 panel */
+  --surface-2: 156 17% 11%; /* #18221e panel elevado */
+  --ink: 143 17% 91%; /* #e4ece7 */
+  --ink-soft: 148 10% 69%; /* #a9b8b0 */
+  --muted: 155 7% 47%; /* #6f8079 */
+  --border: 154 17% 16%; /* #22302a */
+  --accent: 151 50% 53%; /* #4cc38a */
+  --accent-strong: 154 55% 36%; /* #2a8f63 */
+  --on-accent: 160 20% 6%; /* en oscuro el acento aclara: el texto va oscuro */
+  --accent-soft: 154 22% 13%;
+  --rail: 156 22% 5%; /* #090e0c */
+  --rail-ink: 143 17% 91%;
+  --rail-muted: 155 7% 47%;
+  --pos: 151 50% 53%; /* #4cc38a */
+  --neg: 5 75% 64%; /* #e86a5e */
+  --warn: 36 72% 59%; /* #e2a54a */
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* La página nunca se desplaza en horizontal: el ancho lo ponen los hijos de
+   main (min-w-0) y lo que sobre hace scroll dentro de su propio contenedor. */
+html,
+body {
+  overflow-x: hidden;
 }
 
 body {
@@ -92,11 +112,55 @@ body {
   animation-delay: 90ms;
 }
 
-/* Cifras: JetBrains Mono (convención cortex para datos numéricos) — la firma tipográfica. */
+/* Cifras: Geist con dígitos tabulares — la misma familia que la interfaz,
+   alineada en columnas. La firma tipográfica es la cifra, no una monoespaciada. */
 .figures {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: Geist, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+}
+
+/* Cifra protagonista: 40px, peso medio, tracking apretado. */
+.figure-hero {
+  font-family: Geist, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+/* Panel: radio 10px, borde de 1px, sin sombra. */
+.panel {
+  @apply rounded-panel border border-border bg-surface;
+}
+
+/* El menú lateral se desplaza con una barra fina del color de la línea,
+   nunca la blanca del navegador sobre fondo oscuro. */
+.rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--rail-ink) / 0.18) transparent;
+}
+.rail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rail-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--rail-ink) / 0.18);
+  border-radius: 999px;
+}
+main {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+main::-webkit-scrollbar {
+  width: 8px;
+}
+main::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
 }
 
 *:focus-visible {
@@ -198,10 +262,14 @@ body {
   --pos: 152 68% 43%; /* #0ecb81 verde mercado */
   --neg: 352 91% 62%; /* #f6465d rojo mercado */
   --warn: 42 60% 55%;
+  --ink-soft: 212 15% 75%;
   --color-surface: hsl(219 20% 7%);
+  --color-surface-2: hsl(218 17% 10%);
   --color-border: hsl(217 15% 14%);
   --color-muted: hsl(214 12% 55%);
   --color-ink: hsl(210 25% 95%);
+  --color-ink-soft: hsl(212 15% 75%);
+  --color-accent: hsl(186 58% 45%);
   color: hsl(var(--ink));
 }
 .terminal ::selection {

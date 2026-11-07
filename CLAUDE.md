@@ -25,7 +25,7 @@ cd frontend && npm run typecheck && npm run build
 - Migraciones `AAAAMMDD_NN_slug.py` con `revision="AAAAMMDD_NN"`; un solo head; nunca `create_all()` en producción.
 - Montos: `Decimal`/`Numeric(14,2)`; schemas con `Field(gt=0, allow_inf_nan=False)`; el front manda strings.
 - Commits: Conventional Commits en español.
-- UI: tokens semánticos Tailwind (`bg-surface`, `text-muted`…), cero colores crudos; cifras con clase `.figures` (Archivo tabular); copy en español, empty states con CTA.
+- UI: tokens semánticos Tailwind (`bg-surface`, `text-muted`…), cero colores crudos; cifras con clase `.figures` (Geist con `tabular-nums`; la protagonista con `.figure-hero`); paneles con `.panel` (radio 10px, borde, sin sombra); copy en español, empty states con CTA.
 
 ## Deployment
 

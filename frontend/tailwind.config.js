@@ -9,9 +9,11 @@ export default {
         surface: 'hsl(var(--surface) / <alpha-value>)',
         'surface-2': 'hsl(var(--surface-2) / <alpha-value>)',
         ink: 'hsl(var(--ink) / <alpha-value>)',
+        'ink-soft': 'hsl(var(--ink-soft) / <alpha-value>)',
         muted: 'hsl(var(--muted) / <alpha-value>)',
         border: 'hsl(var(--border) / <alpha-value>)',
         accent: 'hsl(var(--accent) / <alpha-value>)',
+        'accent-strong': 'hsl(var(--accent-strong) / <alpha-value>)',
         'on-accent': 'hsl(var(--on-accent) / <alpha-value>)',
         'accent-soft': 'hsl(var(--accent-soft) / <alpha-value>)',
         rail: 'hsl(var(--rail) / <alpha-value>)',
@@ -22,9 +24,9 @@ export default {
         warn: 'hsl(var(--warn) / <alpha-value>)',
       },
       fontFamily: {
-        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-        body: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        display: ['Geist', 'system-ui', 'sans-serif'],
+        body: ['Geist', 'system-ui', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
@@ -33,6 +35,7 @@ export default {
       },
       borderRadius: {
         DEFAULT: '8px',
+        panel: '10px',
       },
     },
   },
