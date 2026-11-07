@@ -103,3 +103,79 @@ def control_general_xlsx() -> bytes:
     ws["H4"], ws["I4"] = "TOTAL", 547678.33
     ws["I5"] = 118927.48  # cifra suelta sin nombre
     return _bytes(wb)
+
+
+def reconstruccion_xlsx() -> bytes:
+    """Hojas 03, 04, 17 y 18 de la reconstrucción: valores como texto, igual
+    que el archivo real (lo exporta así)."""
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    ws = wb.create_sheet("03_Libro_Diario")
+    ws["A1"] = "Libro diario reconstruido (preliminar)"
+    ws["A3"] = "← Volver al índice"
+    header = [
+        "Póliza", "Fecha", "Mes #", "Mes", "Concepto", "Cuenta de cargo", "Nombre cuenta de cargo",
+        "Cuenta de abono", "Nombre cuenta de abono", "Monto (MXN)", "Entidad (Liza / Ale)", "Unidad de negocio",
+        "Contraparte", "Fuente", "Referencia de origen (trazabilidad)", "Estatus", "Ajuste aplicado", "Hallazgo",
+    ]  # fmt: skip
+    for j, v in enumerate(header, start=1):
+        ws.cell(row=5, column=j, value=v)
+    polizas = [
+        ("PZ-00001", "2026-01-01 00:00:00", "6111", "Software y suscripciones", "389.76", "Liza", "Villas", "Confirmado"),
+        ("PZ-00002", "2026-01-15 00:00:00", "6111", "Software y suscripciones", "110.24", "Liza", "Villas", "Confirmado"),
+        ("PZ-00003", "2026-01-20 00:00:00", "6128", "Consumos con tarjeta por validar", "500", "Por asignar", None, "Por confirmar"),
+        ("PZ-00004", "2026-02-02 00:00:00", "5101", "Reactivos", "1000.5", "Ale", "Centro Médico", "Reclasificado"),
+        ("PZ-00005", "2026-02-03 00:00:00", "1102", "Bancos", "99999", "Liza", None, "Confirmado"),
+    ]
+    for i, (folio, fecha, cargo, nombre, monto, entidad, unidad, estatus) in enumerate(polizas, start=6):
+        ws.cell(row=i, column=1, value=folio)
+        ws.cell(row=i, column=2, value=fecha)
+        ws.cell(row=i, column=6, value=cargo)
+        ws.cell(row=i, column=7, value=nombre)
+        ws.cell(row=i, column=8, value="2101")
+        ws.cell(row=i, column=10, value=monto)
+        ws.cell(row=i, column=11, value=entidad)
+        ws.cell(row=i, column=12, value=unidad)
+        ws.cell(row=i, column=16, value=estatus)
+
+    ws = wb.create_sheet("04_Estado_Resultados")
+    ws["A1"] = "Estado de resultados preliminar 2026 (enero–septiembre)"
+    for j, v in enumerate(["Cuenta", "Concepto", "Código SAT", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Total ene–sep", "% de ingresos"], start=1):
+        ws.cell(row=5, column=j, value=v)
+    ws["A6"] = "Ingresos"
+    rows = [
+        ("4101", "Servicios de laboratorio", ["824764.74"] + ["800000"] * 8),
+        (None, "Total de ingresos", ["861269.74"] + ["850000"] * 7 + ["930425.82"]),
+        (None, "Total costo de ventas", ["165795.95"] + ["100000"] * 8),
+        (None, "Utilidad bruta", ["695473.79"] + ["750000"] * 8),
+        (None, "Total gastos de operación", ["485746.67"] + ["500000"] * 8),
+        (None, "Utilidad de operación", ["209727.12"] + ["250000"] * 8),
+        (None, "Total resultado integral de financiamiento", ["8523.63"] + ["9000"] * 8),
+        (None, "Utilidad antes de sueldo de socias", ["201203.49"] + ["241000"] * 8),
+        ("3201", "Sueldo de socias (30,000 por socia)", ["60000"] * 9),
+        (None, "Utilidad después de sueldo de socias", ["141203.49"] + ["181000"] * 7 + ["-15020.82"]),
+    ]
+    for i, (code, concepto, values) in enumerate(rows, start=7):
+        ws.cell(row=i, column=1, value=code)
+        ws.cell(row=i, column=2, value=concepto)
+        for j, v in enumerate(values):
+            ws.cell(row=i, column=4 + j, value=v)
+        ws.cell(row=i, column=13, value="0")
+
+    ws = wb.create_sheet("17_Hallazgos")
+    ws["A1"] = "Hallazgos"
+    for j, v in enumerate(["ID", "Severidad", "Estatus", "Tema"], start=1):
+        ws.cell(row=5, column=j, value=v)
+    for i, (hid, est) in enumerate([("H-01", "Parcial"), ("H-02", "Resuelto"), ("H-03", "Resuelto"), ("H-04", "Nuevo")], start=6):
+        ws.cell(row=i, column=1, value=hid)
+        ws.cell(row=i, column=3, value=est)
+
+    ws = wb.create_sheet("18_Dudas")
+    ws["A1"] = "Dudas"
+    for j, v in enumerate(["ID", "Tema", "Pregunta", "Estatus"], start=1):
+        ws.cell(row=5, column=j, value=v)
+    for i, (did, est) in enumerate([("D-01", "Parcial"), ("D-02", "Respondida"), ("D-03", "Sin respuesta")], start=6):
+        ws.cell(row=i, column=1, value=did)
+        ws.cell(row=i, column=4, value=est)
+    return _bytes(wb)

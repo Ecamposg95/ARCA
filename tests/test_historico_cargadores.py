@@ -237,3 +237,54 @@ def test_control_general_archivo_equivocado():
 
     with pytest.raises(HistoricalFormatError):
         load_control_general(b"<html><table><tr><td>FOLIO</td></tr></table></html>", "v.xls")
+
+
+# --- Reconstrucción contable ----------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def rec_points():
+    from app.domains.analytics.loaders.reconstruccion import load_reconstruccion
+    from tests.historico_fixtures import reconstruccion_xlsx
+
+    return load_reconstruccion(reconstruccion_xlsx(), "Lafe_Registro_Contable_Reconstruido_2026_v2.xlsx")
+
+
+def test_estado_resultados_mapea_totales(rec_points):
+    pnl = [p for p in rec_points if p.dataset == "pnl_monthly"]
+    assert value(pnl, "profit_after_partners", date(2026, 9, 1)) == Decimal("-15020.82")
+    assert value(pnl, "revenue", date(2026, 1, 1)) == Decimal("861269.74")
+    assert value(pnl, "cost_of_sales", date(2026, 1, 1)) == Decimal("165795.95")
+    assert value(pnl, "gross_profit", date(2026, 1, 1)) == Decimal("695473.79")
+    assert value(pnl, "operating_expenses", date(2026, 1, 1)) == Decimal("485746.67")
+    assert value(pnl, "operating_profit", date(2026, 1, 1)) == Decimal("209727.12")
+    assert value(pnl, "financial_result", date(2026, 1, 1)) == Decimal("8523.63")
+    assert value(pnl, "profit_before_partners", date(2026, 1, 1)) == Decimal("201203.49")
+    assert {p.metric for p in pnl} == {
+        "revenue", "cost_of_sales", "gross_profit", "operating_expenses", "operating_profit",
+        "financial_result", "profit_before_partners", "profit_after_partners",
+    }  # fmt: skip
+    assert len(pnl) == 8 * 9 and all(p.period_grain == "month" for p in pnl)
+
+
+def test_libro_diario_agrega_gasto_y_omite_ingresos(rec_points):
+    exp = [p for p in rec_points if p.dataset == "expense_monthly"]
+    software = value(exp, "amount", date(2026, 1, 1), account_code="6111", entity_label="Liza", unit_label="Villas")
+    assert software == Decimal("500.00")
+    assert [p.account_label for p in exp if p.account_code == "6111"] == ["Software y suscripciones"]
+    assert value(exp, "amount", date(2026, 2, 1), account_code="5101") == Decimal("1000.50")
+    assert not any(p.account_code == "1102" for p in exp)
+    assert len(exp) == 3
+
+
+def test_por_asignar_queda_sin_entidad(rec_points):
+    exp = [p for p in rec_points if p.dataset == "expense_monthly" and p.account_code == "6128"]
+    assert len(exp) == 1 and exp[0].entity_label is None and exp[0].unit_label is None
+
+
+def test_avance_de_revision_cuenta_por_estatus(rec_points):
+    snap = {p.metric: p.value for p in rec_points if p.dataset == "snapshot"}
+    assert all(p.period_start == date(2026, 10, 21) for p in rec_points if p.dataset == "snapshot")
+    assert snap["journal_confirmed"] == 3 and snap["journal_pending"] == 2
+    assert snap["findings_resuelto"] == 2 and snap["findings_parcial"] == 1 and snap["findings_nuevo"] == 1
+    assert snap["questions_respondida"] == 1 and snap["questions_sin_respuesta"] == 1 and snap["questions_parcial"] == 1
