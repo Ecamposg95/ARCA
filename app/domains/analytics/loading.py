@@ -10,6 +10,7 @@ from typing import Callable
 
 from sqlalchemy.orm import Session
 
+from app.domains.analytics.loaders.control_general import load_control_general
 from app.domains.analytics.loaders.toronja import SHEET as TORONJA_SHEET
 from app.domains.analytics.loaders.toronja import load_toronja
 from app.domains.analytics.points import Point, ResolvedPoint, replace_points, resolve
@@ -22,6 +23,7 @@ Loader = Callable[[bytes, str], list[Point]]
 # familia → (cargador, nombre de hoja/sección para el `source`)
 LOADERS: dict[str, tuple[Loader, str]] = {
     "toronja": (load_toronja, TORONJA_SHEET),
+    "control_general": (load_control_general, "PROY+RESUTADOS+PRESTAMOS+INVERSIONES"),
 }
 
 
