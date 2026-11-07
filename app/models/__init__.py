@@ -19,6 +19,7 @@ from app.models.financial_account import FinancialAccount  # noqa: F401
 from app.models.fiscal_entity import FiscalEntity  # noqa: F401
 from app.models.fiscal_year import FiscalYearLock  # noqa: F401
 from app.models.fixed_asset import FixedAsset  # noqa: F401
+from app.models.historical import HistoricalLoad, HistoricalPoint  # noqa: F401
 from app.models.import_batch import ImportBatch, ImportRow  # noqa: F401
 from app.models.income import Income  # noqa: F401
 from app.models.loan import Loan, LoanPayment  # noqa: F401
