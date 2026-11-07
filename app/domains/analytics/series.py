@@ -203,3 +203,55 @@ def _has_history(db: Session, organization_id: str) -> bool:
         .first()
         is not None
     )
+
+
+def sales_by_unit_day(
+    db: Session,
+    organization_id: str,
+    opening: date | None,
+    start: date,
+    end: date,
+    fiscal_entity_id: str | None = None,
+) -> dict[tuple[str, date], Decimal]:
+    """Venta diaria por unidad: histórico (`sales_daily` con unidad) antes del
+    corte y lo registrado desde el corte. Sin corte, sólo lo registrado."""
+    totals: dict[tuple[str, date], Decimal] = defaultdict(lambda: ZERO)
+    live_start = max(start, opening) if opening else start
+    if live_start <= end:
+        category_id = _resolved_toronja_settings(db, organization_id)["income_category_id"]
+        if category_id is not None:
+            for model in (Income, Receivable):
+                query = (
+                    db.query(model.business_unit_id, model.date, func.sum(model.amount))
+                    .filter(
+                        model.organization_id == organization_id,
+                        model.category_id == category_id,
+                        model.status != "CANCELLED",
+                        model.business_unit_id.isnot(None),
+                        model.date >= live_start,
+                        model.date <= end,
+                    )
+                    .group_by(model.business_unit_id, model.date)
+                )
+                if fiscal_entity_id:
+                    query = query.filter(model.fiscal_entity_id == fiscal_entity_id)
+                for unit_id, day, amount in query.all():
+                    totals[(unit_id, day)] += Decimal(amount or 0)
+    if opening and not fiscal_entity_id and start < opening:
+        rows = (
+            db.query(HistoricalPoint.business_unit_id, HistoricalPoint.period_start, func.sum(HistoricalPoint.value))
+            .filter(
+                HistoricalPoint.organization_id == organization_id,
+                HistoricalPoint.dataset == "sales_daily",
+                HistoricalPoint.metric == "net_sales",
+                HistoricalPoint.business_unit_id.isnot(None),
+                HistoricalPoint.period_start >= start,
+                HistoricalPoint.period_start < opening,
+                HistoricalPoint.period_start <= end,
+            )
+            .group_by(HistoricalPoint.business_unit_id, HistoricalPoint.period_start)
+            .all()
+        )
+        for unit_id, day, amount in rows:
+            totals[(unit_id, day)] += Decimal(amount or 0)
+    return dict(totals)

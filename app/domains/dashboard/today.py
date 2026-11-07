@@ -6,13 +6,19 @@ Sólo lee. Las reglas vienen de la spec 2026-11-03 (Definiciones 3, 4 y 5).
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from decimal import Decimal
+import calendar
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.domains.analytics.series import sales_by_unit_day
 from app.models.agent import AgentProposal
+from app.models.business_unit import BusinessUnit
+from app.models.cash_cut import CashCut
 from app.models.contact import Vendor
 from app.models.financial_account import FinancialAccount
 from app.models.organization import OPENING_CONFIRMED, OPENING_PROVISIONAL, Organization, OrganizationMember
@@ -258,6 +264,187 @@ def today(
         "money": money,
         "week": week,
         "approvals": approvals_panel(db, organization_id, membership),
-        "branches": {"month": None, "origin": "live", "rows": []},
+        "branches": branches_panel(db, organization, today, business_unit_id, fiscal_entity_id),
     }
+
+
+# --- Sucursales ---------------------------------------------------------------
+
+
+def _months_back(month: date, months: int) -> date:
+    year, m = month.year, month.month - months
+    while m <= 0:
+        year, m = year - 1, m + 12
+    return date(year, m, 1)
+
+
+def _month_end(month: date) -> date:
+    return month.replace(day=calendar.monthrange(month.year, month.month)[1])
+
+
+def _pct(current: Decimal, base: Decimal) -> Decimal:
+    return ((current - base) / base * 100).quantize(ZERO, rounding=ROUND_HALF_UP)
+
+
+def _local_date(moment: datetime, tz: str) -> date:
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    try:
+        zone = ZoneInfo(tz or "America/Mexico_City")
+    except Exception:  # zona rara en BD: UTC antes que romper Inicio
+        zone = timezone.utc
+    return moment.astimezone(zone).date()
+
+
+def _cut_status(db: Session, organization: Organization, units: list[BusinessUnit], day: date) -> dict[str, str]:
+    """Definición 5: estado del corte de `day` para la caja de cada unidad."""
+    accounts = (
+        db.query(FinancialAccount)
+        .filter(
+            FinancialAccount.organization_id == organization.id,
+            FinancialAccount.type == "CASH",
+            FinancialAccount.active.is_(True),
+            FinancialAccount.deleted_at.is_(None),
+            FinancialAccount.business_unit_id.isnot(None),
+        )
+        .order_by(FinancialAccount.name)
+        .all()
+    )
+    cash_by_unit: dict[str, FinancialAccount] = {}
+    for account in accounts:
+        cash_by_unit.setdefault(account.business_unit_id, account)
+    account_ids = [account.id for account in cash_by_unit.values()]
+    if not account_ids:
+        return {unit.id: "NA" for unit in units}
+    cuts = {
+        cut.financial_account_id: cut
+        for cut in db.query(CashCut)
+        .filter(
+            CashCut.organization_id == organization.id,
+            CashCut.financial_account_id.in_(account_ids),
+            CashCut.date == day,
+            CashCut.status != "CANCELLED",
+        )
+        .order_by(CashCut.created_at)
+        .all()
+    }
+    moved = {
+        account_id
+        for (account_id,) in db.query(FinancialTransaction.financial_account_id)
+        .filter(
+            FinancialTransaction.organization_id == organization.id,
+            FinancialTransaction.financial_account_id.in_(account_ids),
+            FinancialTransaction.status == "ACTIVE",
+            FinancialTransaction.date == day,
+        )
+        .distinct()
+        .all()
+    }
+    status: dict[str, str] = {}
+    for unit in units:
+        account = cash_by_unit.get(unit.id)
+        if account is None:
+            status[unit.id] = "NA"
+            continue
+        cut = cuts.get(account.id)
+        if cut is not None and cut.delivered_at is not None:
+            status[unit.id] = "DELIVERED" if _local_date(cut.delivered_at, organization.timezone) <= day else "LATE"
+        elif account.id in moved:
+            status[unit.id] = "MISSING"
+        else:
+            status[unit.id] = "NA"
+    return status
+
+
+def branches_panel(
+    db: Session,
+    organization: Organization,
+    today: date,
+    business_unit_id: str | None,
+    fiscal_entity_id: str | None,
+) -> dict:
+    query = db.query(BusinessUnit).filter(BusinessUnit.organization_id == organization.id, BusinessUnit.active.is_(True))
+    if business_unit_id:
+        query = query.filter(BusinessUnit.id == business_unit_id)
+    units = query.order_by(BusinessUnit.sort_order, BusinessUnit.name).all()
+    month = today.replace(day=1)
+    opening = organization.opening_date
+    if not units:
+        return {"month": month, "origin": "live", "rows": []}
+
+    start = _months_back(month, 13)
+    daily = sales_by_unit_day(db, organization.id, opening, start, today, fiscal_entity_id)
+    by_unit_month: dict[str, dict[date, dict[date, Decimal]]] = defaultdict(lambda: defaultdict(dict))
+    for (unit_id, day), amount in daily.items():
+        by_unit_month[unit_id][day.replace(day=1)][day] = amount
+
+    def tramo(unit_id: str, which: date, last_day: int) -> Decimal | None:
+        """Venta de la unidad en `which` del día 1 al `last_day`; None si no hay dato."""
+        days = by_unit_month.get(unit_id, {}).get(which)
+        if not days:
+            return None
+        return sum((v for d, v in days.items() if d.day <= last_day), Decimal("0"))
+
+    # Mes en curso vivo; si ninguna unidad vendió desde el corte, el último mes con histórico.
+    live_from = max(month, opening) if opening else month
+    has_live = any(day >= live_from and amount > 0 for (_, day), amount in daily.items())
+    if has_live or opening is None:
+        origin, ref_month, last_day = "live", month, today.day
+    else:
+        past = sorted({day.replace(day=1) for (_, day) in daily if day < month}, reverse=True)
+        if past:
+            origin, ref_month, last_day = "historical", past[0], _month_end(past[0]).day
+        else:
+            origin, ref_month, last_day = "live", month, today.day
+
+    rows = []
+    for unit in units:
+        sales = tramo(unit.id, ref_month, last_day) or Decimal("0")
+        delta_pct = delta_basis = None
+        previous_year = tramo(unit.id, ref_month.replace(year=ref_month.year - 1), last_day)
+        if previous_year:
+            delta_pct, delta_basis = _pct(sales, previous_year), "previous_year"
+        else:
+            bases = []
+            for back in range(1, 13):
+                value = tramo(unit.id, _months_back(ref_month, back), last_day)
+                if value:
+                    bases.append(value)
+                if len(bases) == 3:
+                    break
+            if bases:
+                average = sum(bases, Decimal("0")) / len(bases)
+                delta_pct, delta_basis = _pct(sales, average), "avg_3m"
+        rows.append({"unit": unit, "sales": _money(sales), "delta_pct": delta_pct, "delta_basis": delta_basis})
+
+    rows.sort(key=lambda r: (-r["sales"], r["unit"].sort_order, r["unit"].name))
+    top = rows[0]["sales"] if rows and rows[0]["sales"] > 0 else None
+
+    yesterday = today - timedelta(days=1)
+    window_start = yesterday - timedelta(days=29)
+    cut_status = _cut_status(db, organization, units, yesterday)
+
+    result = []
+    for row in rows:
+        unit = row["unit"]
+        days_with_data = sorted(day for (unit_id, day) in daily if unit_id == unit.id and window_start <= day <= yesterday)
+        sparkline = []
+        if days_with_data:
+            cursor = days_with_data[0]
+            while cursor <= yesterday:
+                sparkline.append({"date": cursor, "value": _money(daily.get((unit.id, cursor), Decimal("0")))})
+                cursor += timedelta(days=1)
+        result.append(
+            {
+                "business_unit_id": unit.id,
+                "name": unit.name,
+                "sales": row["sales"],
+                "share": (row["sales"] / top).quantize(ZERO, rounding=ROUND_HALF_UP) if top else ZERO,
+                "delta_pct": row["delta_pct"],
+                "delta_basis": row["delta_basis"],
+                "sparkline": sparkline,
+                "cut": cut_status.get(unit.id, "NA"),
+            }
+        )
+    return {"month": ref_month, "origin": origin, "rows": result}
 
