@@ -65,6 +65,7 @@ def replace_points(
     points: list[ResolvedPoint],
     user_id: str | None,
     notes: str | None = None,
+    commit: bool = True,
 ) -> HistoricalLoad:
     """Borra los puntos de la misma familia en el rango (por dataset) que traen
     `points`, inserta los nuevos y registra la carga. Un solo commit.
@@ -131,5 +132,8 @@ def replace_points(
             for point in points
         ]
     )
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return load
