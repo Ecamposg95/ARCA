@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { usePendingCount } from '@/lib/approvals'
+import { useApplyBrand, useBrand } from '@/lib/brand'
 import { useActiveRole, useCompanies } from '@/lib/companies'
 import { ArcaMark } from '@/components/ui/ArcaMark'
 import { CommandPalette } from '@/components/ui/CommandPalette'
@@ -125,6 +126,8 @@ export function AppLayout() {
   // el backend: el rol aquí sólo decide qué navegación se enseña.
   useCompanies()
   const role = useActiveRole()
+  const brand = useBrand()
+  useApplyBrand()
 
   return (
     <div className="flex h-full">
@@ -139,19 +142,30 @@ export function AppLayout() {
       {/* La barra lateral hace una sola cosa: navegar. Identidad, acciones y
           usuario viven en el encabezado. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col bg-rail text-rail-ink transition-transform lg:static lg:translate-x-0 ${
+        className={`app-rail fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col bg-rail text-rail-ink transition-transform lg:static lg:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center gap-2.5 px-5 pb-5 pt-5">
-          <ArcaMark />
-          <div className="min-w-0">
-            <div className="font-display text-base font-bold leading-none tracking-tight">Atlas ONE Finance</div>
-            <div className="figures mt-1 text-[9px] uppercase tracking-[0.2em] text-rail-muted">
+        {brand ? (
+          /* Empresa con marca propia: su logotipo manda; ONE Finance firma en el pie. */
+          <div className="px-5 pb-5 pt-5">
+            <img src={brand.logo.light} alt={brand.name} className="h-auto w-full dark:hidden" />
+            <img src={brand.logo.dark} alt={brand.name} className="hidden h-auto w-full dark:block" />
+            <div className="figures mt-2 text-[9px] uppercase tracking-[0.2em] text-rail-muted">
               Finanzas y contabilidad
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2.5 px-5 pb-5 pt-5">
+            <ArcaMark />
+            <div className="min-w-0">
+              <div className="font-display text-base font-bold leading-none tracking-tight">Atlas ONE Finance</div>
+              <div className="figures mt-1 text-[9px] uppercase tracking-[0.2em] text-rail-muted">
+                Finanzas y contabilidad
+              </div>
+            </div>
+          </div>
+        )}
 
         <nav className="rail-scroll flex-1 overflow-y-auto px-3 pb-4">
           {NAV_SECTIONS.map((section, index) => (
@@ -174,8 +188,8 @@ export function AppLayout() {
                       className={({ isActive }) =>
                         `mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
                           isActive
-                            ? 'bg-white/10 font-medium text-white'
-                            : 'text-rail-ink/75 hover:bg-white/5 hover:text-white'
+                            ? 'bg-rail-hi/10 font-medium text-rail-hi'
+                            : 'text-rail-ink/75 hover:bg-rail-hi/5 hover:text-rail-hi'
                         }`
                       }
                     >

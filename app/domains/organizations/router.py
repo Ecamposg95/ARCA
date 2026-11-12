@@ -13,6 +13,7 @@ from app.models.organization import (
     ROLE_ADMIN,
     ROLE_MEMBER,
     ROLE_OWNER,
+    VALID_BRANDS,
     VALID_ROLES,
 )
 from app.models.user import User
@@ -33,6 +34,15 @@ class OrganizationUpdate(BaseModel):
     # Asistente sobre Claude: sólo el dueño mueve el tope o el apagador.
     ai_budget_usd: Decimal | None = Field(default=None, ge=0, le=100000, allow_inf_nan=False)
     ai_enabled: bool | None = None
+    # Marca propia (null la quita): sólo el dueño, y sólo una que el front conozca.
+    brand: str | None = Field(default=None, max_length=40)
+
+    @field_validator("brand")
+    @classmethod
+    def _brand_is_known(cls, value: str | None) -> str | None:
+        if value is not None and value not in VALID_BRANDS:
+            raise ValueError("Esa marca no está disponible.")
+        return value
 
 
 AI_FIELDS = ("ai_budget_usd", "ai_enabled")
@@ -111,6 +121,8 @@ def update_current_organization(
     changes = payload.model_dump(exclude_unset=True)
     if any(field in changes for field in AI_FIELDS) and membership.role != ROLE_OWNER:
         raise HTTPException(status_code=403, detail="Sólo el dueño puede cambiar el presupuesto del asistente.")
+    if "brand" in changes and membership.role != ROLE_OWNER:
+        raise HTTPException(status_code=403, detail="Sólo el dueño puede cambiar la marca de la empresa.")
     for field, value in changes.items():
         setattr(organization, field, value)
     db.commit()

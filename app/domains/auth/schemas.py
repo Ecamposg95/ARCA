@@ -46,6 +46,8 @@ class OrganizationRead(BaseModel):
     default_tax_rate: Decimal
     ai_budget_usd: Decimal | None = None
     ai_enabled: bool = True
+    # Marca propia de la empresa (acento y logotipo en el front); null = ONE Finance.
+    brand: str | None = None
     # Si la empresa definió unidades o contribuyentes, el front muestra selectores
     # y filtros; si no, nada cambia. Lo llena GET /organizations/current.
     has_business_units: bool = False

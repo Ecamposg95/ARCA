@@ -18,6 +18,7 @@ export default {
         'accent-soft': 'hsl(var(--accent-soft) / <alpha-value>)',
         rail: 'hsl(var(--rail) / <alpha-value>)',
         'rail-ink': 'hsl(var(--rail-ink) / <alpha-value>)',
+        'rail-hi': 'hsl(var(--rail-hi) / <alpha-value>)',
         'rail-muted': 'hsl(var(--rail-muted) / <alpha-value>)',
         pos: 'hsl(var(--pos) / <alpha-value>)',
         neg: 'hsl(var(--neg) / <alpha-value>)',

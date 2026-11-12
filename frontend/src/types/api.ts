@@ -26,6 +26,8 @@ export interface Organization {
   default_tax_rate: string
   ai_budget_usd: string | null
   ai_enabled: boolean
+  /** Marca propia de la empresa (logotipo y colores); null = ONE Finance. */
+  brand?: string | null
   /** Si la empresa definió unidades o contribuyentes (sólo en /organizations/current). */
   has_business_units?: boolean
   has_fiscal_entities?: boolean

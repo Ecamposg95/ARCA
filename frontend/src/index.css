@@ -19,6 +19,7 @@
   --rail: 154 18% 8%; /* #101714 */
   --rail-ink: 143 17% 91%; /* #e4ece7 */
   --rail-muted: 148 10% 69%; /* #a9b8b0 */
+  --rail-hi: 0 0% 100%; /* realce del menú: elemento activo y hover */
   --pos: 154 55% 36%; /* #2a8f63 */
   --neg: 5 57% 51%; /* #c9453a */
   --warn: 37 63% 44%; /* #b8822a */
@@ -61,6 +62,55 @@
   --pos: 151 50% 53%; /* #4cc38a */
   --neg: 5 75% 64%; /* #e86a5e */
   --warn: 36 72% 59%; /* #e2a54a */
+}
+
+/* Marca por empresa (organizations.brand → <html data-brand>). Sólo cambian
+   tokens: la estructura es la misma ONE Finance.
+
+   Lafe laboratorios (lafelaboratorios.com): verde #00c800 sobre blanco y grises
+   neutros. El verde vivo no da contraste como texto ni bajo texto blanco, así
+   que el acento de la interfaz es su versión profunda y el vivo queda para
+   trazos de gráficas (--color-accent) y, en oscuro, para todo. */
+:root[data-brand='lafe'] {
+  --bg: 0 0% 98%; /* #fafafa */
+  --surface-2: 0 0% 96%; /* #f5f5f5 */
+  --ink: 0 0% 9%;
+  --ink-soft: 0 0% 27%;
+  --muted: 0 0% 42%;
+  --border: 0 0% 90%; /* #e5e5e5 */
+  --accent: 120 100% 27%; /* #008a00: 4.5:1 con blanco */
+  --accent-strong: 120 100% 21%; /* #006b00 */
+  --accent-soft: 120 60% 96%;
+  --rail: 0 0% 100%; /* barra blanca, como el encabezado del sitio */
+  --rail-ink: 0 0% 20%;
+  --rail-muted: 0 0% 45%;
+  --rail-hi: 120 100% 21%;
+  --pos: 120 100% 27%;
+  --color-accent: #00b800;
+}
+
+:root[data-brand='lafe'] .app-rail {
+  border-right: 1px solid hsl(var(--border));
+}
+
+.dark[data-brand='lafe'] {
+  --bg: 0 0% 6%;
+  --surface: 0 0% 9%;
+  --surface-2: 0 0% 12%;
+  --ink: 0 0% 92%;
+  --ink-soft: 0 0% 70%;
+  --muted: 0 0% 50%;
+  --border: 0 0% 17%;
+  --accent: 120 100% 39%; /* #00c800, el verde del sitio */
+  --accent-strong: 120 100% 33%; /* #00a800 */
+  --on-accent: 0 0% 6%;
+  --accent-soft: 120 40% 11%;
+  --rail: 0 0% 4%;
+  --rail-ink: 0 0% 92%;
+  --rail-muted: 0 0% 50%;
+  --rail-hi: 0 0% 100%;
+  --pos: 120 100% 39%;
+  --color-accent: #00c800;
 }
 
 html,

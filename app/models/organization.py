@@ -35,6 +35,13 @@ class Organization(Base, UUIDPKMixin, AuditMixin):
     # estados de cuenta (CONFIRMED) o sigue provisional (PROVISIONAL).
     opening_date = Column(Date, nullable=True)
     opening_status = Column(String(20), nullable=True)  # OPENING_STATUSES
+    # Marca propia sobre ONE Finance (VALID_BRANDS): el backend sólo guarda la
+    # clave; acento y logotipo viven en el front (`frontend/src/lib/brand.ts`).
+    brand = Column(String(40), nullable=True)
+
+
+# Marcas que el front sabe pintar. Agregar una aquí exige sus tokens y su logo allá.
+VALID_BRANDS = ("lafe",)
 
 
 # Estado de un saldo de apertura: provisional hasta que llega el estado de
